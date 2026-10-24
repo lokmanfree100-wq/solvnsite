@@ -160,6 +160,21 @@ export function gachaCard(card, { variant = 'full', count = 1, onClick = null, e
               e.target.remove();
             },
           }),
+          /* The tier effect: from Scarce up every rung carries its own weather —
+             motes, rays, embers, lightning, a prismatic ring, a celestial halo,
+             fire. It sits over the portrait and under the printed plate, and it
+             is three nodes at most, so a binder of a hundred cards stays a
+             binder rather than a fireworks display. The one-of-one keeps its
+             own aura and does not wear this layer. */
+          variant !== 'mini' && r.lv >= 4 && r.lv <= TOP_LV
+            ? h(
+                'div.g-fx',
+                { 'aria-hidden': 'true' },
+                h('i.g-fx-a'),
+                h('i.g-fx-b'),
+                h('i.g-fx-c'),
+              )
+            : null,
           /* The foil lives inside the art, not over the whole frame: a real
              card's stamp catches the light on the picture, never across the
              printed name. */

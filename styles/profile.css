@@ -672,6 +672,191 @@
   border-color: var(--accent-line);
 }
 
+/* ---- the face ladder -------------------------------------------------
+   Three portraits open for every finished task, so the shelf above the grid
+   is the ladder: what is open, what opens next, and the whole list folded
+   behind one row. A locked face keeps its portrait under glass — the picture
+   is what makes somebody want it — and prints the task that opens it. */
+.av-quests {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.av-quest-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.av-quest-top b {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+}
+.av-quest-next {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.av-quest-bar {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.av-quest-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  box-shadow: 0 0 12px -3px var(--accent-glow);
+  transition: width var(--t-med) var(--ease);
+}
+.av-quest-sheet summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: -4px 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--accent-text);
+}
+.av-quest-sheet summary::-webkit-details-marker {
+  display: none;
+}
+.av-quest-sheet summary svg {
+  width: 15px;
+  height: 15px;
+}
+.av-quest-sheet[open] summary {
+  color: var(--text);
+}
+.av-quest-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 2px;
+  list-style: none;
+}
+.av-quest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.av-quest svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--text-faint);
+}
+.av-quest.is-done {
+  color: var(--text);
+}
+.av-quest.is-done svg {
+  color: var(--accent-text);
+}
+.av-quest-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.av-quest-prog {
+  margin-inline-start: auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.av-quest.is-done .av-quest-prog {
+  color: var(--accent-text);
+}
+.av-quest-gain {
+  flex: none;
+  min-width: 26px;
+  text-align: end;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-text);
+}
+.av-tile-art {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.av-tile img {
+  display: block;
+}
+.av-tile[aria-pressed='true'] img {
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 2px var(--accent-line), var(--sh-2);
+}
+.av-tile.is-locked {
+  cursor: default;
+  color: var(--text-faint);
+}
+.av-tile.is-locked img {
+  filter: grayscale(1) brightness(0.42) blur(1.4px);
+  border-color: var(--hairline);
+  box-shadow: none;
+}
+.av-tile-lock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(4, 5, 10, 0.42);
+  color: #fff;
+}
+.av-tile-lock svg {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.85));
+}
+.av-tile-hint {
+  width: 100%;
+  font-size: 10.5px;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--text-faint);
+}
+.av-tile-worn {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #04040a;
+  box-shadow: 0 0 0 2px var(--surface-2);
+}
+.av-tile-worn svg {
+  width: 12px;
+  height: 12px;
+}
+@media (hover: hover) {
+  .av-tile.is-locked:hover {
+    color: var(--text-faint);
+    transform: none;
+  }
+  .av-tile.is-locked:hover img {
+    border-color: var(--hairline);
+    box-shadow: none;
+  }
+}
+
 /* ---- the private shelves -------------------------------------------
    The tabs reuse .chip, whose 32px height is right for a filter bar and wrong
    for a thumb. On the profile they are full 44px targets. */
@@ -2517,6 +2702,200 @@
   }
 }
 
+/* ---- the showcase four ------------------------------------------------
+   These sit at the end of the shelf and are the reason the picker exists: fire
+   climbing over cold smoke, a room lit pink, a storm that actually strikes, and
+   water that never stops moving. Each is still two layers plus a transform or an
+   opacity, so a hero and forty-six picker tiles stay on the compositor. */
+/* Inferno: gold fire rising out of cold blue smoke. */
+.bk[data-theme='inferno'] {
+  background: linear-gradient(180deg, #170402, #05070f 68%, #01030a);
+}
+.bk[data-theme='inferno']::before {
+  inset: 18% -26% -34%;
+  background:
+    radial-gradient(42% 92% at 18% 104%, rgba(255, 196, 84, 0.78), transparent 68%),
+    radial-gradient(36% 84% at 44% 112%, rgba(255, 120, 38, 0.68), transparent 66%),
+    radial-gradient(40% 90% at 72% 106%, rgba(255, 214, 120, 0.62), transparent 68%),
+    radial-gradient(30% 68% at 92% 116%, rgba(255, 150, 60, 0.52), transparent 64%);
+  transform-origin: 50% 100%;
+  animation: bk-inferno-rise 5.6s ease-in-out infinite alternate;
+}
+.bk[data-theme='inferno']::after {
+  background:
+    radial-gradient(46% 78% at 26% 24%, rgba(58, 120, 255, 0.36), transparent 62%),
+    radial-gradient(40% 72% at 78% 16%, rgba(86, 200, 255, 0.3), transparent 64%),
+    radial-gradient(56% 92% at 52% 98%, rgba(255, 128, 40, 0.24), transparent 68%);
+  animation: bk-inferno-smoke 9s ease-in-out infinite alternate;
+}
+@keyframes bk-inferno-rise {
+  from {
+    transform: translateY(6%) scaleY(0.9);
+    opacity: 0.82;
+  }
+  to {
+    transform: translateY(-4%) scaleY(1.18);
+    opacity: 1;
+  }
+}
+@keyframes bk-inferno-smoke {
+  from {
+    transform: translate3d(-4%, 2%, 0) scale(1.03);
+    opacity: 0.7;
+  }
+  to {
+    transform: translate3d(4%, -3%, 0) scale(1.14);
+    opacity: 1;
+  }
+}
+
+/* Rose: a soft pink room with lights drifting through it. */
+.bk[data-theme='rose'] {
+  background: linear-gradient(180deg, #2a0a1c, #12030b 70%, #060105);
+}
+.bk[data-theme='rose']::before {
+  background:
+    radial-gradient(46% 92% at 22% 26%, rgba(255, 142, 190, 0.52), transparent 66%),
+    radial-gradient(42% 88% at 78% 32%, rgba(255, 96, 164, 0.44), transparent 64%),
+    radial-gradient(64% 100% at 50% 110%, rgba(255, 176, 210, 0.34), transparent 70%);
+  animation: bk-rose-breathe 8.4s ease-in-out infinite alternate;
+}
+.bk[data-theme='rose']::after {
+  background-image:
+    radial-gradient(circle at 12% 32%, rgba(255, 224, 238, 0.8) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 28% 68%, rgba(255, 190, 220, 0.7) 0 2px, transparent 3.6px),
+    radial-gradient(circle at 45% 22%, rgba(255, 240, 248, 0.75) 0 1.2px, transparent 2.6px),
+    radial-gradient(circle at 62% 54%, rgba(255, 170, 210, 0.65) 0 2px, transparent 3.6px),
+    radial-gradient(circle at 78% 30%, rgba(255, 220, 236, 0.8) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 90% 72%, rgba(255, 188, 220, 0.6) 0 1.8px, transparent 3.2px);
+  animation: bk-rose-drift 15s ease-in-out infinite alternate;
+}
+@keyframes bk-rose-breathe {
+  from {
+    transform: translate3d(-2%, 2%, 0) scale(1.02);
+    opacity: 0.72;
+  }
+  to {
+    transform: translate3d(3%, -3%, 0) scale(1.12);
+    opacity: 1;
+  }
+}
+@keyframes bk-rose-drift {
+  from {
+    transform: translate3d(-4%, 3%, 0);
+    opacity: 0.55;
+  }
+  to {
+    transform: translate3d(4%, -4%, 0);
+    opacity: 1;
+  }
+}
+
+/* Thunder: a dark sky that brightens and a bolt that really lands. */
+.bk[data-theme='thunder'] {
+  background: linear-gradient(180deg, #050a16, #02040a 62%, #010207);
+}
+.bk[data-theme='thunder']::before {
+  background:
+    radial-gradient(92% 130% at 50% 8%, rgba(200, 230, 255, 0.3), transparent 70%),
+    radial-gradient(52% 66% at 28% 18%, rgba(46, 74, 122, 0.58), transparent 66%),
+    radial-gradient(46% 60% at 72% 12%, rgba(30, 52, 94, 0.62), transparent 64%);
+  animation:
+    bk-thunder-sky 8.4s linear infinite,
+    bk-thunder-cloud 12s ease-in-out infinite alternate;
+}
+.bk[data-theme='thunder']::after {
+  inset: -8% -4%;
+  background: linear-gradient(180deg, rgba(226, 246, 255, 0.95), rgba(112, 190, 255, 0.7) 58%, transparent);
+  clip-path: polygon(48% 0%, 57% 0%, 52% 30%, 66% 30%, 42% 74%, 50% 44%, 36% 44%);
+  filter: drop-shadow(0 0 16px rgba(130, 200, 255, 0.9));
+  opacity: 0;
+  animation: bk-thunder-strike 8.4s linear infinite;
+}
+@keyframes bk-thunder-sky {
+  0%, 39% {
+    opacity: 0.72;
+  }
+  41% {
+    opacity: 1;
+  }
+  42% {
+    opacity: 0.68;
+  }
+  44% {
+    opacity: 1;
+  }
+  47%, 100% {
+    opacity: 0.76;
+  }
+}
+@keyframes bk-thunder-cloud {
+  from {
+    transform: translate3d(-3%, 0, 0) scale(1.02);
+  }
+  to {
+    transform: translate3d(3%, -2%, 0) scale(1.1);
+  }
+}
+@keyframes bk-thunder-strike {
+  0%, 39% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.95;
+  }
+  41.5% {
+    opacity: 0.1;
+  }
+  43% {
+    opacity: 0.8;
+  }
+  45.5%, 100% {
+    opacity: 0;
+  }
+}
+
+/* Tide: slow swells under a moving crest. */
+.bk[data-theme='tide'] {
+  background: linear-gradient(180deg, #041c2b, #021019 56%, #01070d);
+}
+.bk[data-theme='tide']::before {
+  inset: 10% -34% -30%;
+  background-image: repeating-radial-gradient(
+    120% 120% at 50% 128%,
+    rgba(120, 236, 255, 0.22) 0 5px,
+    transparent 5px 40px
+  );
+  -webkit-mask-image: linear-gradient(180deg, transparent 2%, #000 44%, #000);
+  mask-image: linear-gradient(180deg, transparent 2%, #000 44%, #000);
+  animation: bk-tide-swell 11s ease-in-out infinite alternate;
+}
+.bk[data-theme='tide']::after {
+  background:
+    linear-gradient(180deg, transparent 42%, rgba(126, 240, 255, 0.14) 52%, transparent 66%),
+    radial-gradient(50% 44% at 24% 58%, rgba(80, 210, 255, 0.26), transparent 70%),
+    radial-gradient(56% 48% at 74% 72%, rgba(60, 170, 240, 0.24), transparent 72%);
+  animation: bk-tide-drift 9s ease-in-out infinite alternate;
+}
+@keyframes bk-tide-swell {
+  from {
+    transform: translate3d(-4%, 4%, 0) scaleY(0.96);
+  }
+  to {
+    transform: translate3d(4%, -2%, 0) scaleY(1.12);
+  }
+}
+@keyframes bk-tide-drift {
+  from {
+    transform: translate3d(-3%, 2%, 0) skewX(-1.6deg);
+    opacity: 0.75;
+  }
+  to {
+    transform: translate3d(3%, -2%, 0) skewX(1.6deg);
+    opacity: 1;
+  }
+}
+
 /* A band inside a hero sits under the veil, so it may stay brighter than one a
    member is choosing between. */
 .pf-banner > .bk {
@@ -2572,7 +2951,7 @@
   cursor: pointer;
   transition: border-color var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
 }
-/* Forty-two bands is a long shelf, and every one of them animates. A tile the
+/* Forty-six bands is a long shelf, and every one of them animates. A tile the
    member cannot see yet is skipped rather than composited, which is what keeps
    the picker as cheap as the twenty-four it grew out of. */
 .bk-grid .bk-tile {
@@ -2678,8 +3057,14 @@
 /* ---- the title worn next to the name --------------------------------
    One chip, drawn wherever a name is drawn: the hero, a comment line, the
    discussion strip and the board. Its colours come from the title itself, so
-   twelve of them read as twelve different ribbons without twelve rules here. */
+   twenty-one of them read as twenty-one different ribbons without twenty-one
+   rules here. `data-fx` adds the motion: a light layer under the text, kept at
+   z-index -1 inside the chip's own stacking context so the label always wins.
+   Every effect moves with transform or opacity only, and base.css already
+   freezes the whole set under prefers-reduced-motion. */
 .user-title {
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   flex: none;
@@ -2695,10 +3080,186 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.user-title::before,
+.user-title::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
 .user-title svg {
   width: 13px;
   height: 13px;
   flex: none;
+}
+
+/* A cool ribbon of light crossing the chip. */
+.user-title[data-fx='sweep']::before {
+  inset: 0 -100%;
+  background: linear-gradient(105deg, transparent 32%, rgb(255 255 255 / 0.34) 48%, transparent 64%);
+  animation: t-sweep 5.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* A warm breath from below, like coals still holding heat. */
+.user-title[data-fx='ember']::before {
+  background: radial-gradient(120% 170% at 50% 120%, rgb(255 150 60 / 0.55), transparent 70%);
+  animation: t-ember 2.8s ease-in-out infinite;
+}
+
+/* Two hard flashes, then a long dark pause. */
+.user-title[data-fx='bolt']::before {
+  inset: 0 -40%;
+  background: linear-gradient(90deg, transparent, rgb(200 235 255 / 0.9) 46%, rgb(255 255 255 / 0.95) 50%, transparent 64%);
+  opacity: 0;
+  animation: t-bolt 4.8s linear infinite;
+}
+
+/* Drifting oil-slick colour. */
+.user-title[data-fx='holo']::before {
+  inset: 0 -200% 0 0;
+  background: linear-gradient(
+    100deg,
+    rgb(255 92 160 / 0.42),
+    rgb(110 200 255 / 0.42),
+    rgb(158 120 255 / 0.42),
+    rgb(255 210 96 / 0.38),
+    rgb(255 92 160 / 0.42)
+  );
+  animation: t-holo 7s linear infinite;
+}
+
+/* Hot metal catching the light. */
+.user-title[data-fx='gold']::before {
+  inset: 0 -120%;
+  background: linear-gradient(
+    100deg,
+    transparent 24%,
+    rgb(255 224 140 / 0.72) 44%,
+    rgb(255 255 255 / 0.55) 50%,
+    rgb(255 224 140 / 0.72) 56%,
+    transparent 76%
+  );
+  animation: t-gold 3.6s ease-in-out infinite;
+}
+
+/* Small lights blinking over a field of green. */
+.user-title[data-fx='spark']::before {
+  background-image:
+    radial-gradient(circle at 18% 28%, rgb(190 255 214 / 0.95) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 62% 68%, rgb(255 255 255 / 0.9) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 84% 26%, rgb(150 255 200 / 0.85) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 38% 78%, rgb(220 255 240 / 0.8) 0 1px, transparent 1.6px);
+  animation: t-spark 3.4s ease-in-out infinite;
+}
+
+/* A slow nebula turning behind the label. */
+.user-title[data-fx='cosmic']::before {
+  background: conic-gradient(
+    from 0deg,
+    rgb(120 92 255 / 0.55),
+    transparent 24%,
+    rgb(80 200 255 / 0.5) 48%,
+    transparent 68%,
+    rgb(220 110 255 / 0.55)
+  );
+  animation: t-cosmic 9s linear infinite;
+}
+
+/* The one ribbon nobody else can wear: gold fire with a rainbow turn. */
+.user-title[data-fx='master'] {
+  font-weight: 720;
+}
+.user-title[data-fx='master']::before {
+  background: conic-gradient(
+    from 0deg,
+    rgb(255 196 76 / 0.6),
+    transparent 22%,
+    rgb(255 92 60 / 0.55) 48%,
+    transparent 72%,
+    rgb(255 236 170 / 0.65)
+  );
+  animation: t-cosmic 6s linear infinite;
+}
+.user-title[data-fx='master']::after {
+  inset: 0 -100%;
+  background: linear-gradient(105deg, transparent 34%, rgb(255 255 255 / 0.72) 50%, transparent 66%);
+  animation: t-sweep 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes t-sweep {
+  0%, 10% {
+    transform: translateX(-62%) skewX(-14deg);
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  58%, 100% {
+    transform: translateX(62%) skewX(-14deg);
+    opacity: 0;
+  }
+}
+@keyframes t-ember {
+  0%, 100% {
+    opacity: 0.42;
+    transform: translateY(8%) scaleY(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2%) scaleY(1.1);
+  }
+}
+@keyframes t-bolt {
+  0%, 86% {
+    opacity: 0;
+    transform: translateX(-24%) skewX(-10deg);
+  }
+  87% {
+    opacity: 0.95;
+  }
+  89% {
+    opacity: 0.1;
+  }
+  91% {
+    opacity: 1;
+  }
+  94%, 100% {
+    opacity: 0;
+    transform: translateX(24%) skewX(-10deg);
+  }
+}
+@keyframes t-holo {
+  from {
+    transform: translateX(-33.4%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes t-gold {
+  0%, 14% {
+    transform: translateX(-46%);
+  }
+  60%, 100% {
+    transform: translateX(46%);
+  }
+}
+@keyframes t-spark {
+  0%, 100% {
+    opacity: 0.28;
+    transform: translateY(4%);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translateY(-6%);
+  }
+}
+@keyframes t-cosmic {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .pf-name-row {
   display: flex;

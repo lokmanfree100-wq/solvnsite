@@ -223,6 +223,361 @@
   animation: none;
 }
 
+/* ---- the tier weather ---------------------------------------------------
+   From Scarce upward every rung wears one signature effect: motes, rays,
+   embers, lightning, a prismatic ring, a celestial halo, and at Rainbow Holo
+   both a rainbow ring and fire. Each is three nodes at most and animates only
+   transform and opacity, so the full card in the detail sheet and the opening
+   overlay carry the show while a binder grid holds still. */
+.g-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.g-fx i {
+  position: absolute;
+  display: block;
+  opacity: 0;
+}
+
+/* Scarce–Rare: slow motes lifting off the portrait. */
+.g-card.is-lv4 .g-fx i,
+.g-card.is-lv5 .g-fx i,
+.g-card.is-lv6 .g-fx i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 20%, color-mix(in srgb, var(--glow) 80%, transparent) 56%, transparent 72%);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--glow) 75%, transparent);
+  animation: g-fx-mote 6.4s linear infinite;
+}
+.g-card.is-lv5 .g-fx i {
+  width: 6px;
+  height: 6px;
+  animation-duration: 5.7s;
+}
+.g-card.is-lv6 .g-fx i {
+  width: 7px;
+  height: 7px;
+  animation-duration: 5s;
+}
+.g-card.is-lv4 .g-fx .g-fx-a,
+.g-card.is-lv5 .g-fx .g-fx-a,
+.g-card.is-lv6 .g-fx .g-fx-a {
+  left: 16%;
+  bottom: 8%;
+}
+.g-card.is-lv4 .g-fx .g-fx-b,
+.g-card.is-lv5 .g-fx .g-fx-b,
+.g-card.is-lv6 .g-fx .g-fx-b {
+  left: 50%;
+  bottom: 4%;
+  animation-delay: -2.1s;
+}
+.g-card.is-lv4 .g-fx .g-fx-c,
+.g-card.is-lv5 .g-fx .g-fx-c,
+.g-card.is-lv6 .g-fx .g-fx-c {
+  left: 82%;
+  bottom: 10%;
+  animation-delay: -4.2s;
+}
+
+/* Rarer–Epic: a wheel of light behind the character, with two motes inside. */
+.g-card.is-lv7 .g-fx .g-fx-a,
+.g-card.is-lv8 .g-fx .g-fx-a,
+.g-card.is-lv9 .g-fx .g-fx-a {
+  inset: -34%;
+  background: repeating-conic-gradient(
+    from 0deg at 50% 44%,
+    color-mix(in srgb, var(--glow) 32%, transparent) 0 1.5deg,
+    transparent 1.5deg 16deg
+  );
+  -webkit-mask-image: radial-gradient(58% 52% at 50% 44%, #000, transparent 76%);
+  mask-image: radial-gradient(58% 52% at 50% 44%, #000, transparent 76%);
+  opacity: 0.44;
+  animation: g-fx-spin 34s linear infinite;
+}
+.g-card.is-lv8 .g-fx .g-fx-a {
+  opacity: 0.55;
+  animation-duration: 28s;
+}
+.g-card.is-lv9 .g-fx .g-fx-a {
+  opacity: 0.66;
+  animation-duration: 22s;
+}
+.g-card.is-lv7 .g-fx .g-fx-b,
+.g-card.is-lv8 .g-fx .g-fx-b,
+.g-card.is-lv9 .g-fx .g-fx-b,
+.g-card.is-lv7 .g-fx .g-fx-c,
+.g-card.is-lv8 .g-fx .g-fx-c,
+.g-card.is-lv9 .g-fx .g-fx-c {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff, color-mix(in srgb, var(--glow) 80%, transparent) 60%, transparent 75%);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--glow) 70%, transparent);
+  animation: g-fx-mote 5.4s linear infinite;
+}
+.g-card.is-lv7 .g-fx .g-fx-b,
+.g-card.is-lv8 .g-fx .g-fx-b,
+.g-card.is-lv9 .g-fx .g-fx-b {
+  left: 24%;
+  bottom: 6%;
+}
+.g-card.is-lv7 .g-fx .g-fx-c,
+.g-card.is-lv8 .g-fx .g-fx-c,
+.g-card.is-lv9 .g-fx .g-fx-c {
+  left: 70%;
+  bottom: 12%;
+  animation-delay: -2.7s;
+}
+
+/* Legend–Mythic: flame streaming up both sides of the frame. */
+.g-card.is-lv10 .g-fx i,
+.g-card.is-lv11 .g-fx i {
+  bottom: -22%;
+  width: 2px;
+  height: 30%;
+  border-radius: 2px;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--glow) 85%, #fff) 42%, #fff 88%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--glow) 80%, transparent);
+  animation: g-fx-ember 4.8s ease-in infinite;
+}
+.g-card.is-lv11 .g-fx i {
+  width: 3px;
+  height: 34%;
+  animation-duration: 4.1s;
+}
+.g-card.is-lv10 .g-fx .g-fx-a,
+.g-card.is-lv11 .g-fx .g-fx-a {
+  left: 18%;
+}
+.g-card.is-lv10 .g-fx .g-fx-b,
+.g-card.is-lv11 .g-fx .g-fx-b {
+  left: 48%;
+  animation-delay: -1.6s;
+}
+.g-card.is-lv10 .g-fx .g-fx-c,
+.g-card.is-lv11 .g-fx .g-fx-c {
+  left: 78%;
+  animation-delay: -3.2s;
+}
+
+/* Storm: three bolts landing across the portrait. */
+.g-card.is-lv12 .g-fx i {
+  top: -12%;
+  width: 14%;
+  height: 124%;
+  background: linear-gradient(180deg, transparent, #f2fbff 26%, #9bd8ff 52%, transparent 86%);
+  clip-path: polygon(50% 0, 70% 0, 57% 32%, 78% 32%, 40% 100%, 51% 54%, 30% 54%);
+  filter: drop-shadow(0 0 6px #9bd8ff);
+  animation: g-fx-strike 6.4s linear infinite;
+}
+.g-card.is-lv12 .g-fx .g-fx-a {
+  left: 8%;
+}
+.g-card.is-lv12 .g-fx .g-fx-b {
+  left: 44%;
+  animation-delay: 2.2s;
+}
+.g-card.is-lv12 .g-fx .g-fx-c {
+  left: 76%;
+  animation-delay: 4.4s;
+}
+
+/* Prismatic: a ring of split light turning around the plate. */
+.g-card.is-lv13 .g-fx .g-fx-a {
+  inset: -50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 95, 170, 0.5),
+    rgba(90, 220, 255, 0.5),
+    rgba(170, 120, 255, 0.5),
+    rgba(255, 225, 110, 0.5),
+    rgba(255, 95, 170, 0.5)
+  );
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 46%, #000 62%, #000 76%, transparent 90%);
+  mask-image: radial-gradient(circle at 50% 50%, transparent 46%, #000 62%, #000 76%, transparent 90%);
+  opacity: 0.6;
+  animation: g-fx-spin 16s linear infinite;
+}
+.g-card.is-lv13 .g-fx .g-fx-b,
+.g-card.is-lv13 .g-fx .g-fx-c {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px #fff, 0 0 18px rgba(140, 220, 255, 0.9);
+  animation: g-fx-twinkle 3.6s ease-in-out infinite;
+}
+.g-card.is-lv13 .g-fx .g-fx-b {
+  top: 22%;
+  left: 20%;
+}
+.g-card.is-lv13 .g-fx .g-fx-c {
+  right: 16%;
+  bottom: 24%;
+  animation-delay: -1.8s;
+}
+
+/* Celestial: an orbit of violet light over a fixed star field. */
+.g-card.is-lv14 .g-fx .g-fx-a {
+  inset: -40%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(180, 120, 255, 0.42),
+    transparent 18%,
+    rgba(90, 200, 255, 0.4) 34%,
+    transparent 52%,
+    rgba(255, 150, 230, 0.42) 68%,
+    transparent 86%,
+    rgba(180, 120, 255, 0.42)
+  );
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 40%, #000 58%, transparent 82%);
+  mask-image: radial-gradient(circle at 50% 50%, transparent 40%, #000 58%, transparent 82%);
+  opacity: 0.62;
+  animation: g-fx-spin 26s linear infinite;
+}
+.g-card.is-lv14 .g-fx .g-fx-b {
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 18% 24%, rgba(255, 255, 255, 0.95), transparent 60%),
+    radial-gradient(1.5px 1.5px at 38% 62%, rgba(214, 199, 255, 0.85), transparent 60%),
+    radial-gradient(2px 2px at 58% 18%, rgba(255, 255, 255, 0.9), transparent 60%),
+    radial-gradient(1.5px 1.5px at 76% 54%, rgba(190, 226, 255, 0.9), transparent 60%),
+    radial-gradient(1.5px 1.5px at 88% 30%, rgba(255, 255, 255, 0.8), transparent 60%),
+    radial-gradient(2px 2px at 28% 86%, rgba(255, 214, 240, 0.8), transparent 60%);
+  animation: g-fx-twinkle 4.4s ease-in-out infinite;
+}
+.g-card.is-lv14 .g-fx .g-fx-c {
+  inset: -20%;
+  background: radial-gradient(46% 40% at 50% 50%, rgba(150, 110, 255, 0.35), transparent 70%);
+  animation: g-fx-breathe 7s ease-in-out infinite alternate;
+}
+
+/* Rainbow Holo: the whole spectrum turning over an open flame. */
+.g-card.is-lv15 .g-fx .g-fx-a {
+  inset: -44%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 70, 140, 0.5),
+    rgba(255, 200, 80, 0.48),
+    rgba(80, 240, 180, 0.45),
+    rgba(80, 190, 255, 0.5),
+    rgba(190, 90, 255, 0.5),
+    rgba(255, 70, 140, 0.5)
+  );
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 36%, #000 56%, #000 70%, transparent 88%);
+  mask-image: radial-gradient(circle at 50% 50%, transparent 36%, #000 56%, #000 70%, transparent 88%);
+  opacity: 0.58;
+  animation: g-fx-spin 13s linear infinite;
+}
+.g-card.is-lv15 .g-fx .g-fx-b {
+  inset: 32% -20% -30%;
+  background: linear-gradient(180deg, transparent, rgba(255, 180, 60, 0.72) 58%, rgba(255, 90, 30, 0.9));
+  filter: blur(8px);
+  transform-origin: 50% 100%;
+  animation: g-fx-fire 3.4s ease-in-out infinite alternate;
+}
+.g-card.is-lv15 .g-fx .g-fx-c {
+  inset: 0;
+  background-image:
+    radial-gradient(2px 2px at 22% 74%, rgba(255, 240, 190, 0.95), transparent 60%),
+    radial-gradient(2px 2px at 52% 88%, rgba(255, 190, 120, 0.9), transparent 60%),
+    radial-gradient(1.5px 1.5px at 78% 66%, rgba(255, 245, 210, 0.9), transparent 60%),
+    radial-gradient(1.5px 1.5px at 36% 58%, rgba(255, 220, 150, 0.85), transparent 60%);
+  animation: g-fx-twinkle 3.2s ease-in-out infinite;
+}
+
+/* A tile in the grid is a hundred cards on one screen: the weather is drawn,
+   but it holds still. The detail sheet and the reveal keep the motion. */
+.g-card.g-tile .g-fx i {
+  animation: none;
+  opacity: 0.42;
+}
+
+@keyframes g-fx-mote {
+  0% {
+    transform: translate3d(0, 14px, 0) scale(0.7);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.9;
+  }
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate3d(0, -120px, 0) scale(1.05);
+    opacity: 0;
+  }
+}
+@keyframes g-fx-ember {
+  0% {
+    transform: translate3d(0, 0, 0) scaleY(0.6);
+    opacity: 0;
+  }
+  16% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate3d(10px, -150px, 0) scaleY(1.2);
+    opacity: 0;
+  }
+}
+@keyframes g-fx-strike {
+  0%, 88% {
+    opacity: 0;
+  }
+  89% {
+    opacity: 1;
+  }
+  90.5% {
+    opacity: 0.1;
+  }
+  92% {
+    opacity: 0.85;
+  }
+  95%, 100% {
+    opacity: 0;
+  }
+}
+@keyframes g-fx-twinkle {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+@keyframes g-fx-breathe {
+  from {
+    opacity: 0.4;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+}
+@keyframes g-fx-fire {
+  from {
+    transform: scaleY(0.8) translateY(6%);
+    opacity: 0.55;
+  }
+  to {
+    transform: scaleY(1.12) translateY(-2%);
+    opacity: 1;
+  }
+}
+@keyframes g-fx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .g-lv,
 .g-copies,
 .g-evolved {

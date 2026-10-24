@@ -25,10 +25,11 @@
  * electric blue with a light that breathes.
  *
  * Every tier is printed in its own two colours with a deeper ring and a livelier
- * shine than the one below it, and none carries a weather layer: no bolts, no
- * flame, no falling code, no disc. A tier you reach once a month should read as
- * *rarer*, and a colour you cannot buy anywhere else does that better than a
- * strobe the grid cannot render anyway.
+ * shine than the one below it, and from Scarce upward each rung carries one
+ * signature effect — motes, rays, embers, lightning, a prismatic ring, a
+ * celestial halo, a rainbow over fire. The effects live in the stylesheet and
+ * hold still in a grid, so a tier still reads as rarer before it reads as
+ * louder.
  *
  * The collection itself lives on this device, in the namespaced store, under a
  * key that carries the account id. Nothing here needs a server table, so a
@@ -99,6 +100,37 @@ export const ULTIMATE_KEY = 'solvn:16';
    so a rebranded logo repaints the one-of-one on the same commit. */
 export const ULTIMATE_ART = LOGO_SRC;
 
+/**
+ * The one-of-one is the only card not graded by a serial.
+ *
+ * Its three sub-scores are read from what the member has actually done on Solvn
+ * — episodes watched and hours logged become Speed, cards collected and levels
+ * earned become Technique, duels won and the best run become Aura — so the
+ * master plate is a portrait of the account rather than four fixed 999s. Power
+ * stays a flat 999 on the face because the card reads INFINITY wherever Power
+ * is printed; `powerOf` sorts it on the 9999 sentinel instead.
+ *
+ * The square root is deliberate: the first dozen episodes matter far more than
+ * the four-hundredth, and a card that needs a thousand hours to look different
+ * from a lucky one would never feel like it belonged to anybody.
+ */
+export function ultimateStats(user = currentUser()) {
+  const stats = user?.stats || {};
+  const duel = user?.duel || {};
+  const cards = user?.cards || {};
+  const cap = (n) => Math.max(0, Math.min(999, Math.round(n)));
+  const episodes = Number(stats.episodes) || 0;
+  const hours = Number(stats.hours) || 0;
+  const level = Number(stats.level) || 1;
+  const unique = Number(cards.unique) || 0;
+  const wins = Number(duel.wins) || 0;
+  const bestRun = Number(duel.best) || 0;
+  const speed = cap(120 + Math.sqrt(episodes) * 46 + hours * 0.6);
+  const technique = cap(120 + Math.sqrt(unique) * 70 + level * 4);
+  const aura = cap(120 + Math.sqrt(wins) * 74 + bestRun * 7);
+  return { power: 999, speed, technique, aura, overall: 999 + speed + technique + aura };
+}
+
 /** The whole set: the fifteen that can roll, then the one that cannot. */
 export const ALL_RARITIES = [...RARITIES, ULTIMATE];
 
@@ -108,9 +140,9 @@ export const BANNER_LV = 11;
 export const PACK_CARDS = 5;
 export const DAILY_PACKS = 15;
 /** A card whose Power reaches this figure is a live card: the ring prints brighter,
-    the rim takes the tier's colour and the foil answers the light. The line sits where the
-    arithmetic puts it — the top two tiers clear it on a good pull, and a mid-tier
-    card has to be fused to join them. A live card stays a thing you hunt for. */
+    the rim takes the tier's colour and the foil answers the light. The line sits
+    where the bands put it — the last three tiers clear it, and a fused Lv 10–11
+    card can join them. A live card stays a thing you hunt for. */
 export const LIVE_POWER = 620;
 
 const TOTAL_WEIGHT = RARITIES.reduce((n, r) => n + r.weight, 0);
@@ -249,19 +281,29 @@ export const STAT_KEYS = ['power', 'speed', 'technique', 'aura'];
 export const STAT_LABELS = { power: 'Power', speed: 'Speed', technique: 'Technique', aura: 'Aura' };
 
 /**
- * The figure a card is graded on. Power is the headline number: the tier sets
- * the band, the serial decides where inside that band the card sits, and a fused
- * card reads thirty percent stronger. The band is built so the 700 line falls
- * from the high teens upward — or at a mid-tier card pushed over it by evolution
- * — so the animation marks a genuine hunt rather than a cosmetic label. Speed,
- * technique and aura read off the same head number, and the total is their sum.
+ * The figure a card is graded on.
+ *
+ * Every tier owns a closed band. The base climbs by a fixed 48 a tier and the
+ * serial moves the card only ±18 inside it, so adjacent bands never touch: two
+ * Basic pulls read between 90 and 126, a Rainbow Holo reads 762 to 798, and a
+ * collection's Power cannot lie about which tier produced it. Fusing multiplies
+ * the band by 1.3, which is what lets a patient mid-tier card cross into the
+ * territory above it — the one way to beat the ladder without a lucky roll.
+ *
+ * The 620 live line therefore falls between Lv 12 and Lv 13 on a straight pull,
+ * and a well-graded Lv 10–11 reaches it when fused. Speed, technique and aura
+ * are shares of the same head number, and the total is their sum.
  */
-const POWER_BASE = (lv) => 45 + lv * 34;
+const POWER_STEP = 48;
+const POWER_SWING = 18;
+const POWER_BASE = (lv) => 60 + lv * POWER_STEP;
 
 function statsFor(cid, serial, lv, evolved) {
-  const head = Math.round(
-    POWER_BASE(lv) * (0.85 + squeeze(frac(`${cid}|${serial}|power`)) * 0.5) * (evolved ? 1.3 : 1),
-  );
+  const tier = Math.max(1, Math.min(TOP_LV, Number(lv) || 1));
+  /* A deterministic offset inside the band — never the band itself, so a tier
+     is always readable from the Power alone. */
+  const swing = squeeze(frac(`${cid}|${serial}|power`)) * POWER_SWING * 2 - POWER_SWING;
+  const head = Math.round((POWER_BASE(tier) + swing) * (evolved ? 1.3 : 1));
   const grade = (key, share) =>
     Math.round(head * share * (0.72 + squeeze(frac(`${cid}|${serial}|${key}`)) * 0.36));
   const out = {
@@ -432,6 +474,36 @@ function collapseTiers(owned) {
   return moved;
 }
 
+/* Bumping this re-grades every card already in a binder with the bands above.
+   Without it a rebalance would only reach pulls made after the update, and one
+   collection would hold two different number scales side by side. */
+const SCORE_VERSION = 2;
+
+function rescore(owned) {
+  let moved = false;
+  for (const entry of Object.values(owned)) {
+    if (!entry || entry.ultimate) continue;
+    const fresh = statsFor(entry.cid, entry.serial, Number(entry.lv) || 1, Boolean(entry.evolved));
+    if (!entry.stats || entry.stats.power !== fresh.power || entry.stats.overall !== fresh.overall) {
+      entry.stats = fresh;
+      moved = true;
+    }
+  }
+  return moved;
+}
+
+/* The master's sub-scores are read from the account on every visit, so a card
+   awarded at level 8 does not stay a level-8 portrait forever. */
+function refreshMaster(owned) {
+  const master = owned[ULTIMATE_KEY];
+  if (!master) return false;
+  const fresh = ultimateStats();
+  const before = master.stats || {};
+  const moved = STAT_KEYS.concat('overall').some((key) => before[key] !== fresh[key]);
+  if (moved) owned[ULTIMATE_KEY] = { ...master, stats: fresh };
+  return moved;
+}
+
 function coll() {
   const raw = storage.read(collKey(), null);
   if (!raw || typeof raw !== 'object') return empty();
@@ -441,6 +513,7 @@ function coll() {
     packs: Number(raw.packs) || 0,
     pulls: Number(raw.pulls) || 0,
     best: Number(raw.best) || 0,
+    score: Number(raw.score) || 0,
     pinned: Array.isArray(raw.pinned) ? raw.pinned.filter((k) => typeof k === 'string') : [],
     /* `escrow` is this binder's copy of what a signature gave up, keyed by deal;
        `granted` remembers which completed deals were already applied, so a second
@@ -450,10 +523,14 @@ function coll() {
   };
   const master = moveMaster(out.owned);
   const collapsed = collapseTiers(out.owned);
-  if (master || collapsed) {
+  const stale = out.score !== SCORE_VERSION;
+  const rescored = stale ? rescore(out.owned) : false;
+  const refreshed = refreshMaster(out.owned);
+  if (master || collapsed || rescored || refreshed || stale) {
     if (master) out.best = Math.max(out.best, ULTIMATE.lv);
     out.best = Object.values(out.owned).reduce((n, e) => Math.max(n, Number(e?.lv) || 0), out.best);
     if (collapsed) out.pinned = [...new Set(out.pinned)];
+    out.score = SCORE_VERSION;
     save(out);
   }
   return out;
@@ -1190,7 +1267,9 @@ export function cardSummary() {
   const strongest = entries.reduce((a, b) => (powerOf(b) > powerOf(a) ? b : a), null);
   return {
     best: strongest ? powerOf(strongest) : 0,
-    topTier: entries.length ? Number(entries[0].lv) : 0,
+    /* The highest tier actually held, read off every entry rather than trusting
+       the first one in a list that sorts for the binder's own screen. */
+    topTier: entries.reduce((n, e) => Math.max(n, Number(e.lv) || 0), 0),
     unique: entries.length,
     pulls: coll().pulls,
     top: strongest ? published(strongest) : null,
@@ -1295,7 +1374,7 @@ export function ultimateCard() {
     serial: '1/1',
     evolved: false,
     ultimate: true,
-    stats: { power: 999, speed: 999, technique: 999, aura: 999, overall: 3996 },
+    stats: ultimateStats(),
     at: Date.now(),
   };
 }

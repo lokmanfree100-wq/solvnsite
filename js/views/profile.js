@@ -18,10 +18,10 @@ import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
 import { account, answerFriend, askFriend, authUsable, duelsUsable, fortuneUsable, isSignedIn, isStaff, publicProfile, patchMe, setAvatar, setBanner, setFavourite, setTitle, shownName, tradesUsable } from '../lib/account.js';
 import { intlDate } from '../lib/util.js';
-import { AVATAR_UPLOAD, BANNER_FREE, BANNER_KEYS, BANNER_UPLOAD, TITLES, avatarFromImageFile, bannerFromImageFile, bannerRows, titleUnlocked } from '../lib/ranks.js';
+import { BANNER_FREE, BANNER_KEYS, BANNER_UPLOAD, TITLES, bannerFromImageFile, bannerRows, titleUnlocked } from '../lib/ranks.js';
 import { search } from '../lib/anilist.js';
 import { PIN_MAX, displayCard, isPinned, ownedEntries, pins, publish, togglePin } from '../lib/cards.js';
-import { faces, matchFaces } from '../lib/faces.js';
+import { FACES_PER_QUEST, faceAccess, faceQuestAt, faceQuestRows, faces, matchFaces } from '../lib/faces.js';
 import { gachaCard } from '../components/gacha.js';
 import { avatar, authSheet, divisionChip, duelRecord, signOutButton, statTile, say, titleChip } from '../components/account.js';
 import { levelBar, levelSheet } from '../components/level.js';
@@ -329,58 +329,26 @@ function bioBlock(user, { canEdit = false, onChanged = null } = {}) {
 }
 
 /* ---- picture --------------------------------------------------------
-   Three ways to wear a face: the official library, a file of your own, or a
-   link to a picture that lives somewhere else.
-   * The file never becomes the account's picture until the server has taken it.
-     A read failure, a wrong type or a refused upload leaves the old avatar on
-     screen and the sheet open to try again.
-   * A library pick applies on the tap. The point of a shelf of faces is that
-     trying one costs nothing, and the record that travels is the address. */
-const AV_TABS = [
-  ['gallery', 'Gallery'],
-  ['upload', 'Upload'],
-  ['link', 'Link'],
-];
-
+   One shelf, and every face on it is earned. A finished task opens the next
+   three portraits (`lib/faces.js` owns that ladder), the wheel can hand one
+   over early, and the portrait already worn stays open for good. A locked tile
+   is not a button: it keeps its art behind glass and says which task opens it.
+   A library pick applies on the tap — trying one costs nothing, and the record
+   that travels is the address. */
 function avatarSheet(user, onDone) {
-  let pending = null;
   let busy = false;
-  let tab = AV_TABS[0][0];
   let library = null;
   let fetching = false;
 
   const hadPicture = Boolean(user?.avatar?.photo || user?.avatar?.file || user?.avatar?.face);
 
   const face = h('div.av-preview');
-  const tabs = h('div.list-tabs.av-tabs', { role: 'tablist', 'aria-label': t('Profile picture') });
   const panel = h('div.av-panel');
   const actions = h('div.pf-actions');
   const error = h('p.av-error', { role: 'alert', hidden: true });
 
-  const file = h('input', {
-    type: 'file',
-    class: 'hide',
-    accept: AVATAR_UPLOAD.accept,
-    onchange: () => choose(file.files?.[0]),
-  });
-
-  const url = h('input.input', {
-    type: 'url',
-    placeholder: 'https://…',
-    'aria-label': t('Picture address'),
-    autocomplete: 'off',
-    spellcheck: 'false',
-    maxlength: 500,
-  });
-
   function paintFace() {
-    const preview = pending ? { ...user, avatar: { ...user.avatar, photo: pending.dataUrl, file: null, face: null } } : user;
-    face.replaceChildren(
-      ...[
-        avatar(preview, { size: 'lg' }),
-        h('span.av-frame', { 'aria-hidden': 'true' }),
-      ],
-    );
+    face.replaceChildren(...[avatar(user, { size: 'lg' }), h('span.av-frame', { 'aria-hidden': 'true' })]);
   }
 
   function flag(message) {
@@ -398,7 +366,6 @@ function avatarSheet(user, onDone) {
       if (on) node.setAttribute('aria-busy', 'true');
       else node.removeAttribute('aria-busy');
     }
-    file.disabled = on;
   }
 
   async function apply(source, message) {
@@ -420,37 +387,96 @@ function avatarSheet(user, onDone) {
     }
   }
 
-  async function choose(picked) {
-    flag('');
-    if (!picked) return;
-    setBusy(true);
-    try {
-      pending = await avatarFromImageFile(picked);
-      paintFace();
-      paintActions();
-    } catch (err) {
-      pending = null;
-      flag(say(err));
-      paintActions();
-    } finally {
-      setBusy(false);
-      file.value = '';
-    }
+  /* ---- the gallery -------------------------------------------------- */
+  function questLabel(quest) {
+    return t(quest.label, { n: quest.need });
   }
 
-  /* ---- the gallery -------------------------------------------------- */
-  const tile = (f) =>
-    h(
+  /* The ladder above the shelf: how much of it is open, and what opens next. The
+     full list folds away behind one summary so the faces stay the loudest thing
+     in the sheet. */
+  function questPanel(access) {
+    const rows = faceQuestRows(user);
+    const next = rows.find((row) => !row.done) || null;
+    const pct = access.total ? Math.round((access.openCount / access.total) * 100) : 0;
+    return h(
+      'section.av-quests',
+      {},
+      h(
+        'div.av-quest-top',
+        {},
+        h('b', {}, t('{n} of {total} faces unlocked', { n: access.openCount, total: access.total })),
+        h(
+          'span.av-quest-next',
+          {},
+          next ? t('Next: {quest}', { quest: questLabel(next) }) : t('Every face task is done.'),
+        ),
+      ),
+      h('span.av-quest-bar', { 'aria-hidden': 'true' }, h('i', { style: { width: `${pct}%` } })),
+      h(
+        'details.av-quest-sheet',
+        {},
+        h(
+          'summary',
+          {},
+          icon('list'),
+          h('span', {}, t('Face tasks — each opens {n} faces', { n: FACES_PER_QUEST })),
+        ),
+        h(
+          'ol.av-quest-list',
+          {},
+          ...rows.map((row) =>
+            h(
+              `li.av-quest${row.done ? '.is-done' : ''}`,
+              {},
+              icon(row.done ? 'check' : row.icon),
+              h('span.av-quest-name', {}, questLabel(row)),
+              h('span.av-quest-prog.tnum', {}, row.done ? t('Open') : `${row.have}/${row.need}`),
+              h('span.av-quest-gain', {}, `+${row.faces}`),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  function faceTile(f, access) {
+    const id = Number(f.id);
+    const worn = String(user?.avatar?.face || '') === f.image;
+    if (!access.openIds.has(id)) {
+      const quest = faceQuestAt(access.rank.get(id));
+      const hint = quest ? t('Opens with: {quest}', { quest: questLabel(quest) }) : t('From the fortune wheel');
+      return h(
+        'div.av-tile.is-locked',
+        { title: `${f.name} — ${hint}` },
+        h(
+          'span.av-tile-art',
+          {},
+          h('img', { src: f.image, alt: '', loading: 'lazy', decoding: 'async' }),
+          h('span.av-tile-lock', { 'aria-hidden': 'true' }, icon('lock')),
+        ),
+        h('span.av-tile-name.clamp-1', {}, f.name),
+        h('span.av-tile-hint', {}, hint),
+      );
+    }
+    return h(
       'button.av-tile',
       {
         type: 'button',
         title: f.name,
         'aria-label': t('Use {name}', { name: f.name }),
+        'aria-pressed': String(worn),
         onclick: () => apply(f.image, t('Picture updated.')),
       },
-      h('img', { src: f.image, alt: '', loading: 'lazy', decoding: 'async' }),
+      h(
+        'span.av-tile-art',
+        {},
+        h('img', { src: f.image, alt: '', loading: 'lazy', decoding: 'async' }),
+        worn ? h('span.av-tile-worn', { 'aria-hidden': 'true' }, icon('check')) : null,
+      ),
       h('span.av-tile-name.clamp-1', {}, f.name),
     );
+  }
 
   function galleryPanel() {
     const box = h('input.input', {
@@ -460,6 +486,7 @@ function avatarSheet(user, onDone) {
       autocomplete: 'off',
       maxlength: 60,
     });
+    const quests = h('div');
     const grid = h('div.av-grid');
     const status = h('p.av-count.muted', {});
 
@@ -467,14 +494,18 @@ function avatarSheet(user, onDone) {
       if (!library) return;
       if (!library.length) {
         status.textContent = '';
+        quests.replaceChildren();
         grid.replaceChildren(h('p.av-count.muted', {}, t('The face library is not answering right now.')));
         return;
       }
+      /* The tester sees the whole shelf; everybody else reads their own ladder. */
+      const access = faceAccess(user, library, { all: isStaff(user) });
+      quests.replaceChildren(questPanel(access));
       const shown = matchFaces(library, box.value.trim());
       status.textContent = shown.length
         ? t('{n} faces', { n: shown.length })
         : t('Nothing matched that.');
-      grid.replaceChildren(...shown.map(tile));
+      grid.replaceChildren(...shown.map((f) => faceTile(f, access)));
     };
 
     let timer = 0;
@@ -495,129 +526,39 @@ function avatarSheet(user, onDone) {
         })
         .finally(() => {
           fetching = false;
-          if (tab === 'gallery') draw();
+          draw();
         });
     } else {
       draw();
     }
 
-    return h('div.stack', {}, box, status, grid);
-  }
-
-  /* ---- the other two ------------------------------------------------ */
-  function uploadPanel() {
-    return h(
-      'div.stack',
-      {},
-      h(
-        'label.btn.btn--primary.av-pick',
-        {},
-        icon('share'),
-        h('span', {}, t('Choose a picture')),
-        file,
-      ),
-      h('p.av-note.muted', {}, t('Square, at least 256 pixels. A PNG, JPEG, WebP, GIF or AVIF file.')),
-    );
-  }
-
-  function linkPanel() {
-    return h(
-      'div.stack',
-      {},
-      url,
-      h('p.av-note.muted', {}, t('An https picture address. Solvn keeps the address, not the file.')),
-    );
+    return h('div.stack', {}, box, quests, status, grid);
   }
 
   function paintActions() {
-    const list = [];
-    if (tab === 'upload') {
-      list.push(
-        h(
-          'button.btn.btn--primary',
-          {
-            type: 'button',
-            /* A disabled button is not a guard: without a re-encoded square this
-               call would clear the member's picture instead of saving one. */
-            onclick: () => {
-              if (pending) apply(pending, t('Picture updated.'));
-            },
-            disabled: !pending || busy,
-          },
-          icon('check'),
-          h('span', {}, t('Save picture')),
-        ),
-      );
-    }
-    if (tab === 'link') {
-      list.push(
-        h(
-          'button.btn.btn--primary',
-          {
-            type: 'button',
-            onclick: async () => {
-              const value = url.value.trim();
-              if (!value) {
-                flag(t('Paste an address first.'));
-                return;
-              }
-              if (await apply(value, t('Picture updated.'))) url.value = '';
-            },
-          },
-          icon('check'),
-          h('span', {}, t('Use this address')),
-        ),
-      );
-    }
-    if (hadPicture) {
-      list.push(
-        h(
-          'button.btn',
-          { type: 'button', onclick: () => apply(null, t('Picture removed.')) },
-          icon('x'),
-          h('span', {}, t('Remove picture')),
-        ),
-      );
-    }
-    actions.replaceChildren(...list);
-  }
-
-  function syncTabs() {
-    tabs.replaceChildren(
-      ...AV_TABS.map(([key, label]) =>
-        h(
-          `button.chip${tab === key ? '.is-active' : ''}`,
-          {
-            role: 'tab',
-            'aria-selected': String(tab === key),
-            type: 'button',
-            onclick: () => {
-              if (tab === key) return;
-              tab = key;
-              paintPanel();
-            },
-          },
-          t(label),
-        ),
-      ),
+    actions.replaceChildren(
+      ...(hadPicture
+        ? [
+            h(
+              'button.btn',
+              { type: 'button', onclick: () => apply(null, t('Picture removed.')) },
+              icon('x'),
+              h('span', {}, t('Remove picture')),
+            ),
+          ]
+        : []),
     );
   }
 
-  function paintPanel() {
-    flag('');
-    paintFace();
-    syncTabs();
-    panel.replaceChildren(tab === 'gallery' ? galleryPanel() : tab === 'upload' ? uploadPanel() : linkPanel());
-    paintActions();
-  }
-
-  paintPanel();
+  paintFace();
+  paintActions();
+  panel.replaceChildren(galleryPanel());
 
   const opened = sheet({
     heading: t('Profile picture'),
-    sub: t('Pick a face from the library, upload one of your own, or point at a picture you keep elsewhere.'),
+    sub: t('Every face is earned. Finish tasks to open more — three at a time.'),
     width: 720,
-    render: () => h('div.stack', {}, face, tabs, panel, actions, error),
+    render: () => h('div.stack', {}, face, panel, actions, error),
   });
 
   return opened;

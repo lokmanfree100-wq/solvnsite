@@ -125,7 +125,7 @@ export function titleChip(user) {
   return h(
     'span.user-title',
     {
-      dataset: { title: title.id },
+      dataset: { title: title.id, fx: title.fx || 'sweep' },
       title: t(title.label),
       style: {
         color: tone(title.hue, 1),

@@ -503,9 +503,10 @@ export async function bannerFromImageFile(file) {
    refuses it. Labels reach t() through the extractor's indirect list.
    The order is the server's order as well, because `BANNER_FREE` is the front of
    this shelf: the first three are what every account starts with, and everything
-   behind them is earned by level or won on the wheel. Forty-two of them, in the
-   order the shelf shows them: the founding twenty-four, then the eighteen soft
-   neon bands that fill the second half. */
+   behind them is earned by level or won on the wheel. Forty-six of them, in the
+   order the shelf shows them: the founding twenty-four, the eighteen soft neon
+   bands, then the four showcase pieces — inferno, rose, thunder and tide — whose
+   layered fire, glow, lightning and swell are the reason the picker exists. */
 export const BANNER_THEMES = [
   ['aurora', 'Aurora'],
   ['neon', 'Neon grid'],
@@ -549,6 +550,10 @@ export const BANNER_THEMES = [
   ['horizon', 'Neon horizon'],
   ['koi', 'Koi pond'],
   ['crystal', 'Crystal grid'],
+  ['inferno', 'Inferno gold'],
+  ['rose', 'Rose glow'],
+  ['thunder', 'Thunder strike'],
+  ['tide', 'Ocean tide'],
 ];
 
 export const BANNER_KEYS = BANNER_THEMES.map(([key]) => key);
@@ -560,13 +565,23 @@ export const BANNER_FREE = 3;
  * The level a band needs.
  *
  * A step of about two levels a theme, starting after the free three: the fourth
- * band is a weekend of showing up and the last of the forty-two is a long season,
- * Lv 76 of a hundred. That spread is the point — a shelf where everything unlocks
- * by level 6 is a shelf with no bottom. The wheel can hand one over early, which
- * is why `held` is checked as well.
+ * band is a weekend of showing up and the last of the forty-two original ones is
+ * a long season, Lv 76 of a hundred. That spread is the point — a shelf where
+ * everything unlocks by level 6 is a shelf with no bottom. The wheel can hand
+ * one over early, which is why `held` is checked as well.
+ *
+ * The four showcase bands at the end carry their own rungs instead of the
+ * shelf's arithmetic. They are the most expensive pieces to draw, and asking
+ * Lv 84 for the first of them would hide the whole set behind a season of
+ * watching; a fixed ladder keeps each one a visible goal.
  */
+const BANNER_NEED = { inferno: 16, rose: 24, thunder: 32, tide: 40 };
+
 export function bannerLevel(index) {
   if (index < BANNER_FREE) return 1;
+  const key = BANNER_THEMES[index]?.[0];
+  const fixed = key ? BANNER_NEED[key] : 0;
+  if (fixed) return fixed;
   return Math.max(2, Math.round((index - 1) * 1.9));
 }
 
@@ -601,27 +616,43 @@ export const bannerLabel = (key) => BANNER_THEMES.find(([k]) => k === key)?.[1] 
 /**
  * A title is a sentence you wear next to your name. Each one unlocks from a
  * figure the account already publishes — hours, episodes, series finished,
- * titles opened, packs pulled and the peak Power in the binder — so a visitor
- * can work out whether any profile has earned what it wears, and the server
- * only has to check that the id exists. `hint` is the i18n key of the line
- * under the name and `{n}` is filled with `need`.
+ * titles opened, packs pulled, duels won and the peak Power in the binder — so
+ * a visitor can work out whether any profile has earned what it wears, and the
+ * server only has to check that the id exists. `hint` is the i18n key of the
+ * line under the name and `{n}` is filled with `need`.
+ *
+ * `fx` names the light the chip wears. It is a hint rather than four drawing
+ * routines: the stylesheet turns each name into one moving layer, so twenty
+ * titles still cost one animation apiece and no per-title code.
  */
 const stat = (user) => (user && user.stats) || {};
 const cards = (user) => (user && user.cards) || {};
+const duel = (user) => (user && user.duel) || {};
+/** The sentinel `powerOf` gives the Solvn master card; see lib/cards.js. */
+const MASTER_POWER = 9999;
 
 export const TITLES = [
-  { id: 'newcomer', label: 'Newcomer', icon: 'sparkles', hue: 195, hint: 'Watch {n} episodes', need: 1, test: (u) => stat(u).episodes >= 1 },
-  { id: 'watcher', label: 'Watcher', icon: 'clock', hue: 218, hint: 'Watch {n} hours', need: 10, test: (u) => stat(u).hours >= 10 },
-  { id: 'devotee', label: 'Devotee', icon: 'heart', hue: 268, hint: 'Watch {n} hours', need: 50, test: (u) => stat(u).hours >= 50 },
-  { id: 'marathoner', label: 'Marathoner', icon: 'flame', hue: 14, hint: 'Watch {n} hours', need: 150, test: (u) => stat(u).hours >= 150 },
-  { id: 'otaku', label: 'Otaku', icon: 'moon', hue: 240, hint: 'Watch {n} hours', need: 400, test: (u) => stat(u).hours >= 400 },
-  { id: 'completionist', label: 'Completionist', icon: 'check', hue: 138, hint: 'Finish {n} series', need: 5, test: (u) => stat(u).completed >= 5 },
-  { id: 'pathfinder', label: 'Pathfinder', icon: 'compass', hue: 96, hint: 'Open {n} titles', need: 25, test: (u) => stat(u).titles >= 25 },
-  { id: 'opener', label: 'Pack Opener', icon: 'grid', hue: 305, hint: 'Open {n} packs', need: 50, test: (u) => cards(u).pulls >= 50 },
-  { id: 'binder', label: 'Binder', icon: 'library', hue: 168, hint: 'Own {n} different cards', need: 25, test: (u) => cards(u).unique >= 25 },
-  { id: 'chaser', label: 'Card Chaser', icon: 'star', hue: 62, hint: 'Pull a card worth {n} Power', need: 500, test: (u) => cards(u).best >= 500 },
-  { id: 'elite', label: 'Elite Collector', icon: 'crown', hue: 335, hint: 'Pull a card worth {n} Power', need: 700, test: (u) => cards(u).best >= 700 },
-  { id: 'master', label: 'Solvn Master', icon: 'bolt', hue: 44, hint: 'Own the Solvn master card', need: 0, test: (u) => cards(u).topTier >= 25 },
+  { id: 'newcomer', label: 'Newcomer', icon: 'sparkles', hue: 195, fx: 'sweep', hint: 'Watch {n} episodes', need: 1, test: (u) => stat(u).episodes >= 1 },
+  { id: 'watcher', label: 'Watcher', icon: 'clock', hue: 218, fx: 'sweep', hint: 'Watch {n} hours', need: 10, test: (u) => stat(u).hours >= 10 },
+  { id: 'devotee', label: 'Devotee', icon: 'heart', hue: 268, fx: 'ember', hint: 'Watch {n} hours', need: 50, test: (u) => stat(u).hours >= 50 },
+  { id: 'marathoner', label: 'Marathoner', icon: 'flame', hue: 14, fx: 'ember', hint: 'Watch {n} hours', need: 150, test: (u) => stat(u).hours >= 150 },
+  { id: 'otaku', label: 'Otaku', icon: 'moon', hue: 240, fx: 'holo', hint: 'Watch {n} hours', need: 400, test: (u) => stat(u).hours >= 400 },
+  { id: 'completionist', label: 'Completionist', icon: 'check', hue: 138, fx: 'sweep', hint: 'Finish {n} series', need: 5, test: (u) => stat(u).completed >= 5 },
+  { id: 'pathfinder', label: 'Pathfinder', icon: 'compass', hue: 96, fx: 'sweep', hint: 'Open {n} titles', need: 25, test: (u) => stat(u).titles >= 25 },
+  { id: 'duelist', label: 'Duelist', icon: 'bolt', hue: 8, fx: 'bolt', hint: 'Win a duel', need: 1, test: (u) => (Number(duel(u).wins) || 0) >= 1 },
+  { id: 'streak', label: 'Win Streak', icon: 'flame', hue: 40, fx: 'bolt', hint: 'Win {n} in a row', need: 5, test: (u) => (Number(duel(u).best) || 0) >= 5 },
+  { id: 'gladiator', label: 'Gladiator', icon: 'sword', hue: 22, fx: 'ember', hint: 'Win {n} duels', need: 10, test: (u) => (Number(duel(u).wins) || 0) >= 10 },
+  { id: 'unstoppable', label: 'Unstoppable', icon: 'shield', hue: 300, fx: 'holo', hint: 'Win {n} in a row', need: 10, test: (u) => (Number(duel(u).best) || 0) >= 10 },
+  { id: 'champion', label: 'Arena Champion', icon: 'trophy', hue: 348, fx: 'gold', hint: 'Win {n} duels', need: 50, test: (u) => (Number(duel(u).wins) || 0) >= 50 },
+  { id: 'rising', label: 'Rising Star', icon: 'sparkles', hue: 120, fx: 'spark', hint: 'Reach level {n}', need: 10, test: (u) => (Number(stat(u).level) || 1) >= 10 },
+  { id: 'opener', label: 'Pack Opener', icon: 'grid', hue: 305, fx: 'sweep', hint: 'Open {n} packs', need: 50, test: (u) => cards(u).pulls >= 50 },
+  { id: 'binder', label: 'Binder', icon: 'library', hue: 168, fx: 'sweep', hint: 'Own {n} different cards', need: 25, test: (u) => cards(u).unique >= 25 },
+  { id: 'veteran', label: 'Veteran', icon: 'crown', hue: 205, fx: 'holo', hint: 'Reach level {n}', need: 30, test: (u) => (Number(stat(u).level) || 1) >= 30 },
+  { id: 'chaser', label: 'Card Chaser', icon: 'star', hue: 62, fx: 'gold', hint: 'Pull a card worth {n} Power', need: 500, test: (u) => cards(u).best >= 500 },
+  { id: 'powerhouse', label: 'Powerhouse', icon: 'bolt', hue: 178, fx: 'bolt', hint: 'Pull a card worth {n} Power', need: 800, test: (u) => cards(u).best >= 800 },
+  { id: 'elite', label: 'Elite Collector', icon: 'crown', hue: 335, fx: 'gold', hint: 'Pull a card worth {n} Power', need: 700, test: (u) => cards(u).best >= 700 },
+  { id: 'titan', label: 'Titan', icon: 'star', hue: 268, fx: 'cosmic', hint: 'Pull a card worth {n} Power', need: 950, test: (u) => cards(u).best >= 950 },
+  { id: 'master', label: 'Solvn Master', icon: 'bolt', hue: 44, fx: 'master', hint: 'Own the Solvn master card', need: 0, test: (u) => (Number(cards(u).best) || 0) >= MASTER_POWER },
 ];
 
 export const titleById = (id) => TITLES.find((entry) => entry.id === id) || null;

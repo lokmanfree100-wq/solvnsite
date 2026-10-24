@@ -1092,6 +1092,16 @@ export function ArenaView({ onCleanup }) {
     },
   };
 
+  /* The record is a node, not a one-off render: wins, losses, rate, streak and
+     the best run all change the moment a fight settles, and the head used to be
+     built once so it kept printing the numbers the member arrived with. */
+  const recordLine = h('div.ar-record-line');
+
+  function paintRecord() {
+    const user = currentUser();
+    recordLine.replaceChildren(...[divisionChip(user), duelRecord(user)].filter(Boolean));
+  }
+
   const head = h(
     'div.ar-head-row',
     {},
@@ -1100,7 +1110,7 @@ export function ArenaView({ onCleanup }) {
       {},
       h('h1.display', {}, t('Arena')),
       h('p.muted', {}, t('Two cards a side, one strike at a time. Fight a real opponent online, or take on the CPU in a quick match.')),
-      h('div.ar-record-line', {}, divisionChip(currentUser()), duelRecord(currentUser())),
+      recordLine,
     ),
     h(
       'div.ar-modes',
@@ -1114,6 +1124,7 @@ export function ArenaView({ onCleanup }) {
 
   function paint() {
     const s = duelState();
+    paintRecord();
     paintLineup();
 
     const openRows = s.duels.filter((d) => d.state === 'awaiting' || d.state === 'ready');
