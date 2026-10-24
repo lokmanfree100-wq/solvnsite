@@ -219,14 +219,42 @@ function normalise(raw) {
 function purgeLegacyHouse(target) {
   const house = target.users.solvn;
   if (!house || house.hash) return;
-  /* No credentials means no person: this row can only be the old seed. */
-  delete target.users.solvn;
-  if (target.byName[HOUSE] === 'solvn') delete target.byName[HOUSE];
-  for (const [email, id] of Object.entries(target.byEmail)) if (id === 'solvn') delete target.byEmail[email];
+  /* No credentials means no person: this row can only be the old seed, so every
+     trace it left in an older file goes with it. */
+  const gone = 'solvn';
+  delete target.users[gone];
+  if (target.byName[HOUSE] === gone) delete target.byName[HOUSE];
+  for (const [email, id] of Object.entries(target.byEmail)) if (id === gone) delete target.byEmail[email];
   for (const [id, dm] of Object.entries(target.dms)) {
-    if (dm.from === 'solvn' || dm.to === 'solvn') delete target.dms[id];
+    if (dm.from === gone || dm.to === gone) delete target.dms[id];
   }
-  if (target.session === 'solvn') target.session = null;
+  for (const [id, playlist] of Object.entries(target.playlists)) {
+    if (playlist.ownerId === gone) delete target.playlists[id];
+  }
+  for (const [id, comment] of Object.entries(target.comments)) {
+    if (comment.by === gone) delete target.comments[id];
+  }
+  for (const [id, report] of Object.entries(target.reports)) {
+    if (report.by === gone || (report.kind === 'user' && report.target === gone)) delete target.reports[id];
+  }
+  for (const [key, pair] of Object.entries(target.friendship)) {
+    if (pair.a === gone || pair.b === gone) delete target.friendship[key];
+  }
+  for (const [key, req] of Object.entries(target.friendReqs)) {
+    if (req.from === gone || req.to === gone) delete target.friendReqs[key];
+  }
+  for (const [id, trade] of Object.entries(target.trades)) {
+    if (trade.from === gone || trade.to === gone) delete target.trades[id];
+  }
+  for (const [id, duel] of Object.entries(target.duels)) {
+    if (duel.from === gone || duel.to === gone) delete target.duels[id];
+  }
+  for (const [id, room] of Object.entries(target.rooms)) {
+    if (room.host === gone || room.members?.[gone]) delete target.rooms[id];
+  }
+  delete target.watches[gone];
+  delete target.notes[gone];
+  if (target.session === gone) target.session = null;
 }
 
 function data() {
