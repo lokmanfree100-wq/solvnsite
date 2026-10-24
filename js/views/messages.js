@@ -81,6 +81,11 @@ export function MessagesView({ route, onCleanup }) {
   let items = [];
   let peer = null;
   let busy = false;
+  /* Who the signed-in member has actually accepted, so a thread can tell a
+     friend from an address typed into a link before the server has to. */
+  const friendIds = new Set();
+  const lockedNote = h('div.msg-none.is-locked', {}, icon('lock'), h('p', {}, t('Chats open once you are friends.')));
+  let friendsPaint = Promise.resolve();
 
   /* ---------------- painting ---------------- */
   /* Friends sit above the inbox because a request is the one row here that is
@@ -103,6 +108,8 @@ export function MessagesView({ route, onCleanup }) {
     const incoming = data.incoming || [];
     const outgoing = data.outgoing || [];
     const friends = data.friends || [];
+    friendIds.clear();
+    for (const u of friends) friendIds.add(u.id);
     const who = (u) =>
       h(
         'span.msg-friend-who',
@@ -229,7 +236,7 @@ export function MessagesView({ route, onCleanup }) {
     }
     if (!threads.length) {
       rows.replaceChildren(
-        h('li.msg-note', {}, failed ? t('The inbox is not answering right now.') : t('No conversations yet. Find somebody by name and say hello.')),
+        h('li.msg-note', {}, failed ? t('The inbox is not answering right now.') : t('No conversations yet. Add a friend, and the chat opens when they accept.')),
       );
       return;
     }
@@ -364,7 +371,11 @@ export function MessagesView({ route, onCleanup }) {
       thread.replaceChildren(h('div.msg-none', {}, icon('users'), h('p', {}, t('Pick a conversation, or start one.'))));
       return;
     }
-    thread.replaceChildren(peerBar, log, composer);
+    /* The friend list is read before the composer is drawn: whether this
+       address has a chat at all is a fact about the friendship, not about the
+       route, so a link pasted from anywhere cannot open a stranger's box. */
+    await friendsPaint;
+    thread.replaceChildren(peerBar, log, friendIds.has(withId) ? composer : lockedNote);
     paintPeer();
     paintLog();
     try {
@@ -387,6 +398,10 @@ export function MessagesView({ route, onCleanup }) {
   async function submit() {
     const text = box.value.trim();
     if (!text || !withId || busy) return;
+    if (!friendIds.has(withId)) {
+      toast(t('Chats open once you are friends.'), { tone: 'info', iconName: 'users' });
+      return;
+    }
     busy = true;
     send.disabled = true;
     try {
@@ -428,7 +443,7 @@ export function MessagesView({ route, onCleanup }) {
     if (!event) return;
     /* A request that lands while this page is open is a row the viewer can
        answer without reloading. */
-    if (event.kind === 'friend') paintFriends();
+    if (event.kind === 'friend') friendsPaint = paintFriends();
     if (!withId) return;
     if (event.kind === 'dm') {
       const m = event.message;
@@ -457,7 +472,7 @@ export function MessagesView({ route, onCleanup }) {
     if (!isSignedIn()) return;
     startInbox();
     refreshInbox();
-    paintFriends();
+    friendsPaint = paintFriends();
     openThread();
   };
   document.addEventListener('kitsune:account', onAccount);
@@ -479,7 +494,7 @@ export function MessagesView({ route, onCleanup }) {
   }
 
   wrap.append(list, thread);
-  paintFriends();
+  friendsPaint = paintFriends();
   paintRows();
   openThread();
   startInbox();
@@ -565,7 +580,19 @@ function newChatSheet(openWith, onChanged) {
           {},
           h(
             'button.msg-found-open',
-            { type: 'button', onclick: () => { opened.close(); openWith(u.id); } },
+            {
+              type: 'button',
+              onclick: () => {
+                /* A search is how a friend is made, not a way around the rule:
+                   the row opens a chat only once the other side has accepted. */
+                if (states.get(u.id) !== 'friend') {
+                  toast(t('Send a friend request first — chats open when they accept.'), { tone: 'info', iconName: 'users' });
+                  return;
+                }
+                opened.close();
+                openWith(u.id);
+              },
+            },
             avatar(u, { size: 'sm' }),
             h(
               'span.msg-found-names',
@@ -618,7 +645,7 @@ function newChatSheet(openWith, onChanged) {
 
   const opened = sheet({
     heading: t('Find people'),
-    sub: t('Search by name or by the user ID on their profile.'),
+    sub: t('Search by name or by the user ID on their profile. Chats open once you are friends.'),
     width: 520,
     render: () => h('div.stack', {}, field, found),
   });

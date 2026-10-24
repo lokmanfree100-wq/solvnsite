@@ -425,6 +425,13 @@
   border-color: color-mix(in srgb, var(--success) 40%, transparent);
   color: var(--success);
 }
+/* Answering a request is a different act from sending one, so it wears the
+   primary fill and a full-size target rather than the quiet pill. */
+.pf-friend-accept {
+  min-height: 44px;
+  padding: 0 18px;
+  font-weight: 700;
+}
 
 @media (min-width: 900px) {
   .profile-actions {

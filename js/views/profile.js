@@ -225,7 +225,7 @@ function friendAction(user, state, repaint) {
   if (now === 'out') return h('span.pf-friend', {}, icon('clock'), t('Requested'));
   const label = now === 'in' ? t('Accept request') : t('Add friend');
   return h(
-    'button.btn.btn--sm',
+    `button.btn.btn--sm${now === 'in' ? '.btn--primary.pf-friend-accept' : ''}`,
     {
       type: 'button',
       onclick: async (e) => {
@@ -1472,7 +1472,7 @@ export async function ProfileView(ctx) {
               ? inboxUsable()
                 ? h('a.btn.btn--sm', { href: '#/messages' }, icon('chat'), h('span', {}, t('Messages')))
                 : null
-              : inboxUsable()
+              : inboxUsable() && data.friend === 'friend'
                 ? h(
                     'a.btn.btn--sm',
                     { href: `#/messages?with=${encodeURIComponent(user.id)}` },

@@ -12,7 +12,7 @@
  * is open, and the copies come back the moment it is called off, lapses, or is
  * changed underneath me. A completion hands mine over and brings theirs in.
  *
- * One card is never on the table: the Lv 25 Solvn master. It is awarded to a
+ * One card is never on the table: the Lv 16 Solvn master. It is awarded to a
  * binder that holds the set, and a one-of-one that changes hands is not one, so
  * both pickers leave it out and the server refuses it.
  */
@@ -39,9 +39,9 @@ import { gachaCard } from '../components/gacha.js';
 import { avatar, authSheet, say, titleChip } from '../components/account.js';
 import { emptyState } from '../components/media.js';
 
-/* The two ceilings `account-api.js` keeps as well. A form that lets you add a
-   fifth card, or type a longer note than the server stores, fails on submit. */
-const SIDE_MAX = 4;
+/* The one ceiling `account-api.js` keeps as well: a form that lets you type a
+   longer note than the server stores fails on submit. A side has no card count —
+   the binder is the limit, so a whole shelf can be offered in one deal. */
 const NOTE_MAX = 140;
 /** The most tiles a picker paints at once. A full binder runs into the hundreds,
     and a sheet is not a shelf: the name box above it is how you reach the rest. */
@@ -84,12 +84,29 @@ function dealRow(deal, handlers) {
   const theirSignedAt = (deal.mine === 'give' ? deal.signed.to : deal.signed.from) || null;
   const otherName = shownName(other) || t('A member');
 
-  const signMark = (label, at) =>
+  /* Both ends of the deal get the same panel, and the one waiting on the viewer
+     carries the button. A signature is the whole of what makes a trade move, so
+     it is drawn as a two-sided confirmation rather than a line of small print —
+     the other side's half is visible proof of where the deal stands. */
+  const acceptSide = (label, at, mine) =>
     h(
-      `span.tr-sign${at ? '.is-on' : ''}`,
+      `div.tr-accept-side${at ? '.is-on' : ''}`,
       {},
-      icon(at ? 'check' : 'clock'),
-      h('span', {}, at ? t('{name} signed', { name: label }) : t('Waiting for {name}', { name: label })),
+      h('span.tr-accept-who', {}, label),
+      h(
+        'span.tr-accept-state',
+        {},
+        icon(at ? 'check' : 'clock'),
+        h('span', {}, at ? t('Confirmed') : mine ? t('Not confirmed yet') : t('Waiting')),
+      ),
+      mine && !at && !closed
+        ? h(
+            'button.btn.btn--primary.tr-accept-btn',
+            { type: 'button', onclick: () => handlers.sign(deal) },
+            icon('check'),
+            h('span', {}, t('Confirm trade')),
+          )
+        : null,
     );
 
   const side = (label, cards) =>
@@ -149,20 +166,12 @@ function dealRow(deal, handlers) {
     !closed && deal.iSigned
       ? h('p.tr-escrow', {}, icon('lock'), h('span', {}, t('Held aside until this deal closes.')))
       : null,
-    h('div.tr-foot', {}, signMark(t('You'), mySignedAt), signMark(otherName, theirSignedAt)),
+    h('div.tr-accept', {}, acceptSide(t('You'), mySignedAt, true), acceptSide(otherName, theirSignedAt, false)),
     closed
       ? null
       : h(
           'div.tr-actions',
           {},
-          deal.iSigned
-            ? null
-            : h(
-                'button.btn.btn--primary.btn--sm',
-                { type: 'button', onclick: () => handlers.sign(deal) },
-                icon('check'),
-                h('span', {}, t('Sign trade')),
-              ),
           h(
             'button.btn.btn--sm',
             { type: 'button', onclick: () => handlers.edit(deal) },
@@ -236,10 +245,7 @@ function offerSheet({ trade = null, onDone }) {
   function toggle(list, card) {
     const at = list.findIndex((c) => c.key === card.key);
     if (at >= 0) list.splice(at, 1);
-    else if (list.length >= SIDE_MAX) {
-      toast(t('A side holds up to {n} cards.', { n: SIDE_MAX }), { tone: 'err', iconName: 'alert' });
-      return;
-    } else list.push(card);
+    else list.push(card);
     paint();
   }
 

@@ -177,21 +177,26 @@ for (let l = LEVEL_STEP; l <= MAX_LEVEL; l += LEVEL_STEP) {
 const SITTING = 3 * 3600 * 1000;
 
 /* ---- the duel divisions ----------------------------------------------
+   Bronze to Grandmaster, with Master in the middle rather than at the top: the
+   brief asks for two divisions above Master, and a ladder whose ceiling is the
+   same word as its middle would only flatten the climb.
+
    A rank badge has to be earned at the table, so every threshold is a count of
-   settled fights — the one figure this server writes and no browser can. Wins
-   alone would put somebody who fought twice above somebody who fought two
-   hundred, so the ladder steps on wins and only opens a division once a member
-   has fought enough times for the rate to mean anything.
+   lifetime wins — the one figure this server writes and no browser can. The
+   thresholds match DUEL_DIVISIONS in account-api.js, because the board sorts by
+   the same ladder this badge prints.
 
    Labels are English source strings, like every other label in this module, so
    they can be translated. */
 export const DIVISIONS = [
-  { id: 'rookie', wins: 1, label: 'Rookie Duelist', icon: 'bolt' },
-  { id: 'contender', wins: 5, label: 'Contender', icon: 'flame' },
-  { id: 'challenger', wins: 15, label: 'Challenger', icon: 'trending' },
-  { id: 'elite', wins: 30, label: 'Elite', icon: 'star' },
-  { id: 'champion', wins: 60, label: 'Champion', icon: 'trophy' },
-  { id: 'legend', wins: 120, label: 'Legend of the Arena', icon: 'crown' },
+  { id: 'bronze', wins: 1, label: 'Bronze', icon: 'bolt' },
+  { id: 'silver', wins: 5, label: 'Silver', icon: 'star' },
+  { id: 'gold', wins: 15, label: 'Gold', icon: 'trophy' },
+  { id: 'platinum', wins: 30, label: 'Platinum', icon: 'sparkles' },
+  { id: 'diamond', wins: 60, label: 'Diamond', icon: 'grid' },
+  { id: 'master', wins: 100, label: 'Master', icon: 'crown' },
+  { id: 'legendary', wins: 160, label: 'Legendary', icon: 'flame' },
+  { id: 'grandmaster', wins: 240, label: 'Grandmaster', icon: 'crown' },
 ];
 
 /** The division a duel record has reached, or null for a member who has never fought. */
@@ -200,6 +205,11 @@ export function divisionOf(user) {
   let hit = null;
   for (const d of DIVISIONS) if (wins >= d.wins) hit = d;
   return hit;
+}
+
+/** How far up the ladder a division sits — the number the board sorts on. */
+export function divisionIndex(user) {
+  return DIVISIONS.indexOf(divisionOf(user));
 }
 
 /** Most episodes inside any window of `span`, sliding over an ordered log. */

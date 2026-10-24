@@ -1,16 +1,21 @@
 /**
- * The arena: three cards a side, and a fight both screens agree on.
+ * The arena: two cards a side, and a fight both screens agree on.
  *
  * Nothing here decides a winner. `lib/duels.js` runs the arithmetic from the seed
- * the server handed the duel, and this page only *plays it back* — the order of
- * the clashes, who struck first, what fell. That separation is what lets two
+ * the server handed the duel, and this page only *plays it back* — one strike at a
+ * time, the clock the engine spent, what fell. That separation is what lets two
  * phones with no connection to each other watch the same match and report the same
  * score, which is the only way a win/loss row on a profile means anything.
+ *
+ * The match opens on a short exchange of taunts, which is set dressing rather than
+ * a decision: the seed picks two lines, the same two lines on both screens, and
+ * the first strike still belongs to the arithmetic. Then the turns land one at a
+ * time, the clock runs down from ninety, and a line is printed for each.
  *
  * Matchmaking is deliberately narrow. The lobby pairs the closest peak Power it
  * can find and will not cross its band, so the honest outcome of an empty queue is
  * "still waiting", not a fight you were never going to win. An invite is the other
- * door: you choose the opponent, they choose their three, and neither line-up is
+ * door: you choose the opponent, they choose their two, and neither line-up is
  * committed until both have picked.
  *
  * The animation is transform and opacity only, and the whole thing collapses to a
@@ -26,6 +31,7 @@ import { currentUser, isSignedIn, searchMembers, shownName } from '../lib/accoun
 import { TOP_LV, displayCard, ownedEntries, rarityOf } from '../lib/cards.js';
 import {
   LINEUP,
+  MATCH_MS,
   awaitingMe,
   callOff,
   challenge,
@@ -41,7 +47,7 @@ import {
   subscribeDuels,
 } from '../lib/duels.js';
 import { gachaCard } from '../components/gacha.js';
-import { avatar, authSheet, duelRecord, say, titleChip } from '../components/account.js';
+import { avatar, authSheet, divisionChip, duelRecord, say, titleChip } from '../components/account.js';
 import { emptyState } from '../components/media.js';
 import { storage } from '../lib/store.js';
 import { sfx } from '../lib/sounds.js';
@@ -52,10 +58,40 @@ const PICK_ROWS = 80;
 /** How often a member standing in the lobby asks the server whether anyone arrived. */
 const LOBBY_POLL_MS = 4000;
 
+/* The pre-battle exchange. Four short lines, and the seed picks two of them, so
+   two screens open on the same script. Each is a literal `t()` so the extractor
+   sees it; the index comes from the duel, not from Math.random. */
+const TAUNTS = [
+  () => t('Say it with the cards, then.'),
+  () => t('You are not walking out of this one.'),
+  () => t('One clean strike is all I need.'),
+  () => t('Show me what that plate can do.'),
+];
+
+const ABILITY_TEXT = {
+  overdrive: () => t('Overdrive'),
+  blitz: () => t('Blitz'),
+  focus: () => t('Focus'),
+  guard: () => t('Guard'),
+};
+const ABILITY_ICON = { overdrive: 'flame', blitz: 'bolt', focus: 'sparkles', guard: 'star' };
+
+const clockText = (ms) => {
+  const total = Math.ceil(Math.max(0, Number(ms) || 0) / 1000);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+};
+
+/** A stable number from the seed, for picking the two taunts. */
+const seedNumber = (text) => {
+  let n = 0;
+  for (const ch of String(text || '')) n = (Math.imul(n, 31) + ch.charCodeAt(0)) | 0;
+  return Math.abs(n);
+};
+
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const modalRoot = () => document.querySelector('#modal-root');
 
-/** The three keys this device brings to a fight, kept between visits. */
+/** The two keys this device brings to a fight, kept between visits. */
 const readLineup = () => (storage.read('duel:lineup', []) || []).filter((k) => typeof k === 'string').slice(0, LINEUP);
 const writeLineup = (keys) => storage.write('duel:lineup', keys.slice(0, LINEUP));
 
@@ -163,14 +199,14 @@ function lineupSheet(onDone) {
       },
     },
     icon('bolt'),
-    h('span', {}, t('Bring these three')),
+    h('span', {}, t('Bring these two')),
   );
 
   find.addEventListener('input', () => paint(find.value));
 
   sheet({
     heading: t('Choose your line-up'),
-    sub: t('Three cards. The first one still standing is the one that strikes, and the plate on the card is the whole of what it can do.'),
+    sub: t('Two cards. The first one still standing steps forward, its strongest stat decides how it fights, and the turns alternate from there.'),
     width: 760,
     footer: h('div.ar-sheet-foot', {}, tally, submit),
     render: (opened) => {
@@ -198,7 +234,7 @@ function inviteSheet(onDone) {
         return;
       }
       handle?.close();
-      toast(t('Challenge sent. They pick three cards and the fight is on.'), { iconName: 'sparkles' });
+      toast(t('Challenge sent. They pick two cards and the fight is on.'), { iconName: 'sparkles' });
       onDone?.();
     } catch (err) {
       toast(say(err, t('The challenge did not go out.')), { tone: 'err', iconName: 'alert' });
@@ -302,7 +338,7 @@ function inviteSheet(onDone) {
 
   sheet({
     heading: t('Challenge a member'),
-    sub: t('They choose their own three, and the duel starts once both line-ups are committed.'),
+    sub: t('They choose their own two, and the duel starts once both line-ups are committed.'),
     width: 620,
     render: (opened) => {
       handle = opened;
@@ -400,7 +436,8 @@ function openArena(duel, run, outcome) {
   const sideOf = (who) => sides.find((s) => s.who === who);
 
   const log = h('div.ar-log', { 'aria-live': 'polite' });
-  const hint = h('p.ar-hint', {}, icon('bolt'), h('span', {}, t('Fighting…')));
+  const hint = h('p.ar-hint', {}, icon('bolt'), h('span', {}, t('To the first strike.')));
+  const clock = h('span.ar-clock.tnum', {}, clockText(MATCH_MS));
   const skip = h(
     'button.btn.btn--sm',
     { type: 'button', onclick: () => finish(true) },
@@ -415,6 +452,45 @@ function openArena(duel, run, outcome) {
   );
 
   const layer = h('div.ar-spark-layer');
+
+  /* The intro is set from the same seed as the fight, so the opponent's screen
+     opens on the same two lines. It is dressing, not a decision: no line changes a
+     number, and the engine has already run by the time it is printed. */
+  const taunt = seedNumber(duel.seed);
+  const introSide = (side, index) => {
+    const card = duel.lineups?.[side.who]?.[0];
+    const lead = run[side.who]?.[0];
+    const line = (taunt + (index ? 1 + (taunt % 3) : 0)) % TAUNTS.length;
+    return h(
+      `div.ar-intro-side${index ? '.is-right' : ''}`,
+      {},
+      card ? h('div.ar-intro-card', {}, gachaCard(displayCard(card), { variant: 'tile', eager: true })) : null,
+      h('div.ar-intro-names', {}, h('b', {}, side.name), h('span.faint', {}, side.handle)),
+      lead
+        ? h('span.ar-ability', {}, icon(ABILITY_ICON[lead.ability]), h('span', {}, ABILITY_TEXT[lead.ability]()))
+        : null,
+      h('p.ar-taunt', {}, `“${TAUNTS[line]()}”`),
+    );
+  };
+  const intro = h(
+    'div.ar-intro',
+    { role: 'group', 'aria-label': t('Before the first strike') },
+    h('p.ar-intro-kicker', {}, t('Before the first strike')),
+    h(
+      'div.ar-intro-body',
+      {},
+      introSide(sides[0], 0),
+      h('span.ar-intro-vs', { 'aria-hidden': 'true' }, icon('bolt')),
+      introSide(sides[1], 1),
+    ),
+    h(
+      'button.btn.btn--primary.ar-intro-go',
+      { type: 'button', onclick: () => begin() },
+      icon('play'),
+      h('span', {}, t('Begin the duel')),
+    ),
+  );
+
   const panel = h(
     'div.ar-stage',
     { role: 'dialog', 'aria-modal': 'true', 'aria-label': t('The duel') },
@@ -424,12 +500,14 @@ function openArena(duel, run, outcome) {
       h('div.ar-stage-side', {}, h('b', {}, sides[0].name), h('span.faint', {}, sides[0].handle)),
       h('span.ar-vs', { 'aria-hidden': 'true' }, icon('bolt')),
       h('div.ar-stage-side.is-right', {}, h('b', {}, sides[1].name), h('span.faint', {}, sides[1].handle)),
+      clock,
     ),
     h('div.ar-board', {}, sides[0].row, layer, sides[1].row),
     log,
     hint,
     h('div.ar-stage-foot', {}, skip, leave),
   );
+  panel.append(intro);
 
   /* Not `.modal-backdrop`: the shell's global Escape handler removes the first
      backdrop it finds, and a fight that vanishes mid-playback without running the
@@ -451,25 +529,26 @@ function openArena(duel, run, outcome) {
     for (const f of run[who]) paintTile(who, f);
   };
 
-  /** The card standing at the front of a line, which is the one that strikes. */
-  const frontTile = (who) => sideOf(who).tiles.find((el) => (hp.get(el.dataset.key) || 0) > 0) || null;
-
   let timer = 0;
   const clear = () => {
     if (timer) clearTimeout(timer);
     timer = 0;
   };
   let done = false;
+  let started = false;
 
   function finish(jumped) {
     if (done) return;
     done = true;
     clear();
+    intro.remove();
     if (jumped) {
       for (const who of ['from', 'to']) for (const f of run[who]) hp.set(f.key, f.hp);
       paintSide('from');
       paintSide('to');
     }
+    clock.textContent = clockText(jumped ? 0 : run.clock);
+    clock.classList.toggle('is-out', Number(run.clock) <= 0 || jumped);
     skip.hidden = true;
     leave.hidden = false;
     const won = outcome?.won;
@@ -496,7 +575,7 @@ function openArena(duel, run, outcome) {
       log.prepend(h('p.ar-call', {}, icon('flame'), h('span', {}, t('Win streak: {n}', { n: outcome.streak }))));
     }
     if (run.capped) {
-      log.prepend(h('p.ar-call', {}, icon('clock'), h('span', {}, t('Called on remaining hit points.'))));
+      log.prepend(h('p.ar-call', {}, icon('clock'), h('span', {}, t('Called on the clock.'))));
     }
   }
 
@@ -512,23 +591,23 @@ function openArena(duel, run, outcome) {
     if (e.target === stage) closeStage();
   });
 
-  const queue = [];
-  for (const round of run.rounds) for (const ev of round.events) queue.push(ev);
+  const turns = run.turns;
   let at = 0;
 
   function tick() {
-    const ev = queue[at];
+    const ev = turns[at];
     if (!ev) {
       finish(false);
       return;
     }
     at += 1;
     const target = ev.side === 'from' ? 'to' : 'from';
-    const striker = frontTile(ev.side);
+    const striker = sideOf(ev.side).byKey.get(ev.by);
     hp.set(ev.to, ev.left);
+    clock.textContent = clockText(ev.clock);
 
     striker?.classList.add('is-lunge');
-    setTimeout(() => striker?.classList.remove('is-lunge'), 220);
+    setTimeout(() => striker?.classList.remove('is-lunge'), 260);
 
     const victim = sideOf(target).byKey.get(ev.to);
     if (victim) {
@@ -539,24 +618,54 @@ function openArena(duel, run, outcome) {
           layer,
           ((rect.left + rect.width / 2 - box.left) / box.width) * 100,
           ((rect.top + rect.height / 2 - box.top) / box.height) * 100,
-          ev.crit,
+          ev.crit || ev.boosted,
         );
       }
       victim.classList.add('is-hit');
-      setTimeout(() => victim.classList.remove('is-hit'), 240);
+      setTimeout(() => victim.classList.remove('is-hit'), 260);
     }
     paintSide(target);
+    if (!reduced()) {
+      if (ev.crit) sfx.reveal(1);
+      else sfx.click();
+    }
 
-    if (ev.crit) log.prepend(h('p.ar-call.is-crit', {}, icon('sparkles'), h('span', {}, t('Critical — {dmg}', { dmg: ev.dmg }))));
-    const down = run[target].find((f) => f.key === ev.to && (hp.get(f.key) ?? 1) <= 0);
-    if (down) log.prepend(h('p.ar-call.is-down', {}, icon('x'), h('span', {}, t('{name} is out.', { name: down.name }))));
+    if (ev.boosted) {
+      log.prepend(
+        h('p.ar-call.is-ability', {}, icon(ABILITY_ICON[ev.ability]), h('span', {}, t('{ability} — {name} opens with {dmg}.', { ability: ABILITY_TEXT[ev.ability](), name: ev.byName, dmg: ev.dmg }))),
+      );
+    } else if (ev.crit) {
+      log.prepend(h('p.ar-call.is-crit', {}, icon('sparkles'), h('span', {}, t('Critical — {dmg}', { dmg: ev.dmg }))));
+    } else {
+      log.prepend(h('p.ar-call', {}, h('span', {}, t('{name} hits for {dmg}.', { name: ev.byName, dmg: ev.dmg }))));
+    }
+    if (ev.down) {
+      log.prepend(h('p.ar-call.is-down', {}, icon('x'), h('span', {}, t('{name} is out.', { name: ev.toName }))));
+      if (!reduced()) sfx.evolve(1);
+    }
     while (log.childElementCount > 6) log.lastElementChild.remove();
 
-    timer = setTimeout(tick, ev.crit ? 300 : 210);
+    timer = setTimeout(tick, run.turnMs || 900);
+  }
+
+  /** Lift the intro and start the turns. The only control here that starts a
+      fight, so it is also the only place a sound plays without a turn. */
+  function begin() {
+    if (started || done) return;
+    started = true;
+    intro.remove();
+    hint.replaceChildren(icon('bolt'), h('span', {}, t('Fighting…')));
+    if (!reduced()) sfx.reveal(2);
+    if (reduced()) finish(true);
+    else timer = setTimeout(tick, 320);
   }
 
   if (reduced()) finish(true);
-  else timer = setTimeout(tick, 420);
+  else {
+    /* The taunts read themselves after a beat even if nobody presses the button;
+       a dialog that waits on a tap is a dialog people leave. */
+    timer = setTimeout(() => begin(), 2600);
+  }
 
   return closeStage;
 }
@@ -642,7 +751,7 @@ function duelRow(duel, actions) {
                   'button.btn.btn--primary.btn--sm',
                   { type: 'button', onclick: () => actions.commit(duel) },
                   icon(awaitingMe(duel) ? 'check' : 'edit'),
-                  h('span', {}, awaitingMe(duel) ? t('Accept and pick three') : t('Commit my line-up')),
+                  h('span', {}, awaitingMe(duel) ? t('Accept and pick two') : t('Commit my line-up')),
                 )
               : null,
           h('button.btn.btn--sm.btn--ghost', { type: 'button', onclick: () => actions.cancel(duel) }, icon('x'), h('span', {}, t('Call it off'))),
@@ -825,8 +934,8 @@ export function ArenaView({ onCleanup }) {
       'div',
       {},
       h('h1.display', {}, t('Arena')),
-      h('p.muted', {}, t('Three cards a side. The fight is decided by the numbers on them, and the record is kept by the server.')),
-      duelRecord(currentUser()),
+      h('p.muted', {}, t('Two cards a side, one strike at a time. The numbers on the cards decide it, and the record is kept by the server.')),
+      h('div.ar-record-line', {}, divisionChip(currentUser()), duelRecord(currentUser())),
     ),
     h(
       'div.ar-modes',
@@ -863,7 +972,7 @@ export function ArenaView({ onCleanup }) {
               heading: t('No duels yet'),
               body: s.failed
                 ? t('The duel list is not answering right now.')
-                : t('Pick three cards and find an opponent, or challenge somebody by name.'),
+                : t('Pick two cards and find an opponent, or challenge somebody by name.'),
             }),
           ]
         : []),
@@ -880,7 +989,7 @@ export function ArenaView({ onCleanup }) {
      next poll. */
   const unsubscribe = subscribeDuels((duel) => {
     if (duel?.mode === 'queue' && duel.state === 'ready' && !seen.has(duel.id)) {
-      toast(t('A duel just opened. Pick your three.'), { iconName: 'bolt' });
+      toast(t('A duel just opened. Pick your two.'), { iconName: 'bolt' });
     }
     loadDuels().then(paint);
   });

@@ -1,5 +1,5 @@
 /**
- * The card binder: twenty-five frames, one clean colour each.
+ * The card binder: sixteen frames, one clean colour each.
  *
  * A trading card is a very specific object — a narrow bevel, one light source,
  * art bleeding to the edges, the name printed where a printer would print it —
@@ -15,7 +15,7 @@
  * and tint are written from the drop table, so a Basic card catches one slow
  * white gleam and a crowned one catches a steeper, quicker band in its own
  * colour, without a rule per tier. There are no per-tier weather layers: no bolt,
- * no flame, no rain of code, no accretion disc. Twenty of them on screen at once
+ * no flame, no rain of code, no accretion disc. Fifteen of them on screen at once
  * is not a binder, it is a light rig, and the grid dropped to a slideshow for it.
  * The one exception is the one-of-one.
  *
@@ -54,7 +54,7 @@
   border: 1px solid transparent;
   box-shadow:
     0 18px 42px -22px rgba(0, 0, 0, 0.9),
-    0 0 22px -10px var(--glow),
+    0 0 16px -12px var(--glow),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
   transition: transform var(--t-med) var(--ease-out-back), box-shadow var(--t-med) var(--ease);
@@ -68,7 +68,7 @@
 .g-card[role='button']:focus-visible .g-frame {
   box-shadow:
     0 26px 56px -24px rgba(0, 0, 0, 0.95),
-    0 0 34px -8px var(--glow),
+    0 0 22px -12px var(--glow),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
@@ -215,7 +215,7 @@
     rgba(255, 255, 255, 0.14) 0deg 1deg,
     transparent 1deg 10deg
   );
-  opacity: 0.4;
+  opacity: 0.26;
   animation: g-spin 40s linear infinite;
 }
 
@@ -345,9 +345,9 @@
   opacity: 0.34;
 }
 
-/* Rainbow Holo through GODLIKE: the ring is the tier's own colour printed flat —
-   glow into accent into the dark shoulder — and one soft outer light. No conic
-   rainbow, no spectrum that drifts through colours the tier never chose. */
+/* Rainbow Holo and the one-of-one: the ring is the tier's own colour printed
+   flat — glow into accent into the dark shoulder — and one soft outer light. No
+   conic rainbow, no spectrum that drifts through colours the tier never chose. */
 .g-card.is-holo .g-frame {
   background:
     linear-gradient(150deg, var(--glow) 0%, var(--ga) 42%, var(--gb) 100%) border-box,
@@ -355,7 +355,7 @@
   border-width: 2px;
   box-shadow:
     0 20px 46px -20px rgba(0, 0, 0, 0.9),
-    0 0 34px -14px var(--glow);
+    0 0 24px -16px var(--glow);
 }
 
 /* The shine climbs with the tier, but the climb is the level's arithmetic rather
@@ -366,18 +366,19 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 46%, transparent);
 }
 
-/* GODLIKE takes a heavier ring and a wider throw. It is still one printed gradient
-   and one static shadow — the level is the point, not the light show. */
+/* The crowned plate takes a heavier ring and a wider throw. It is still one
+   printed gradient and one static shadow — the level is the point, not the light
+   show. */
 .g-card.is-crown .g-frame {
   border-width: 3px;
   box-shadow:
     0 26px 60px -18px rgba(0, 0, 0, 0.95),
-    0 0 48px -14px var(--glow);
+    0 0 30px -18px var(--glow);
 }
 
 /* ---- the live card ------------------------------------------------------
    A card reaches this by its Power number, not its tier label, so a fused mid-tier
-   card that climbed over the line is as live as a GODLIKE one. What it puts on is
+   card that climbed over the line is as live as a Rainbow Holo one. What it puts on is
    the tier's own colour turned up — a wider ring, a brighter rim, a quicker shine —
    and not a second light source bolted on.
    `:where()` is load-bearing here — it keeps these rules at zero specificity so
@@ -390,7 +391,7 @@
     linear-gradient(180deg, #0b0b12, #05050a) padding-box;
   box-shadow:
     0 22px 52px -22px rgba(0, 0, 0, 0.94),
-    0 0 40px -14px var(--glow);
+    0 0 28px -16px var(--glow);
 }
 
 .g-card.is-live .g-bevel::after {
@@ -431,12 +432,12 @@
       transparent 60%
     ),
     repeating-linear-gradient(105deg, rgba(255, 255, 255, 0.06) 0 2px, transparent 2px 10px);
-  opacity: 0.7;
+  opacity: 0.55;
   animation: g-foil 8s var(--ease) infinite;
 }
 
-/* A live card below Lv 15 wears no banner, so the badge is the only thing that
-   says why this one moves and the card next to it does not. */
+/* A live card below the banner line wears no banner, so the badge is the only
+   thing that says why this one moves and the card next to it does not. */
 .g-live {
   position: absolute;
   z-index: 2;
@@ -454,7 +455,7 @@
   background: rgba(6, 6, 11, 0.78);
   border: 1px solid var(--glow);
   color: var(--glow);
-  box-shadow: 0 0 14px -4px var(--glow);
+  box-shadow: 0 0 10px -5px var(--glow);
   animation: g-pulse 2.8s var(--ease) infinite;
 }
 
@@ -474,11 +475,11 @@
 .g-card.is-live .g-stats li.is-power b {
   color: var(--glow);
   font-size: 14px;
-  text-shadow: 0 0 12px var(--glow);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--glow) 70%, transparent);
 }
 
 /* ---- the one-of-one --------------------------------------------------------
-   Lv 25 is one card in a binder, never a shelf of them, so it is the only plate
+   Lv 16 is one card in a binder, never a shelf of them, so it is the only plate
    allowed a light of its own. Two colours and no others: black and electric blue.
    The ring is a cold blue hairline on a plate that stays black, the shine is blue
    rather than white, and the pulse on the bevel is the one breath in the set.
@@ -513,19 +514,19 @@
   border-radius: 50%;
   pointer-events: none;
   background:
-    radial-gradient(closest-side at 50% 14%, rgba(96, 178, 255, 0.6), transparent 70%),
-    radial-gradient(closest-side at 16% 74%, rgba(20, 74, 255, 0.55), transparent 72%),
-    radial-gradient(closest-side at 84% 62%, rgba(140, 214, 255, 0.42), transparent 70%);
-  opacity: 0.5;
+    radial-gradient(closest-side at 50% 14%, rgba(96, 178, 255, 0.46), transparent 70%),
+    radial-gradient(closest-side at 16% 74%, rgba(20, 74, 255, 0.4), transparent 72%),
+    radial-gradient(closest-side at 84% 62%, rgba(140, 214, 255, 0.32), transparent 70%);
+  opacity: 0.36;
   animation: g-fire 16s linear infinite;
 }
 
 .g-card.is-ultimate::after {
   inset: -8%;
   background:
-    radial-gradient(closest-side at 30% 88%, rgba(20, 74, 255, 0.5), transparent 68%),
-    radial-gradient(closest-side at 78% 10%, rgba(120, 198, 255, 0.46), transparent 66%);
-  opacity: 0.36;
+    radial-gradient(closest-side at 30% 88%, rgba(20, 74, 255, 0.38), transparent 68%),
+    radial-gradient(closest-side at 78% 10%, rgba(120, 198, 255, 0.34), transparent 66%);
+  opacity: 0.28;
   animation-duration: 22s;
   animation-direction: reverse;
 }
@@ -542,7 +543,7 @@
     linear-gradient(180deg, #05060d, #010207) padding-box;
   box-shadow:
     0 30px 66px -20px rgba(0, 0, 0, 0.96),
-    0 0 54px -16px rgba(47, 156, 255, 0.72);
+    0 0 36px -18px rgba(47, 156, 255, 0.72);
 }
 
 /* The pulse: cold blue at both edges and a hairline of it round the plate, faded in
@@ -564,12 +565,12 @@
   background: linear-gradient(
     100deg,
     transparent 34%,
-    rgba(47, 156, 255, 0.45) 45%,
-    rgba(214, 236, 255, 0.7) 50%,
-    rgba(11, 60, 255, 0.45) 56%,
+    rgba(47, 156, 255, 0.32) 45%,
+    rgba(214, 236, 255, 0.5) 50%,
+    rgba(11, 60, 255, 0.32) 56%,
     transparent 67%
   );
-  opacity: 0.72;
+  opacity: 0.55;
   animation-duration: 4.4s;
 }
 
@@ -579,8 +580,8 @@
   letter-spacing: 0.1em;
   color: #cfe4ff;
   text-shadow:
-    0 0 12px #4f9dff,
-    0 0 26px #0b3cff;
+    0 0 8px rgba(79, 157, 255, 0.8),
+    0 0 16px rgba(11, 60, 255, 0.6);
 }
 
 .g-card.is-ultimate .g-live {
@@ -613,7 +614,7 @@
 }
 
 /* ---- the master, in the grid ------------------------------------------
-   The compendium holds exactly one Lv 25 tile, so the rule above that dims the
+   The compendium holds exactly one Lv 16 tile, so the rule above that dims the
    grid's shine does not apply to it: the one-of-one keeps its band and its pulse at
    every size, because it is one card and not a shelf of them. Nothing about it
    reaches past the frame. */
@@ -1587,13 +1588,13 @@
   line-height: 1.65;
 }
 
-/* The row with no weight in it. It is on the table because the set has
-   twenty-five tiers, and it looks like what it is: the one card nobody rolls. */
+/* The row with no weight in it. It is on the table because the set has sixteen
+   plates, and it looks like what it is: the one card nobody rolls. */
 .g-odds-row.is-ultimate {
-  background: linear-gradient(90deg, rgba(70, 160, 255, 0.2), var(--surface-2) 44%);
+  background: linear-gradient(90deg, rgba(70, 160, 255, 0.16), var(--surface-2) 44%);
   box-shadow:
     inset 2px 0 0 #4fd8ff,
-    0 0 24px -14px #1a7dff;
+    0 0 18px -14px #1a7dff;
   color: var(--text);
 }
 
@@ -1868,8 +1869,8 @@ body.g-shake .modal-backdrop.is-gacha {
 /* The one-of-one's breath, and the deepest pulse in the set: the master is the only
    card whose rim lights this far, and it is one card, so it is allowed. */
 @keyframes g-master-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.86; }
+  0%, 100% { opacity: 0.26; }
+  50% { opacity: 0.72; }
 }
 
 @keyframes g-foil {

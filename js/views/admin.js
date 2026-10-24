@@ -15,6 +15,7 @@ import { statsLocked, setStatsLock } from '../lib/store.js';
 import { avatar, say, statTile } from '../components/account.js';
 import { emptyState, errorState } from '../components/media.js';
 import { intlDate, relativeTime } from '../lib/util.js';
+import { presence, activity } from '../lib/presence.js';
 
 const badgeNode = (b) =>
   h('span.badge', { title: `${t(b.label)} — ${t(b.hint)}` }, icon(b.icon), h('span.badge-name', {}, t(b.label)));
@@ -276,8 +277,80 @@ function commentRow(c, onDone) {
   );
 }
 
+/* ---- the site pulse ------------------------------------------------------
+   A folder of files cannot see other browsers, and even the dev server has no
+   presence table. So the pulse is built from the heartbeat in `lib/presence.js`
+   — the tabs in *this* browser — and the copy above the table says so. The
+   roster beside it is the real account list, whichever backend answered. */
+const feedIcon = (kind) => (kind === 'join' ? 'user' : kind === 'leave' ? 'offline' : 'eye');
+const feedLabel = (kind) => (kind === 'join' ? t('Signed in') : kind === 'leave' ? t('Signed out') : t('Visited'));
+
+function pulseTable(members) {
+  const rows = presence();
+  const seen = new Map(rows.map((row) => [String(row.id), row]));
+  const listed = members.slice();
+  const known = new Set(listed.map((u) => String(u.id)));
+  for (const row of rows) {
+    if (!known.has(String(row.id))) listed.push({ id: row.id, userId: row.userId, username: row.username });
+  }
+  if (!listed.length) return h('p.muted', {}, t('No one has checked in yet.'));
+
+  return h(
+    'div.ad-table',
+    { role: 'table', 'aria-label': t('Registered users') },
+    h(
+      'div.ad-tr.is-head',
+      { role: 'row' },
+      h('span', { role: 'columnheader' }, t('User ID')),
+      h('span', { role: 'columnheader' }, t('Handle')),
+      h('span', { role: 'columnheader' }, t('Status')),
+      h('span', { role: 'columnheader' }, t('Last seen')),
+      h('span', { role: 'columnheader' }, t('Page')),
+    ),
+    ...listed.map((u) => {
+      const row = seen.get(String(u.id));
+      return h(
+        'div.ad-tr',
+        { role: 'row' },
+        h('span.ad-id.tnum', { role: 'cell' }, u.userId ? `#${u.userId}` : '—'),
+        h('span.ad-handle', { role: 'cell' }, u.username ? `@${u.username}` : '—'),
+        h(
+          `span.ad-state${row?.online ? '.is-on' : ''}`,
+          { role: 'cell' },
+          h('i'),
+          row?.online ? t('Online') : t('Offline'),
+        ),
+        h('span.ad-when.tnum', { role: 'cell' }, row ? relativeTime(row.at) : '—'),
+        h('span.ad-page', { role: 'cell', title: row?.path || '' }, row?.path || '—'),
+      );
+    }),
+  );
+}
+
+function pulseFeed() {
+  const rows = activity(24);
+  if (!rows.length) return h('p.muted', {}, t('Nothing has happened here yet.'));
+  return h(
+    'div.ad-feed',
+    { role: 'list', 'aria-label': t('Recent activity') },
+    ...rows.map((row) =>
+      h(
+        'div.ad-event',
+        { role: 'listitem' },
+        h('span.ad-event-ico', {}, icon(feedIcon(row.kind))),
+        h(
+          'div.ad-event-body',
+          {},
+          h('p.ad-event-head', {}, h('b', {}, row.displayName || row.username || t('Guest')), ' ', feedLabel(row.kind)),
+          h('p.ad-event-meta.faint', {}, row.text ? `${row.text} · ` : '', relativeTime(row.at)),
+        ),
+      ),
+    ),
+  );
+}
+
 /* ---- the page ------------------------------------------------------------ */
-export async function AdminView() {
+export async function AdminView({ onCleanup } = {}) {
   const wrap = h('div.page-admin');
   const me = account().user;
 
@@ -301,10 +374,11 @@ export async function AdminView() {
     {},
     h('div.eyebrow', {}, t('ADMIN')),
     h('h1.display', {}, t('God mode')),
-    h('p', {}, t('Every number here is the server copy. Preview a badge on your own row and hold this device from overwriting it.')),
+    h('p', {}, t('Every number here is the copy this site holds. Preview a badge on your own row and hold this device from overwriting it.')),
   );
 
   const totals = h('div.metric-grid');
+  const pulseBox = h('section.ad-pulse.glass');
   const hold = h('div.ad-hold');
   const roster = h('div.ad-roster');
   const reportBox = h('div.ad-reports');
@@ -331,6 +405,29 @@ export async function AdminView() {
   }
 
   let data = null;
+
+  function paintPulse() {
+    if (!data) return;
+    const [users] = data;
+    const online = presence().filter((row) => row.online).length;
+    pulseBox.replaceChildren(
+      h(
+        'div.ad-pulse-head',
+        {},
+        h('h2.panel-title', {}, icon('trending'), t('Site pulse')),
+        h('span.ad-live-pill', {}, h('i'), t('{n} online', { n: online })),
+      ),
+      h(
+        'p.ad-pulse-note.faint',
+        {},
+        t('This browser is the source: each signed-in tab checks in, and a tab idle for five minutes drops off.'),
+      ),
+      h('h3.ad-sub', {}, icon('users'), t('Registered users')),
+      pulseTable(users.members),
+      h('h3.ad-sub', {}, icon('history'), t('Recent activity')),
+      pulseFeed(),
+    );
+  }
 
   async function fill() {
     roster.replaceChildren(h('p.muted', {}, t('Loading…')));
@@ -383,10 +480,14 @@ export async function AdminView() {
         ? threadList.map((c) => commentRow(c, fill))
         : [h('p.muted', {}, t('No one has commented yet.'))]),
     );
+
+    paintPulse();
   }
 
-  wrap.append(head, totals, hold, roster, reportBox, commentBox);
+  wrap.append(head, totals, pulseBox, hold, roster, reportBox, commentBox);
   paintHold();
   await fill();
+  const pulseTimer = setInterval(paintPulse, 15_000);
+  onCleanup?.(() => clearInterval(pulseTimer));
   return wrap;
 }

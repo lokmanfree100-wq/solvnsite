@@ -1,5 +1,5 @@
 /**
- * The card binder: twenty-four tiers you can roll, one you cannot, and nothing
+ * The card binder: fifteen tiers you can roll, one you cannot, and nothing
  * for sale.
  *
  * A pull is a coin flip and nothing else. There is no store, no rewarded ad, no
@@ -19,16 +19,16 @@
  *
  * Evolution is the patient half of the hobby — ten to twenty copies of the same
  * character at the same tier fuse into one card a tier higher, drawn in its
- * transformed art. Above all twenty-four tiers sits one card the roll cannot hand
+ * transformed art. Above all fifteen tiers sits one card the roll cannot hand
  * over at all: the `ULTIMATE` below, weight zero, awarded only to a binder that
  * holds every tier in the set, and the only plate in the game printed in black and
  * electric blue with a light that breathes.
  *
- * Each of the four tiers past GODLIKE is printed in its own two colours with a
- * deeper ring and a livelier shine than the one below it. None of them carries a
- * weather layer: no bolts, no flame, no falling code, no disc. A tier you can only
- * reach once a month should read as *rarer*, and a colour you cannot buy anywhere
- * else does that better than a strobe the grid cannot render anyway.
+ * Every tier is printed in its own two colours with a deeper ring and a livelier
+ * shine than the one below it, and none carries a weather layer: no bolts, no
+ * flame, no falling code, no disc. A tier you reach once a month should read as
+ * *rarer*, and a colour you cannot buy anywhere else does that better than a
+ * strobe the grid cannot render anyway.
  *
  * The collection itself lives on this device, in the namespaced store, under a
  * key that carries the account id. Nothing here needs a server table, so a
@@ -46,37 +46,25 @@ import { LOGO_SRC } from './brand.js';
    percent. The total is computed from the table rather than written twice: if a
    tier is ever added or retuned, the printed odds follow it automatically. */
 export const RARITIES = [
-  { lv: 1, id: 'basic', label: 'Basic', weight: 40387, a: '#7c869a', b: '#3f4655', glow: '#8b93a6' },
-  { lv: 2, id: 'common', label: 'Common', weight: 19200, a: '#8fa3b8', b: '#4c5b6b', glow: '#a9bdd1' },
-  { lv: 3, id: 'uncommon', label: 'Uncommon', weight: 13100, a: '#5fd0a0', b: '#1f7a57', glow: '#5fd0a0' },
-  { lv: 4, id: 'scarce', label: 'Scarce', weight: 9030, a: '#4fc3f7', b: '#1f5fa8', glow: '#4fc3f7' },
-  { lv: 5, id: 'notable', label: 'Notable', weight: 6000, a: '#6d8bff', b: '#2f3cae', glow: '#6d8bff' },
-  { lv: 6, id: 'rare', label: 'Rare', weight: 4000, a: '#8b6cff', b: '#4a26b8', glow: '#8b6cff' },
-  { lv: 7, id: 'rarer', label: 'Rarer', weight: 2600, a: '#b06bff', b: '#6a24c4', glow: '#b06bff' },
-  { lv: 8, id: 'very-rare', label: 'Very Rare', weight: 1700, a: '#ff4fa3', b: '#a81f63', glow: '#ff4fa3' },
-  { lv: 9, id: 'elite', label: 'Elite', weight: 1200, a: '#ff3b5c', b: '#a3122c', glow: '#ff3b5c' },
-  { lv: 10, id: 'epic', label: 'Epic', weight: 850, a: '#ff7b3d', b: '#a83c08', glow: '#ff7b3d' },
-  { lv: 11, id: 'legendary', label: 'Legendary', weight: 600, a: '#ffc247', b: '#a86a05', glow: '#ffc247' },
-  { lv: 12, id: 'mystic', label: 'Mystic', weight: 420, a: '#22e0f5', b: '#0b6f82', glow: '#22e0f5' },
+  { lv: 1, id: 'basic', label: 'Basic', weight: 36360, a: '#7c869a', b: '#3f4655', glow: '#8b93a6' },
+  { lv: 2, id: 'common', label: 'Common', weight: 20000, a: '#8fa3b8', b: '#4c5b6b', glow: '#a9bdd1' },
+  { lv: 3, id: 'uncommon', label: 'Uncommon', weight: 13000, a: '#5fd0a0', b: '#1f7a57', glow: '#5fd0a0' },
+  { lv: 4, id: 'scarce', label: 'Scarce', weight: 9000, a: '#4fc3f7', b: '#1f5fa8', glow: '#4fc3f7' },
+  { lv: 5, id: 'notable', label: 'Notable', weight: 6500, a: '#6d8bff', b: '#2f3cae', glow: '#6d8bff' },
+  { lv: 6, id: 'rare', label: 'Rare', weight: 4800, a: '#8b6cff', b: '#4a26b8', glow: '#8b6cff' },
+  { lv: 7, id: 'rarer', label: 'Rarer', weight: 3400, a: '#b06bff', b: '#6a24c4', glow: '#b06bff' },
+  { lv: 8, id: 'very-rare', label: 'Very Rare', weight: 2400, a: '#ff4fa3', b: '#a81f63', glow: '#ff4fa3' },
+  { lv: 9, id: 'elite', label: 'Elite', weight: 1700, a: '#ff3b5c', b: '#a3122c', glow: '#ff3b5c' },
+  { lv: 10, id: 'epic', label: 'Epic', weight: 1150, a: '#ff7b3d', b: '#a83c08', glow: '#ff7b3d' },
+  { lv: 11, id: 'legendary', label: 'Legendary', weight: 750, a: '#ffc247', b: '#a86a05', glow: '#ffc247' },
+  { lv: 12, id: 'mystic', label: 'Mystic', weight: 480, a: '#22e0f5', b: '#0b6f82', glow: '#22e0f5' },
   { lv: 13, id: 'prismatic', label: 'Prismatic', weight: 300, a: '#2ee6a6', b: '#0b6e52', glow: '#2ee6a6', sheen: true },
-  { lv: 14, id: 'celestial', label: 'Celestial', weight: 210, a: '#a85cff', b: '#4a12a0', glow: '#a85cff', sheen: true },
-  { lv: 15, id: 'rainbow', label: 'Rainbow Holo', weight: 150, a: '#ff4fa3', b: '#22e0f5', glow: '#ffffff', holo: true },
-  { lv: 16, id: 'cosmic', label: 'Cosmic', weight: 100, a: '#8b6cff', b: '#22e0f5', glow: '#d7c4ff', holo: true, cosmic: true },
-  { lv: 17, id: 'dimensional', label: 'Dimensional', weight: 66, a: '#2ee6a6', b: '#8b6cff', glow: '#b8fff0', holo: true },
-  { lv: 18, id: 'transcendent', label: 'Transcendent', weight: 40, a: '#ffc247', b: '#ff3b5c', glow: '#ffe4a3', holo: true, cosmic: true },
-  { lv: 19, id: 'eternal', label: 'Eternal', weight: 24, a: '#ff4fa3', b: '#8b6cff', glow: '#ffd1ec', holo: true, cosmic: true },
-  { lv: 20, id: 'godlike', label: 'GODLIKE', weight: 10, a: '#ffffff', b: '#8b6cff', glow: '#ffffff', holo: true, cosmic: true, crown: true },
-  /* Past GODLIKE the set stops escalating the light and starts escalating the
-     colour. Each of these four is printed in its own two hues with a deeper ring
-     and a quicker shine than the tier below; none of them carries a weather layer
-     of its own, because a bolt and a flame and a rain of code on one screen at a
-     time is a light rig, not a collection. They are holographic and cosmic too,
-     which is what buys them the foil, and each is strictly rarer than the tier
-     below: 1 in 16,667 down to 1 in 100,000. */
-  { lv: 21, id: 'storm', label: 'STORM', weight: 6, a: '#1f4bff', b: '#7fe9ff', glow: '#3aa0ff', holo: true, cosmic: true },
-  { lv: 22, id: 'inferno', label: 'INFERNO', weight: 4, a: '#ff2418', b: '#ffb020', glow: '#ff5a1f', holo: true, cosmic: true },
-  { lv: 23, id: 'matrix', label: 'MATRIX', weight: 2, a: '#00ff9c', b: '#04170f', glow: '#26ff8a', holo: true, cosmic: true },
-  { lv: 24, id: 'singularity', label: 'SINGULARITY', weight: 1, a: '#ffd16a', b: '#ff2fb9', glow: '#ff8a3d', holo: true, cosmic: true, crown: true },
+  { lv: 14, id: 'celestial', label: 'Celestial', weight: 120, a: '#a85cff', b: '#4a12a0', glow: '#a85cff', sheen: true },
+  /* Fifteen tiers, and the last one is allowed to be hard: the whole set is
+     five cards a pack, so 1 in 2,500 is roughly one Rainbow Holo a month. Nine
+     more colours above it used to stretch the same odds thinner without making
+     any of them mean more. */
+  { lv: 15, id: 'rainbow', label: 'Rainbow Holo', weight: 40, a: '#ff4fa3', b: '#22e0f5', glow: '#ffffff', holo: true },
 ];
 
 export const TOP_LV = RARITIES[RARITIES.length - 1].lv;
@@ -86,7 +74,7 @@ export const TOP_LV = RARITIES[RARITIES.length - 1].lv;
    can only stop on a tier whose band the draw landed in, and a zero-width band
    is never landed in. So this card is never pulled, never fusable away (it sits
    past `TOP_LV`, where `canMerge` stops asking) and never sold. It is *awarded*,
-   once, to a binder that holds all twenty-four tiers, and it is the only plate in
+   once, to a binder that holds all fifteen tiers, and it is the only plate in
    the game whose Power reads INFINITY because there is no band left to grade it in.
    The art is the site's own mark: the platform as a character, which is what an
    exclusive of this kind is for.
@@ -94,7 +82,7 @@ export const TOP_LV = RARITIES[RARITIES.length - 1].lv;
    black plate, an electric blue ring, and a slow pulse on the bevel that no tier
    below it wears. Being unmatched is the point. */
 export const ULTIMATE = {
-  lv: 25,
+  lv: 16,
   id: 'solvn',
   label: 'SOLVN',
   weight: 0,
@@ -106,25 +94,24 @@ export const ULTIMATE = {
   crown: true,
   ultimate: true,
 };
-export const ULTIMATE_KEY = 'solvn:25';
+export const ULTIMATE_KEY = 'solvn:16';
 /* The card wears the site's own mark, read from the one path the brand keeps —
    so a rebranded logo repaints the one-of-one on the same commit. */
 export const ULTIMATE_ART = LOGO_SRC;
 
-/** The whole set: the twenty-four that can roll, then the one that cannot. */
+/** The whole set: the fifteen that can roll, then the one that cannot. */
 export const ALL_RARITIES = [...RARITIES, ULTIMATE];
 
 /** From this tier up the card wears the printed banner along its middle. */
-export const BANNER_LV = 15;
+export const BANNER_LV = 11;
 /** The ceiling on any hand: what a pack costs, and what a day gives. */
 export const PACK_CARDS = 5;
 export const DAILY_PACKS = 15;
 /** A card whose Power reaches this figure is a live card: the ring prints brighter,
     the rim takes the tier's colour and the foil answers the light. The line sits where the
-    arithmetic puts it — the band that contains it starts in the high teens, so
-    the upper tiers are nearly always live and a mid-tier card has to be fused to
-    join them. A live card stays a thing you hunt for. */
-export const LIVE_POWER = 700;
+    arithmetic puts it — the top two tiers clear it on a good pull, and a mid-tier
+    card has to be fused to join them. A live card stays a thing you hunt for. */
+export const LIVE_POWER = 620;
 
 const TOTAL_WEIGHT = RARITIES.reduce((n, r) => n + r.weight, 0);
 const CUMULATIVE = RARITIES.reduce((acc, r) => [...acc, (acc.at(-1) || 0) + r.weight], []);
@@ -136,18 +123,17 @@ export const rarityOf = (lv) => ALL_RARITIES.find((r) => r.lv === Number(lv)) ||
  *
  * The art is borrowed from AniList, so a form is not a second drawing — it is a
  * different crop and a different grade of the same portrait, the way a card game
- * reframes an evolution on the plate it already has. Five bands, not twenty-five:
- * a form has to mean something, and a card that changes its framing every level
- * would mean nothing at all. The bands sit where the drop table already breaks:
- * the first honest climb at Rare, the holographic run at Legendary, the collectible
- * half from Rainbow Holo, and the crowned top four.
+ * reframes an evolution on the plate it already has. Five bands, three tiers
+ * apiece: a form has to mean something, and a card that changes its framing every
+ * level would mean nothing at all. The bands sit where the drop table already
+ * breaks: the first honest climbs, the holographic run, and the crowned peak.
  */
 export const formOf = (lv) => {
   const n = Number(lv) || 1;
-  if (n >= 20) return 5;
-  if (n >= 15) return 4;
-  if (n >= 11) return 3;
-  if (n >= 6) return 2;
+  if (n >= 13) return 5;
+  if (n >= 10) return 4;
+  if (n >= 7) return 3;
+  if (n >= 4) return 2;
   return 1;
 };
 
@@ -210,7 +196,7 @@ export function rollRarity() {
 /* ---- the tester's thumb ------------------------------------------------
    One number between 0 and 1, and only the tester account can move it. It does
    not touch the table: it squeezes each draw toward the top of its own range, so
-   at full luck a roll lands on GODLIKE and a stat band lands on its ceiling. A
+   at full luck a roll lands on Rainbow Holo and a stat band lands on its ceiling. A
    member's odds stay the printed ones, and the squeeze reads the account before
    it reads the number, so a stale value can never help a normal binder. */
 
@@ -291,12 +277,12 @@ function statsFor(cid, serial, lv, evolved) {
 export const isLive = (card) => Boolean(card?.ultimate) || (Number(card?.stats?.power) || 0) >= LIVE_POWER;
 
 /**
- * The band a locked tile prints instead of a number: five tiers to a star, so the
- * top of a twenty-five-tier set reads five and a Basic reads one. It is a *band*,
- * which is what a tier honestly is — the exact Power inside it is the part a pull
- * decides, and a pull nobody has made has no number to show.
+ * The band a locked tile prints instead of a number: three tiers to a star, so
+ * the top of the fifteen-tier set reads five and a Basic reads one. It is a
+ * *band*, which is what a tier honestly is — the exact Power inside it is the
+ * part a pull decides, and a pull nobody has made has no number to show.
  */
-export const starsFor = (lv) => Math.min(5, Math.max(1, Math.ceil(Number(lv) / 5)));
+export const starsFor = (lv) => Math.min(5, Math.max(1, Math.ceil(Number(lv) / 3)));
 
 /* ---- the roster ------------------------------------------------------ */
 /**
@@ -308,6 +294,23 @@ export const starsFor = (lv) => Math.min(5, Math.max(1, Math.ceil(Number(lv) / 5
 const SEED_URL = new URL('data/packs.json', document.baseURI).href;
 let pool = null;
 let loading = null;
+
+/* Two AniList entries can be the same person written two ways — a surname-first
+   romanisation next to a given-name-first one, or a remake's spelling of the
+   same name. A set that hands out two portraits of one character feels like a
+   duplicate even when the ids differ, so the pool keeps the most-favourited
+   spelling of each name and drops its echoes. Sorting the tokens first is what
+   makes "Luffy Monkey" and "Monkey D. Luffy" the same key. */
+const nameKey = (name) =>
+  String(name || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort()
+    .join(' ');
 
 async function bundledPool() {
   const res = await fetch(SEED_URL).catch(() => null);
@@ -323,9 +326,15 @@ export async function loadPool() {
       try {
         const pages = await Promise.all([roster(1, 50), roster(2, 50)]);
         const seen = new Set();
+        const names = new Set();
+        /* The roster arrives favourites-first, so the spelling kept for a name
+           is the one the audience uses. */
         for (const card of pages.flat()) {
           if (!card || seen.has(card.id)) continue;
+          const key = nameKey(card.name);
+          if (key && names.has(key)) continue;
           seen.add(card.id);
+          if (key) names.add(key);
           found.push(card);
         }
       } catch {
@@ -368,20 +377,59 @@ const whoId = () => (currentUser()?.id != null ? String(currentUser().id) : 'dev
 const collKey = () => `cards:${whoId()}`;
 const empty = () => ({ owned: {}, serial: 0, packs: 0, pulls: 0, best: 0, pinned: [], escrow: {}, granted: [] });
 
-/* The one-of-one was Lv 21 when the set stopped at twenty. Now that the set runs
-   to twenty-four, a binder that already holds it would read `solvn:21` as a STORM
-   card named Solvn while `ultimateState()` reported nothing owned. Moving the
-   entry by key is the whole migration: once, idempotent, old key removed. */
-const LEGACY_MASTER = 'solvn:21';
+/* The one-of-one has moved twice as the set shrank: Lv 21 when the set stopped
+   at twenty, Lv 25 when it ran to twenty-four, and now Lv 16 above the fifteen
+   that roll. A binder that already holds it would read the old key as a card of
+   a tier that no longer exists while `ultimateState()` reported nothing owned.
+   Moving the entry by key is the whole migration: once, idempotent, old keys
+   removed. */
+const LEGACY_MASTER_KEYS = ['solvn:21', 'solvn:25'];
 
 function moveMaster(owned) {
-  const old = owned[LEGACY_MASTER];
-  if (!old) return false;
-  delete owned[LEGACY_MASTER];
-  if (!owned[ULTIMATE_KEY]) {
-    owned[ULTIMATE_KEY] = { ...old, key: ULTIMATE_KEY, lv: ULTIMATE.lv, ultimate: true };
+  let moved = false;
+  for (const key of LEGACY_MASTER_KEYS) {
+    const old = owned[key];
+    if (!old) continue;
+    delete owned[key];
+    if (!owned[ULTIMATE_KEY]) {
+      owned[ULTIMATE_KEY] = { ...old, key: ULTIMATE_KEY, lv: ULTIMATE.lv, ultimate: true };
+    }
+    moved = true;
   }
-  return true;
+  return moved;
+}
+
+/**
+ * A binder that pulled when the set ran past fifteen now holds a card at a tier
+ * that is gone. Rather than leave a STORM plate in a fifteen-tier collection, the
+ * entry is rebuilt at the top of the current set — same character, same serial,
+ * honest Rainbow Holo numbers — and its count folds into any copy already there.
+ */
+function collapseTiers(owned) {
+  let moved = false;
+  for (const key of Object.keys(owned)) {
+    const entry = owned[key];
+    if (!entry || entry.ultimate || Number(entry.lv) <= TOP_LV) continue;
+    const cid = String(key).slice(0, String(key).lastIndexOf(':'));
+    const card = build(
+      {
+        id: cid,
+        name: entry.name,
+        native: entry.native,
+        image: entry.image,
+        media: [{ id: entry.mediaId, title: entry.mediaTitle, year: entry.mediaYear, genres: entry.mediaGenres, cover: entry.cover }],
+      },
+      TOP_LV,
+      entry.serial ?? 0,
+      Boolean(entry.evolved),
+    );
+    const count = Number(entry.count) || 1;
+    delete owned[key];
+    const had = owned[card.key];
+    owned[card.key] = had ? { ...had, count: (Number(had.count) || 1) + count } : { ...card, count };
+    moved = true;
+  }
+  return moved;
 }
 
 function coll() {
@@ -400,8 +448,12 @@ function coll() {
     escrow: raw.escrow && typeof raw.escrow === 'object' ? raw.escrow : {},
     granted: Array.isArray(raw.granted) ? raw.granted.filter((k) => typeof k === 'string') : [],
   };
-  if (moveMaster(out.owned)) {
-    out.best = Math.max(out.best, ULTIMATE.lv);
+  const master = moveMaster(out.owned);
+  const collapsed = collapseTiers(out.owned);
+  if (master || collapsed) {
+    if (master) out.best = Math.max(out.best, ULTIMATE.lv);
+    out.best = Object.values(out.owned).reduce((n, e) => Math.max(n, Number(e?.lv) || 0), out.best);
+    if (collapsed) out.pinned = [...new Set(out.pinned)];
     save(out);
   }
   return out;
@@ -511,18 +563,18 @@ export const STREAK_STEPS = [
   { days: 3, floor: 3 },
   { days: 5, floor: 4 },
   { days: 7, floor: 5, bonus: 3 },
-  { days: 10, floor: 7 },
-  { days: 14, floor: 9, bonus: 5 },
-  { days: 21, floor: 11 },
-  { days: 30, floor: 13, bonus: 10 },
-  { days: 50, floor: 15 },
-  { days: 75, floor: 18, bonus: 20 },
-  { days: 100, floor: 20, bonus: 40 },
-  { days: 150, floor: 22, bonus: 60 },
+  { days: 10, floor: 6 },
+  { days: 14, floor: 7, bonus: 5 },
+  { days: 21, floor: 8 },
+  { days: 30, floor: 9, bonus: 10 },
+  { days: 50, floor: 11 },
+  { days: 75, floor: 12, bonus: 20 },
+  { days: 100, floor: 13, bonus: 40 },
+  { days: 150, floor: 14, bonus: 60 },
   /* The top of the ladder reads the top of the set: a two-hundred-day run puts a
-     floor under SINGULARITY, the 1-in-100,000 tier. Six months and a half of
+     floor under Rainbow Holo, the 1-in-2,500 tier. Six months and a half of
      showing up is what that costs, and it is printed rather than hidden. */
-  { days: 200, floor: 24, bonus: 100 },
+  { days: 200, floor: 15, bonus: 100 },
 ];
 
 export function streakFloor(run) {
@@ -1029,8 +1081,8 @@ export const PIN_MAX = 6;
  * The figure every power ranking sorts on.
  *
  * The one-of-one is graded `INFINITY` on screen, and its stored stats stop at
- * 999 because that is the highest number a card face can print. A SINGULARITY
- * pushed past 1100 by evolution would therefore out-rank it on a raw
+ * 999 because that is the highest number a card face can print. A Rainbow Holo
+ * pushed past 999 by evolution would therefore out-rank it on a raw
  * `stats.power` sort — so the master is read at a sentinel above the whole band
  * instead of at the digit its own artwork displays.
  */
@@ -1223,8 +1275,8 @@ export function tierProgress(lv) {
  * The card the table cannot hand over.
  *
  * It lives in the binder as a normal entry, so it survives everything else does,
- * and there is exactly one way in: hold at least one copy of all twenty-four
- * tiers and the page offers it. It sits past `TOP_LV`, so `canMerge` never asks
+ * and there is exactly one way in: hold at least one copy of all fifteen tiers
+ * and the page offers it. It sits past `TOP_LV`, so `canMerge` never asks
  * it for ten copies back — an exclusive that can be fused away is a component.
  */
 export function ultimateCard() {

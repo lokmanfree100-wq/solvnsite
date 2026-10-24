@@ -272,29 +272,62 @@
   flex: none;
 }
 
-/* ---- the signatures ----------------------------------------------------- */
-.tr-foot {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
+/* ---- the signatures -----------------------------------------------------
+   Two sides, the same panel each: one is the viewer's confirmation and holds
+   the button, the other reports the counterparty. The strength of the border
+   and the tick carry the state, not colour alone.
+   ------------------------------------------------------------------------ */
+.tr-accept {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
   padding-top: var(--sp-2);
   border-top: 1px solid var(--hairline);
 }
-.tr-sign {
-  display: inline-flex;
+.tr-accept-side {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.tr-accept-side.is-on {
+  border-color: color-mix(in srgb, var(--success) 48%, transparent);
+  background: color-mix(in srgb, var(--success) 8%, var(--surface-2));
+}
+.tr-accept-who {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tr-accept-state {
+  display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: var(--text-faint);
+  font-size: 12.5px;
+  color: var(--text-dim);
 }
-.tr-sign svg {
+.tr-accept-state svg {
   width: 14px;
   height: 14px;
   flex: none;
 }
-.tr-sign.is-on {
+.tr-accept-side.is-on .tr-accept-state {
   color: var(--success);
+  font-weight: 650;
+}
+.tr-accept-btn {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 4px;
+  font-weight: 700;
 }
 
 .tr-actions {
@@ -543,6 +576,11 @@
   .tr-top,
   .tr-when {
     gap: var(--sp-2);
+  }
+  /* Two confirmation panels beside each other leave no room for the name and
+     the button, so they stack; each one keeps the full width of the card. */
+  .tr-accept {
+    grid-template-columns: minmax(0, 1fr);
   }
   .tr-side-cards,
   .tr-picks {

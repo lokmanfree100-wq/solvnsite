@@ -30,7 +30,8 @@ import { ArenaView } from './views/arena.js';
 import { SpinView } from './views/spin.js';
 import { TopView } from './views/top.js';
 import { AdminView } from './views/admin.js';
-import { restore, pushStats, staticHost, takeRecovery } from './lib/account.js';
+import { restore, pushStats, staticHost, takeRecovery, account } from './lib/account.js';
+import { beat, markAway } from './lib/presence.js';
 import { askAboutAccount, resetSheet } from './components/account.js';
 
 const ROUTES = [
@@ -56,6 +57,25 @@ const ROUTES = [
 ];
 
 const root = () => qs('#view');
+
+/* ---- the site heartbeat -------------------------------------------------
+   One stamp per route change and one a minute after that: enough for the admin
+   desk to answer "who is here now" without inventing a socket. A session that
+   ends withdraws its stamp, so a signed-out tab stops counting at once. */
+let lastPulseUser = null;
+function pulse(path) {
+  const user = account().user;
+  if (user) {
+    lastPulseUser = user;
+    beat(user, path);
+    return;
+  }
+  if (lastPulseUser) {
+    markAway(lastPulseUser);
+    lastPulseUser = null;
+  }
+}
+setInterval(() => pulse(parse().path), 60_000);
 
 /* Netlify puts its watermark in the bottom-right corner — the same corner the
    mobile dock lives in. base.css hides the mark, and this flag raises the dock
@@ -106,6 +126,7 @@ async function mount(route) {
 
   dispose();
   renderNav();
+  pulse(route.path);
   qs('#topbar').hidden = !match || match.nav === false;
 
   /* The footer is chrome, rebuilt with each mount so a new language or a freshly
@@ -262,8 +283,12 @@ window.addEventListener('beforeunload', rememberScroll);
 onChange(mount);
 document.addEventListener('kitsune:nav', renderNav);
 document.addEventListener('kitsune:theme', applyTheme);
-/* A session change only swaps the chip and the nav counts — the page is the same. */
-document.addEventListener('kitsune:account', renderNav);
+/* A session change only swaps the chip and the nav counts — the page is the same,
+   except for the heartbeat, which gains or loses a row at the same moment. */
+document.addEventListener('kitsune:account', () => {
+  renderNav();
+  pulse(parse().path);
+});
 
 /* A new language rewrites every label, so the live view is rebuilt rather than
    patched — same route, new strings, new inline direction. */

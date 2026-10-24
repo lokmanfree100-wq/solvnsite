@@ -59,7 +59,7 @@ export function LeaderboardView() {
       h('div.eyebrow', {}, ranked ? t('RANKED') : t('LEADERBOARD')),
       h('h1.display', {}, ranked ? t('Top Duelists') : t('Top Collectors')),
       h('p', {}, ranked
-        ? t('Wins over settled duels first, then win rate, then the run you are on.')
+        ? t('Division first — Bronze to Grandmaster — then the highest card Power in the binder, then the record that earned the division.')
         : t('Ranked by the highest card Power each member owns — not by how many cards their binder holds.')),
       ranked
         ? h('div.rowline', { style: { marginTop: 'var(--sp-4)' } },
@@ -162,10 +162,11 @@ export function LeaderboardView() {
   }
 
   /* ---- ranked --------------------------------------------------------
-     A duel row prints the four numbers the server wrote and nothing else: the
-     wins, the losses they cost, the live run, and the peak Power that splits a
-     tie. The division is the same chip a profile wears, so the board cannot say
-     one thing about a member and the profile another. */
+     Division is the chip beside the name, Power is the big figure, and the
+     record that earned both sits under it. That is the order the board sorts on,
+     so the row cannot suggest a ranking the server did not run. The division is
+     the same chip a profile wears, so the board cannot say one thing about a
+     member and the profile another. */
   function paintRankedTotals(totals) {
     const tiles = [
       { value: String(totals.duellists ?? 0), label: t('Duelists ranked') },
@@ -198,12 +199,12 @@ export function LeaderboardView() {
           ),
         ),
         h('span.rk-figs', {},
-          h('b.rk-wins.tnum', {}, `${Number(d.wins) || 0}–${Number(d.losses) || 0}`),
-          h('span.rk-cap', {}, t('wins–losses')),
+          h('b.rk-wins.tnum', {}, powerText(u.cards || {})),
+          h('span.rk-cap', {}, t('best Power')),
           h('span.rk-meta', {},
-            h('span.rk-rate.tnum', {}, icon('trending'), `${Number(u.winRate) || 0}%`),
+            h('span.rk-rate.tnum', {}, icon('trophy'), `${Number(d.wins) || 0}–${Number(d.losses) || 0}`),
+            h('span.faint.tnum', {}, `${Number(u.winRate) || 0}%`),
             Number(d.streak) > 0 ? h('span.rk-streak.tnum', {}, icon('flame'), String(d.streak)) : null,
-            h('span.faint.tnum', {}, powerText(u.cards || {})),
           ),
         ),
       ),
@@ -228,7 +229,7 @@ export function LeaderboardView() {
       list.replaceChildren(emptyState({
         iconName: 'bolt',
         heading: t('Nobody has settled a duel yet'),
-        body: t('Pick three cards, commit them, and the arena files the first row on this board.'),
+        body: t('Pick two cards, commit them, and the arena files the first row on this board.'),
         action: h('a.btn.btn--primary', { href: '#/arena' }, icon('bolt'), h('span', {}, t('Enter the arena'))),
       }));
       return;

@@ -42,6 +42,7 @@ const DM_FLOOR = 4;
 const DM_SPAM_MS = 2500;
 const PIN_MAX = 6;
 const HOUSE = 'solvn';
+const REPORT_STATES = ['open', 'resolved', 'dismissed'];
 
 const fail = (status, message, code) => {
   throw Object.assign(new Error(message), { status, code: code || `http-${status}` });
@@ -71,6 +72,8 @@ function blank() {
     friendship: {},
     friendReqs: {},
     playlists: {},
+    reports: {},
+    comments: {},
     seeded: false,
   };
 }
@@ -89,7 +92,7 @@ function persist() {
 function normalise(raw) {
   const base = blank();
   if (!raw || typeof raw !== 'object') return base;
-  for (const key of ['users', 'byEmail', 'byName', 'dms', 'friendship', 'friendReqs', 'playlists']) {
+  for (const key of ['users', 'byEmail', 'byName', 'dms', 'friendship', 'friendReqs', 'playlists', 'reports', 'comments']) {
     base[key] = raw[key] && typeof raw[key] === 'object' ? raw[key] : {};
   }
   base.session = typeof raw.session === 'string' ? raw.session : null;
@@ -372,7 +375,9 @@ function adopt(target, viewer) {
       cards: viewer.cards || null,
       title: viewer.title || null,
       favourite: viewer.favourite || null,
-      isAdmin: viewer.isAdmin === true,
+      /* A cloud profile does not carry `isAdmin`; the handle is the rule both
+         backends share, so a Supabase account named solvn is staff here too. */
+      isAdmin: viewer.isAdmin === true || fold(viewer.username || '') === HOUSE,
       createdAt: Number(viewer.createdAt) || Date.now(),
       stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], xp: 0, level: 1, updatedAt: 0 },
       duel: { wins: 0, losses: 0, streak: 0, best: 0, fought: 0 },
@@ -486,6 +491,17 @@ function friendState(target, viewerId, otherId) {
   return 'none';
 }
 
+/* ---- the site pulse ---------------------------------------------------
+   Presence is the browser's own business: `lib/presence.js` keeps the
+   heartbeat, so it works the same behind a server and on a plain host. What
+   lives here is only what the admin page reads from this device's records.
+   ------------------------------------------------------------------------ */
+function needStaff(target, viewer, allowSession) {
+  const user = need(target, viewer, allowSession);
+  if (!isAdmin(user)) fail(403, 'Admins only.');
+  return user;
+}
+
 function playlistsOf(target, ownerId, viewerId) {
   return Object.values(target.playlists)
     .filter((p) => p.ownerId === ownerId && (p.visibility !== 'private' || ownerId === viewerId))
@@ -518,9 +534,25 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     if (!RE_NAME.test(username)) fail(400, 'Use 2-24 letters, numbers, spaces or . _ - for your name.');
     const nameKey = fold(username);
     if (target.byEmail[email]) fail(409, 'That email already has an account. Sign in instead.');
-    if (target.byName[nameKey]) fail(409, 'That name is taken.');
+    /* The house record ships without credentials so that whoever owns this
+       copy can claim it: signing up as @solvn attaches their email and password
+       to the seeded ID 1000 account, and that is the admin handle from then on.
+       Nobody else can take it — once a hash exists the name is simply taken. */
+    const house = target.users.solvn;
+    const claiming = nameKey === HOUSE && house && !house.hash;
+    if (!claiming && target.byName[nameKey]) fail(409, 'That name is taken.');
 
     const salt = randomSalt();
+    if (claiming) {
+      house.email = email;
+      house.salt = salt;
+      house.hash = await digest(password, salt);
+      target.byEmail[email] = house.id;
+      target.session = house.id;
+      persist();
+      return { user: publicUser(house) };
+    }
+
     const user = {
       id: newId(),
       userId: freshUserId(target),
@@ -915,6 +947,10 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     const other = target.users[body?.to] || byUserId(target, body?.to);
     if (!other) fail(404, 'That member is not here.');
     if (other.id === user.id) fail(400, 'You cannot message yourself.');
+    /* Friends only: a line never reaches an account that has not accepted its
+       sender, which keeps the inbox a place friends talk rather than a place
+       anybody can write into. */
+    if (!target.friendship[pairKey(user.id, other.id)]) fail(403, 'Messages open once you are friends.');
     const line = text(body?.text, DM_MAX, { required: true });
 
     const pair = pairKey(user.id, other.id);
@@ -969,6 +1005,138 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
         };
       });
     return { threads, unread: threads.reduce((n, row) => n + row.unread, 0) };
+  }
+
+  /* -- reports and the admin desk -- */
+  if (seg[0] === 'reports' && !seg[1] && method === 'POST') {
+    const user = need(target, viewer, allowSession);
+    const kind = body?.kind === 'playlist' ? 'playlist' : body?.kind === 'user' ? 'user' : null;
+    if (!kind) fail(400, 'Say what you are reporting.');
+    const targetId = text(body?.id, 32, { required: true });
+    const reason = text(body?.reason, 240, { required: true });
+    if (kind === 'user' && !findUser(target, targetId)) fail(404, 'No such member.');
+    if (kind === 'playlist' && !target.playlists[targetId]) fail(404, 'That playlist is gone.');
+    if (targetId === user.id) fail(400, 'That is your own profile.');
+    const dup = Object.values(target.reports).find(
+      (r) => r.by === user.id && r.kind === kind && r.target === targetId && r.status === 'open',
+    );
+    if (dup) fail(409, 'You already reported that.');
+
+    const rec = { id: newId(), by: user.id, kind, target: targetId, reason, status: 'open', createdAt: Date.now() };
+    target.reports[rec.id] = rec;
+    const all = Object.values(target.reports);
+    if (all.length > 400) {
+      for (const old of all.sort((a, b) => a.createdAt - b.createdAt).slice(0, all.length - 400)) {
+        delete target.reports[old.id];
+      }
+    }
+    persist();
+    return { ok: true, id: rec.id };
+  }
+
+  if (seg[0] === 'admin' && seg[1] === 'users' && !seg[2] && method === 'GET') {
+    const me = needStaff(target, viewer, allowSession);
+    const reports = Object.values(target.reports);
+    const members = Object.values(target.users)
+      /* The seeded house row stays off the roster until somebody claims it —
+         an account with no credentials is not a member anybody can edit. */
+      .filter((u) => u === me || u.hash || !isAdmin(u))
+      .map((u) => ({
+        ...publicUser(u),
+        muted: !!u.muted,
+        playlists: Object.values(target.playlists).filter((p) => p.ownerId === u.id).length,
+        reports: reports.filter((r) => r.kind === 'user' && r.target === u.id && r.status === 'open').length,
+      }))
+      .sort((a, b) => b.stats.hours - a.stats.hours || a.username.localeCompare(b.username));
+    return {
+      members,
+      totals: {
+        members: members.length,
+        hours: Math.round(members.reduce((n, u) => n + (u.stats?.hours || 0), 0) * 10) / 10,
+        playlists: Object.keys(target.playlists).length,
+        open: reports.filter((r) => r.status === 'open').length,
+        comments: Object.keys(target.comments).length,
+      },
+    };
+  }
+
+  if (seg[0] === 'admin' && seg[1] === 'users' && seg[2] && method === 'PATCH') {
+    needStaff(target, viewer, allowSession);
+    const user = findUser(target, seg[2]);
+    if (!user) fail(404, 'No such member.');
+    const stats = user.stats || { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], updatedAt: 0 };
+    const num = (value, max, int = false) => {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < 0) return 0;
+      const capped = Math.min(n, max);
+      return int ? Math.round(capped) : capped;
+    };
+    if (body?.hours !== undefined) stats.hours = Math.round(num(body.hours, 100000) * 10) / 10;
+    if (body?.episodes !== undefined) stats.episodes = num(body.episodes, 1000000, true);
+    if (body?.completed !== undefined) stats.completed = num(body.completed, 100000, true);
+    if (body?.titles !== undefined) stats.titles = num(body.titles, 100000, true);
+    if (body?.badges !== undefined) {
+      if (!Array.isArray(body.badges)) fail(400, 'Badges must be a list.');
+      stats.badges = [...new Set(body.badges.filter((b) => typeof b === 'string' && /^[a-z0-9][a-z0-9_-]{1,31}$/.test(b)))].slice(0, 32);
+    }
+    if (body?.muted !== undefined) user.muted = !!body.muted;
+    user.stats = { ...stats, updatedAt: Date.now() };
+    persist();
+    return { user: publicUser(user) };
+  }
+
+  if (seg[0] === 'admin' && seg[1] === 'reports' && !seg[2] && method === 'GET') {
+    needStaff(target, viewer, allowSession);
+    const nameOf = (id) => {
+      const u = target.users[id];
+      return u ? u.displayName || u.username : '(gone)';
+    };
+    return {
+      reports: Object.values(target.reports)
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .map((r) => ({
+          id: r.id,
+          kind: r.kind,
+          target: r.target,
+          reason: r.reason,
+          status: r.status,
+          createdAt: r.createdAt,
+          reporter: nameOf(r.by),
+          targetName: r.kind === 'user' ? nameOf(r.target) : (target.playlists[r.target] || {}).title || '(gone)',
+          targetOwner: r.kind === 'playlist' ? nameOf((target.playlists[r.target] || {}).ownerId) : null,
+        })),
+    };
+  }
+
+  if (seg[0] === 'admin' && seg[1] === 'reports' && seg[2] && method === 'PATCH') {
+    needStaff(target, viewer, allowSession);
+    const rec = target.reports[seg[2]];
+    if (!rec) fail(404, 'No such report.');
+    if (!REPORT_STATES.includes(body?.status)) fail(400, 'That is not a report state.');
+    rec.status = body.status;
+    persist();
+    return { ok: true, id: rec.id, status: rec.status };
+  }
+
+  if (seg[0] === 'admin' && seg[1] === 'comments' && method === 'GET') {
+    needStaff(target, viewer, allowSession);
+    /* Episode chat is not part of the device backend, so this queue is empty by
+       construction rather than by accident. */
+    return {
+      comments: Object.values(target.comments)
+        .sort((a, b) => b.at - a.at)
+        .map((c) => ({ ...c, author: personOf(target.users[c.by]) })),
+    };
+  }
+
+  if (seg[0] === 'comments' && seg[1] && method === 'DELETE') {
+    const user = need(target, viewer, allowSession);
+    const comment = target.comments[seg[1]];
+    if (!comment) fail(404, 'That comment is gone.');
+    if (comment.by !== user.id && !isAdmin(user)) fail(403, 'That comment is not yours.');
+    delete target.comments[comment.id];
+    persist();
+    return { ok: true, id: comment.id };
   }
 
   fail(404, 'That is not the right method.', 'no-route');

@@ -1,5 +1,5 @@
 /**
- * Duels: three cards a side, one seed, and a server that keeps the score.
+ * Duels: two cards a side, one seed, and a server that keeps the score.
  *
  * The record is the server's — both line-ups, who committed, and the win/loss
  * tally a profile prints — because a streak a browser could edit is not a streak.
@@ -9,11 +9,17 @@
  * first one to file the answer settles it. The second reads back the same result
  * rather than an error, so a race is invisible instead of alarming.
  *
- * Both ends see the same number for one reason and not two: the engine is pure,
- * there is no wall-clock anywhere inside it, and every draw comes from the seed.
- * A "randomized" fight that depends on when you clicked would disagree with your
- * opponent's screen, and a duel whose two screens disagree is a duel nobody
- * believes.
+ * A fight is strictly turn by turn: one card steps forward, one strike lands, and
+ * only then does the other side answer. The clock is not wall time — it is a turn
+ * budget, ninety seconds' worth of strikes at the pace the arena animates them —
+ * so two screens that start a second apart still end on the same score. When the
+ * budget runs out the side with the most hit points left takes it, which is what a
+ * clock decision means anyway.
+ *
+ * Each card also fights with one ability, and that ability is read off the plate
+ * rather than stored: the stat a card is strongest in is the way it fights. A high
+ * Power card opens with an overdrive strike, Speed strikes harder and crits more,
+ * Technique crits for more, Aura soaks more. Nothing is a second source of truth.
  *
  * Matchmaking pairs on the *peak* Power in a line-up and will not cross its band.
  * That is what makes a queue fair rather than merely fast: waiting for a match
@@ -38,7 +44,20 @@ import { awardXp } from './level.js';
 import { subscribeInbox } from './dms.js';
 import { storage } from './store.js';
 
-export const LINEUP = 3;
+export const LINEUP = 2;
+
+/** The match clock. Turns, not milliseconds, so both screens agree on the end. */
+export const MATCH_MS = 90 * 1000;
+const TURN_MS = 900;
+const MAX_TURNS = Math.floor(MATCH_MS / TURN_MS);
+
+/** Each card fights the way its strongest stat does. */
+export const ABILITIES = {
+  overdrive: { label: 'Overdrive', icon: 'flame' },
+  blitz: { label: 'Blitz', icon: 'bolt' },
+  focus: { label: 'Focus', icon: 'sparkles' },
+  guard: { label: 'Guard', icon: 'star' },
+};
 
 /** XP a settled fight pays: a win is worth more than showing up. */
 const XP_WIN = 60;
@@ -125,9 +144,31 @@ function prng(seedText) {
 
 const stat = (card, key) => Number(card?.stats?.[key]) || Number(card?.[key]) || 0;
 
+/**
+ * Which way a card fights, read from the stat it leans on hardest.
+ *
+ * The shares in `statsFor` are not equal — Speed is graded at .86, Technique at
+ * .92 and Aura at .8 of Power — so each figure is divided by its own share first.
+ * Otherwise Technique would win almost every card and the four abilities would be
+ * one ability with four names.
+ */
+function abilityFor(power, speed, technique, aura) {
+  const marks = [
+    ['overdrive', power],
+    ['blitz', speed / 0.86],
+    ['focus', technique / 0.92],
+    ['guard', aura / 0.8],
+  ];
+  return marks.reduce((best, row) => (row[1] > best[1] ? row : best))[0];
+}
+
 /** The four combat figures, derived from the published card. */
 function fighter(card) {
   const power = stat(card, 'power');
+  const speed = stat(card, 'speed');
+  const technique = stat(card, 'technique');
+  const aura = stat(card, 'aura');
+  const maxHp = Math.round(140 + power * 0.55);
   return {
     key: card?.key || '',
     name: card?.name || '',
@@ -136,25 +177,37 @@ function fighter(card) {
     serial: card?.serial ?? 0,
     ultimate: Boolean(card?.ultimate),
     power,
-    speed: stat(card, 'speed'),
-    technique: stat(card, 'technique'),
-    aura: stat(card, 'aura'),
-    maxHp: Math.round(120 + power * 0.6),
-    hp: Math.round(120 + power * 0.6),
-    atk: 18 + power * 0.1,
+    speed,
+    technique,
+    aura,
+    maxHp,
+    hp: maxHp,
+    atk: 16 + power * 0.12,
+    ability: abilityFor(power, speed, technique, aura),
+    struck: false,
   };
 }
 
 const sideOf = (duel, who) => (duel?.lineups?.[who] || []).map(fighter);
 
-/** One clash: what the striker lands, and what the target is left standing on. */
+/**
+ * One strike: what the striker lands, and what the target is left standing on.
+ *
+ * `struck` is why Overdrive is a moment rather than a bonus: the first strike a
+ * card makes after stepping in is the one that gets it, so the ability belongs to
+ * the entrance instead of to every swing.
+ */
 function clash(a, b, rand) {
-  const crit = rand() < a.technique / Math.max(1, a.technique + b.technique);
-  const roll = 0.85 + rand() * 0.3;
-  const soak = Math.min(0.35, b.aura / (b.aura + 600));
-  const dmg = Math.max(1, Math.round(a.atk * roll * (crit ? 1.6 : 1) * (1 - soak)));
+  const chance = Math.min(0.6, a.technique / Math.max(1, a.technique + b.technique) + (a.ability === 'blitz' ? 0.1 : 0));
+  const crit = rand() < chance;
+  const roll = 0.9 + rand() * 0.2;
+  const soak = Math.min(b.ability === 'guard' ? 0.45 : 0.3, b.aura / (b.aura + 700));
+  const boost = a.ability === 'overdrive' && !a.struck ? 1.35 : a.ability === 'blitz' ? 1.12 : 1;
+  const critMul = a.ability === 'focus' ? 1.9 : 1.6;
+  const dmg = Math.max(1, Math.round(a.atk * roll * boost * (crit ? critMul : 1) * (1 - soak)));
+  a.struck = true;
   b.hp = Math.max(0, b.hp - dmg);
-  return { to: b.key, dmg, crit, left: b.hp };
+  return { dmg, crit, left: b.hp, boost: boost > 1 };
 }
 
 const TOTAL_HP = (rows) => rows.reduce((n, f) => n + f.hp, 0);
@@ -162,45 +215,71 @@ const alive = (rows) => rows.filter((f) => f.hp > 0);
 const front = (rows) => rows.find((f) => f.hp > 0) || null;
 
 /**
- * Run a duel to the end. Returns the rounds in order, both final HP totals and
- * the side that stood.
+ * Run a duel to the end, one strike at a time.
  *
- * `ROUNDS_CAP` exists so an aura-stalemate between two near-identical line-ups
- * cannot spin forever: past it the fight is called on remaining hit points, which
- * is what a draw on the clock would be decided on anyway. The cap is a constant,
- * not a clock, so both screens still land on the same answer.
+ * The quicker card opens the round and the slower one answers; a card that falls
+ * to the opening blow does not get its answer. Each turn carries the clock it
+ * leaves behind, so the arena can print a countdown that matches the arithmetic
+ * rather than a wall clock that started when somebody pressed a button.
+ *
+ * When the turn budget is spent the fight is called on remaining hit points, the
+ * same decision a time limit produces in any other game. The budget is a constant,
+ * not a timestamp, so both screens still land on the same winner.
  */
-const ROUNDS_CAP = 240;
-
 export function fight(duel) {
   const from = sideOf(duel, 'from');
   const to = sideOf(duel, 'to');
   if (!from.length || !to.length) return null;
   const rand = prng(duel.seed);
-  const rounds = [];
+  const turns = [];
   let n = 0;
-  while (n < ROUNDS_CAP && alive(from).length && alive(to).length) {
-    n += 1;
+  while (n < MAX_TURNS && alive(from).length && alive(to).length) {
     const a = front(from);
     const b = front(to);
     /* The quicker card opens the clash; equal speed is settled by the seed rather
        than by array order, so a mirror match still has a real first blow. */
     const first = a.speed === b.speed ? rand() < 0.5 : a.speed > b.speed;
-    const pair = first ? [[a, b, 'from'], [b, a, 'to']] : [[b, a, 'to'], [a, b, 'from']];
-    const events = [];
-    for (const [x, y, side] of pair) {
-      if (x.hp <= 0 || y.hp <= 0) continue;
-      events.push({ side, ...clash(x, y, rand) });
+    const order = first
+      ? [['from', a, 'to', b], ['to', b, 'from', a]]
+      : [['to', b, 'from', a], ['from', a, 'to', b]];
+    for (const [side, x, other, y] of order) {
+      if (n >= MAX_TURNS || x.hp <= 0 || y.hp <= 0) continue;
+      n += 1;
+      const hit = clash(x, y, rand);
+      turns.push({
+        n,
+        side,
+        to: other,
+        by: x.key,
+        byName: x.name,
+        byLv: x.lv,
+        toName: y.name,
+        ability: x.ability,
+        boosted: hit.boost,
+        dmg: hit.dmg,
+        crit: hit.crit,
+        left: hit.left,
+        down: y.hp <= 0,
+        clock: Math.max(0, MATCH_MS - n * TURN_MS),
+      });
     }
-    if (events.length) rounds.push({ n, events });
   }
   const score = [TOTAL_HP(from), TOTAL_HP(to)];
   const winner = score[0] === score[1] ? (rand() < 0.5 ? 'from' : 'to') : score[0] > score[1] ? 'from' : 'to';
-  return { rounds, score, winner, from, to, capped: n >= ROUNDS_CAP };
+  return {
+    turns,
+    score,
+    winner,
+    from,
+    to,
+    capped: n >= MAX_TURNS,
+    clock: Math.max(0, MATCH_MS - n * TURN_MS),
+    turnMs: TURN_MS,
+  };
 }
 
 /* ---- the actions -------------------------------------------------------- */
-/** Three binder keys, in the shape the server validates and both ends can draw. */
+/** Two binder keys, in the shape the server validates and both ends can draw. */
 export function lineupOf(keys) {
   return (keys || []).slice(0, LINEUP).map((k) => tradeCard(findCard(k))).filter(Boolean);
 }
@@ -208,7 +287,7 @@ export function lineupOf(keys) {
 /** Challenge one member by hand. */
 export async function challenge(to, keys, note = '') {
   const cards = lineupOf(keys);
-  if (cards.length !== LINEUP) return { error: 'Pick three cards first.' };
+  if (cards.length !== LINEUP) return { error: 'Pick two cards first.' };
   const d = await offerDuel({ to, cards, note });
   await loadDuels();
   return { duel: d?.duel || null };
@@ -217,7 +296,7 @@ export async function challenge(to, keys, note = '') {
 /** Step into the lobby — or meet whoever is already standing in it. */
 export async function queueUp(keys) {
   const cards = lineupOf(keys);
-  if (cards.length !== LINEUP) return { error: 'Pick three cards first.' };
+  if (cards.length !== LINEUP) return { error: 'Pick two cards first.' };
   const d = await queueDuel(cards);
   await loadDuels();
   return d;
@@ -229,10 +308,10 @@ export async function leaveQueue() {
   return d;
 }
 
-/** Accept a challenge and commit my three. */
+/** Accept a challenge and commit my two. */
 export async function commit(id, keys) {
   const cards = lineupOf(keys);
-  if (cards.length !== LINEUP) return { error: 'Pick three cards first.' };
+  if (cards.length !== LINEUP) return { error: 'Pick two cards first.' };
   const d = await commitDuel(id, cards);
   await loadDuels();
   return { duel: d?.duel || null };

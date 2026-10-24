@@ -504,6 +504,16 @@
   gap: 6px;
   flex: none;
 }
+.msg-friend-row.is-ask .msg-friend-btns .btn {
+  min-height: 44px;
+  min-width: 84px;
+}
+/* Accepting a request is the one irreversible press on this row, so it takes
+   the primary fill and the full width of its own line on a phone. */
+.msg-friend-row.is-ask .msg-friend-btns .btn--primary {
+  flex: 1;
+  box-shadow: 0 0 0 1px var(--accent-line), 0 10px 24px -14px var(--accent-glow);
+}
 .msg-friends-empty {
   display: grid;
   justify-items: start;
@@ -564,6 +574,17 @@
   }
   .msg-row-side {
     font-size: 10.5px;
+  }
+  /* Two buttons and a name cannot share a line this narrow; the answer row
+     drops below the name and each button takes half of it. */
+  .msg-friend-row.is-ask {
+    flex-wrap: wrap;
+  }
+  .msg-friend-row.is-ask .msg-friend-btns {
+    width: 100%;
+  }
+  .msg-friend-row.is-ask .msg-friend-btns .btn {
+    flex: 1;
   }
 }
 

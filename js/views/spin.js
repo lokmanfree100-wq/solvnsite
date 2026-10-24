@@ -45,7 +45,7 @@ const FILL = ['#1c2028', '#232833'];
 const SPOT = { avatar: '#22333f', banner: '#2a2440' };
 
 /* A card slice is painted in its own tier's colour — the same pair a binder tile
-   is graded with — so the wheel and the shelf agree about what Lv 24 looks like. */
+   is graded with — so the wheel and the shelf agree about what Lv 15 looks like. */
 const sliceFill = (p, index) =>
   p.kind === 'card' ? rarityOf(p.amount).b : SPOT[p.kind] || FILL[index % 2];
 const sliceDot = (p, index) => (p.kind === 'card' ? rarityOf(p.amount).a : SPOT[p.kind] || FILL[index % 2]);

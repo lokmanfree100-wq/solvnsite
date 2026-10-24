@@ -16,8 +16,8 @@
  * A card whose Power reaches the live line is a different object again: its ring
  * carries the tier's colour further, a foil band crosses the art and the bevel
  * breathes. That is drawn from the number on the plate, never from the tier label,
- * so a fused mid-tier card that climbed over the line is as live as a GODLIKE one
- * — and a top-tier card that landed low on its band is not.
+ * so a fused mid-tier card that climbed over the line is as live as a Rainbow
+ * Holo one — and a top-tier card that landed low on its band is not.
  *
  * The reference is a graded trading card, not a building block: narrow bevel,
  * hairline rule, one light source, and no fat outline font anywhere.
@@ -34,7 +34,7 @@ import { t } from '../lib/i18n.js';
 import { sfx } from '../lib/sounds.js';
 import { toast } from '../lib/ui.js';
 import {
-  ALL_RARITIES, BANNER_LV, STAT_KEYS, STAT_LABELS,
+  ALL_RARITIES, BANNER_LV, TOP_LV, STAT_KEYS, STAT_LABELS,
   rarityOf, formOf, dropRate, dramaOf, mergeCost, serialText, isLive, starsFor, tierProgress,
 } from '../lib/cards.js';
 
@@ -57,14 +57,14 @@ function paint(el, r) {
   el.style.setProperty('--ga', r.a);
   el.style.setProperty('--gb', r.b);
   el.style.setProperty('--glow', r.glow);
-  const span = Math.min(1, Math.max(0, (Number(r.lv) - 1) / 24));
+  const span = Math.min(1, Math.max(0, (Number(r.lv) - 1) / (TOP_LV - 1)));
   el.style.setProperty('--sweep-angle', `${Math.round(96 + span * 36)}deg`);
   el.style.setProperty('--sweep-path', `${(62 + span * 30).toFixed(1)}%`);
   el.style.setProperty('--sweep-dur', `${(7.6 - span * 3.2).toFixed(2)}s`);
   el.style.setProperty('--sweep-wait', `${(-span * 3.4).toFixed(2)}s`);
   el.style.setProperty('--sweep-op', (0.34 + span * 0.36).toFixed(2));
-  /* Below the holographic line the light in the room is white; from Lv 15 up it
-     picks up the tier's own colour, because those are the cards that have one. */
+  /* Below the holographic line the light in the room is white; from BANNER_LV up
+     it picks up the tier's own colour, because those are the cards that have one. */
   el.style.setProperty('--sweep-tint', r.lv >= BANNER_LV ? r.glow : '#ffffff');
   return el;
 }
@@ -267,10 +267,10 @@ export function rarityChip(lv, { rate = false } = {}) {
  * gacha that hides its table is not a game — it is a slot machine with artwork.
  *
  * The last row is the one card with no weight at all, and it stays on the table
- * for exactly that reason: the set has twenty-five tiers, and a list that quietly
+ * for exactly that reason: the set has sixteen plates, and a list that quietly
  * omits the one you cannot roll is a list with a hole in it. Rows are coloured
  * from the same table the roll reads, but they do not wear the tiers' rings — the
- * table is for reading, and twenty-five animated rows is a fan.
+ * table is for reading, and sixteen animated rows is a fan.
  */
 export function dropTable() {
   return h(
@@ -561,7 +561,7 @@ export function showcase(card) {
   return el;
 }
 
-/** The full-set strip, twenty-five deep: the binder's legend, and the tester's preview row. */
+/** The full-set strip, sixteen plates: the binder's legend, and the tester's preview row. */
 export function rarityLegend(onPick) {
   return h(
     'div.g-legend',

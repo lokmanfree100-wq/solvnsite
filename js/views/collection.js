@@ -39,7 +39,7 @@ import {
   rarityLegend, tierStrip, closeGachaFlow,
 } from '../components/gacha.js';
 
-/* Seven shelves is enough to find a card in a binder that spans twenty-five
+/* Seven shelves is enough to find a card in a binder that spans fifteen
    tiers; a chip per tier would be a colour test, not a filter. Live cards get
    their own shelf because the line that makes one is a Power number, not a
    tier. */
@@ -109,7 +109,7 @@ export async function CollectionView(ctx) {
   const modeBar = h('div.rowline.wrap.g-modebar', { role: 'group', 'aria-label': t('Binder views') });
   const stage = h('div.g-stage-wrap');
   const shelfBar = h('div.filter-bar', { role: 'group', 'aria-label': t('Binder shelves') });
-  /* The compendium navigates by a checklist rather than a filter rail: twenty-five
+  /* The compendium navigates by a checklist rather than a filter rail: sixteen
      rows with a count each do not fit a sticky strip, and a tier is a page of
      tiles rather than a filter over one. */
   const setBar = h('div.g-setbar');
@@ -393,7 +393,7 @@ export async function CollectionView(ctx) {
       card.mediaTitle
         ? h('p.muted', {}, `${card.mediaTitle}${card.mediaYear ? ` (${card.mediaYear})` : ''}`)
         : card.ultimate
-          ? h('p.muted', {}, t('The platform itself — held by every binder that has finished all twenty-four tiers.'))
+          ? h('p.muted', {}, t('The platform itself — held by every binder that has finished all fifteen tiers.'))
           : null,
       h(
         'p.g-show-serial',
@@ -417,7 +417,7 @@ export async function CollectionView(ctx) {
       card.ultimate
         ? h('p.muted.g-show-top', {}, icon('crown'), t('Exclusive: nothing fuses into this and nothing fuses it away.'))
         : isTop
-          ? h('p.muted.g-show-top', {}, t('This is the top rollable tier — nothing fuses past GODLIKE, and one card sits above it.'))
+          ? h('p.muted.g-show-top', {}, t('This is the top rollable tier — nothing fuses past it, and one card sits above it.'))
           : null,
       owned && canMerge(owned) ? h('p.g-show-ready', {}, icon('sparkles'), t('Ready to fuse.')) : null,
       h('div.rowline.g-show-actions', {}, ...actions),
@@ -635,7 +635,7 @@ export async function CollectionView(ctx) {
       body = h(
         'div.stack',
         {},
-        h('p.muted', {}, t('All twenty-four tiers are in the binder, which is the only way in. This is what that earns.') ),
+        h('p.muted', {}, t('All fifteen tiers are in the binder, which is the only way in. This is what that earns.') ),
         h(
           'button.btn.btn--primary',
           { type: 'button', onclick: () => claimPrize() },
@@ -787,7 +787,7 @@ export async function CollectionView(ctx) {
         },
       },
       icon(oddsOpen ? 'chevronUp' : 'chevronDown'),
-      h('span', {}, oddsOpen ? t('Hide the table') : t('Show all twenty-five')),
+      h('span', {}, oddsOpen ? t('Hide the table') : t('Show every tier')),
     );
     odds.replaceChildren(
       h(
@@ -807,7 +807,7 @@ export async function CollectionView(ctx) {
             : h(
                 'div.g-odds-brief',
                 {},
-                ...[1, 6, 11, 15, 20, 24].map((lv) => rarityChip(lv, { rate: true })),
+                ...[1, 4, 7, 10, 13, 15].map((lv) => rarityChip(lv, { rate: true })),
               ),
         ),
       ),
@@ -916,7 +916,7 @@ export async function CollectionView(ctx) {
                 },
               },
               icon('sparkles'),
-              t('Preview a GODLIKE reveal'),
+              t('Preview a Rainbow Holo reveal'),
             ),
             h(
               'button.btn.btn--sm',

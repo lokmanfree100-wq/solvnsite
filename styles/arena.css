@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Arena — three cards a side, and the replay of a fight already decided.
+   Arena — two cards a side, and the replay of a fight already decided.
 
    Everything that moves here moves with transform or opacity, and only while a
    match is playing. A fight page that costs frames is the one thing this site must
@@ -531,7 +531,7 @@
 }
 
 /* ---- the stage ---------------------------------------------------------
-   Two lines of three, facing each other across a field the sparks are drawn on.
+   Two lines of two, facing each other across a field the sparks are drawn on.
    The field is a sibling rather than a parent so a card can keep its own stacking
    context — a spark that sits *behind* the tile it hit reads as an impact.
    ------------------------------------------------------------------------ */
@@ -548,6 +548,7 @@
   animation: fade-in var(--t-med) var(--ease);
 }
 .ar-stage {
+  position: relative;
   width: min(900px, 100%);
   max-height: min(88dvh, 760px);
   overflow-y: auto;
@@ -569,10 +570,28 @@
 }
 
 .ar-stage-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: var(--sp-3);
+}
+/* The match clock. It counts the turns the engine spent, not wall time, so the
+   number under it is the same on both screens at every strike. */
+.ar-clock {
+  padding: 4px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 62px;
+  text-align: center;
+}
+.ar-clock.is-out {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
 }
 .ar-stage-side {
   display: flex;
@@ -611,6 +630,116 @@
   height: 19px;
 }
 
+/* ---- the pre-battle page ----------------------------------------------
+   Two faces, one line each, and a button. It covers the board rather than sitting
+   above it, so lifting it is the only way to the fight and the first frame is
+   never a half-drawn stage. */
+.ar-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  overflow-y: auto;
+  border-radius: var(--r-xl);
+  background: linear-gradient(180deg, rgba(8, 9, 10, 0.94), rgba(8, 9, 10, 0.985));
+  animation: fade-in 220ms var(--ease);
+}
+.ar-intro-kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.ar-intro-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-5);
+  width: 100%;
+}
+.ar-intro-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.ar-intro-side.is-right {
+  align-items: flex-end;
+  text-align: end;
+}
+.ar-intro-card {
+  width: min(150px, 32vw);
+}
+.ar-intro-names {
+  display: flex;
+  flex-direction: column;
+}
+.ar-intro-names b {
+  font-size: 14px;
+  font-weight: 650;
+}
+.ar-intro-names span {
+  font-size: 11.5px;
+}
+.ar-ability {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-pill);
+  background: var(--accent-wash);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 650;
+}
+.ar-ability svg {
+  width: 12px;
+  height: 12px;
+}
+.ar-taunt {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 13.5px;
+  line-height: 1.55;
+  font-style: italic;
+  color: var(--text-dim);
+  animation: fade-in 460ms var(--ease) both;
+}
+.ar-intro-vs {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-pill);
+  background: var(--accent-wash);
+  color: var(--accent-text);
+}
+.ar-intro-vs svg {
+  width: 20px;
+  height: 20px;
+}
+.ar-intro-go {
+  min-height: 44px;
+  animation: fade-in 500ms 260ms var(--ease) both;
+}
+.ar-record-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
 .ar-board {
   position: relative;
   display: grid;
@@ -642,10 +771,6 @@
 .ar-line > .ar-fighter:nth-child(2) {
   opacity: 0.72;
   transform: scale(0.9);
-}
-.ar-line > .ar-fighter:nth-child(3) {
-  opacity: 0.5;
-  transform: scale(0.82);
 }
 
 .ar-fighter {
@@ -804,6 +929,12 @@
 .ar-log > .ar-call.is-down {
   color: var(--text-faint);
 }
+.ar-log > .ar-call.is-ability {
+  color: var(--text);
+}
+.ar-log > .ar-call.is-ability svg {
+  color: var(--accent-bright);
+}
 
 .ar-hint {
   display: flex;
@@ -869,6 +1000,27 @@
   }
   .ar-line:last-child .ar-fighter.is-lunge > .ar-fighter-card {
     animation-name: ar-lunge-r;
+  }
+  .ar-stage-head {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+  .ar-clock {
+    grid-column: 1 / -1;
+    justify-self: center;
+  }
+  .ar-intro {
+    padding: var(--sp-4);
+  }
+  .ar-intro-body {
+    gap: var(--sp-3);
+  }
+  .ar-intro-vs {
+    width: 38px;
+    height: 38px;
+  }
+  .ar-taunt {
+    font-size: 12.5px;
+    max-width: 22ch;
   }
 }
 

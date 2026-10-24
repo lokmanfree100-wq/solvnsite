@@ -11,7 +11,7 @@ import { logoMark } from '../lib/brand.js';
 import { accountChip } from './account.js';
 import { inboxState, inboxUsable, subscribeInbox } from '../lib/dms.js';
 import { tradeUsable } from '../lib/trades.js';
-import { duelsUsable, fortuneUsable } from '../lib/account.js';
+import { duelsUsable, fortuneUsable, isStaff } from '../lib/account.js';
 import { mountLiveSearch, disposeLiveSearch } from './searchlive.js';
 import { noticeBell, disposeBell } from './notices.js';
 
@@ -201,6 +201,7 @@ function randomButton() {
    hanging over the page it just opened. */
 function moreSheet() {
   const { path, query } = parse();
+  const staff = isStaff();
   const row = (api, { href, iconName, label, on }) =>
     h(
       `a.more-row${on ? '.is-active' : ''}`,
@@ -251,6 +252,7 @@ function moreSheet() {
         group(t('Account'), [
           row(api, { href: '/profile', iconName: 'user', label: t('Profile'), on: path.startsWith('/profile') }),
           row(api, { href: '/settings', iconName: 'settings', label: t('Settings'), on: onPath('/settings') }),
+          staff ? row(api, { href: '/admin', iconName: 'lock', label: t('Admin'), on: onPath('/admin') }) : null,
         ]),
       );
     },
@@ -299,6 +301,9 @@ export function renderNav() {
   const { path, query } = parse();
   const tab = tabFor(path);
   const onLibrary = path === '/library';
+  /* The admin page is linked only while a staff session is open. The gate
+     itself is the server's; this just keeps a dead door off everybody's rail. */
+  const staff = isStaff();
 
   /* A route change throws the top bar away, so drop the menu handle with it. */
   closeLangMenu = null;
@@ -389,6 +394,7 @@ export function renderNav() {
     fortuneUsable() ? sideLink({ label: t('Fortune wheel'), path: '/spin', iconName: 'star', active: path === '/spin' }) : null,
     sideLink({ label: t('Profile'), path: '/profile', iconName: 'user', active: path.startsWith('/profile') }),
     sideLink({ label: t('Settings'), path: '/settings', iconName: 'settings', active: path === '/settings' }),
+    staff ? sideLink({ label: t('Admin'), path: '/admin', iconName: 'lock', active: path === '/admin' }) : null,
     h('div.side-foot', {}, t('Free HD anime streaming.'), h('br'), t('Solvn does not store files on its own servers.')),
   );
 
