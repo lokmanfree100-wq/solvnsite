@@ -21,7 +21,7 @@
 
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
-import { collectors, rankedBoard, shownName } from '../lib/account.js';
+import { collectors, duelsUsable, rankedBoard, shownName } from '../lib/account.js';
 import { displayCard, ULTIMATE_POWER } from '../lib/cards.js';
 import { avatar, divisionChip, titleChip } from '../components/account.js';
 import { gachaCard, rarityChip } from '../components/gacha.js';
@@ -50,7 +50,10 @@ export function LeaderboardView() {
 
   const skeleton = () => h('li', {}, h('div.skel-row'));
 
+  /* Duels are settled by the server, so a static copy has no ranked rows to
+     print — the tab is left out rather than opening an empty board. */
   function paintHead() {
+    if (tab === 'ranked' && !duelsUsable()) tab = 'collectors';
     const ranked = tab === 'ranked';
     head.replaceChildren(
       h('div.eyebrow', {}, ranked ? t('RANKED') : t('LEADERBOARD')),
@@ -64,7 +67,7 @@ export function LeaderboardView() {
         : h('div.rowline', { style: { marginTop: 'var(--sp-4)' } },
             h('a.btn.btn--sm', { href: '#/packs' }, icon('sparkles'), h('span', {}, t('Card binder')))),
     );
-    tabs.replaceChildren(...TABS.map(([key, label, hint]) =>
+    tabs.replaceChildren(...TABS.filter(([key]) => key !== 'ranked' || duelsUsable()).map(([key, label, hint]) =>
       h(
         `button.chip${tab === key ? '.is-active' : ''}`,
         {

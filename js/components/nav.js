@@ -139,6 +139,7 @@ function inboxLink(active) {
     `a.side-link${active ? '.is-active' : ''}`,
     {
       href: '#/messages',
+      title: t('Friends and private chats'),
       'aria-current': active ? 'page' : null,
       ref: (el) => {
         badge = el.querySelector('.count');
@@ -241,7 +242,7 @@ function moreSheet() {
             : null,
           duelsUsable() ? row(api, { href: '/arena', iconName: 'bolt', label: t('Arena'), on: onPath('/arena') }) : null,
           inboxUsable()
-            ? row(api, { href: '/messages', iconName: 'chat', label: t('Messages'), on: onPath('/messages') })
+            ? row(api, { href: '/messages', iconName: 'chat', label: t('Messages & friends'), on: onPath('/messages') })
             : null,
           tradeUsable()
             ? row(api, { href: '/trades', iconName: 'swap', label: t('Trades'), on: onPath('/trades') })

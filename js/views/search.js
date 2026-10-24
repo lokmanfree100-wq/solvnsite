@@ -7,7 +7,7 @@ import { recentSearches, pushQuery, clearQueries, settings } from '../lib/store.
 import { title, formatLabel, yearOf, compactNumber, debounce } from '../lib/util.js';
 import { mediaCard, loadingGrid, emptyState } from '../components/media.js';
 import { avatar, titleChip } from '../components/account.js';
-import { searchMembers, shownName, staticHost } from '../lib/account.js';
+import { searchMembers, shownName } from '../lib/account.js';
 import { toast } from '../lib/ui.js';
 import { t } from '../lib/i18n.js';
 
@@ -140,7 +140,7 @@ export async function SearchView() {
     members.classList.add('hide');
     members.replaceChildren();
     const term = (q || '').trim();
-    if (term.length < 2 || staticHost()) return;
+    if (term.length < 2) return;
     let list;
     try {
       list = (await searchMembers(term)).users || [];

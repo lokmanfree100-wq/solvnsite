@@ -14,6 +14,7 @@ import {
   requestPasswordReset,
   updatePassword,
 } from './cloud.js';
+import { deviceApi } from './device.js';
 
 const listeners = [];
 let lastPush = '';
@@ -110,17 +111,43 @@ export class ApiError extends Error {
    out" instead of knocking on a server it does not use. Everything that writes
    waits for `cloudActive()`, because a token has to be behind it. */
 const AUTH_ROUTE = /^account\/(signup|login|logout)$/;
+/* The account fields a verified Supabase project owns. On a static copy every
+   other route is answered by `lib/device.js`, so friends and messages still
+   work even when the member signed in through the cloud. */
+const CLOUD_OWN = /^account\/(me|avatar|stats|cards)$|^favourite$/;
+
+const wrapCloud = async (path, opts) => {
+  try {
+    return await cloudApi(path, opts);
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError(err?.status || 0, err?.message || 'Something went wrong. Try again.', err?.code);
+  }
+};
+
+const wrapDevice = async (path, opts) => {
+  try {
+    return await deviceApi(path, opts, state.status === 'signedin' ? state.user : null, !authReady());
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError(err?.status || 0, err?.message || 'Something went wrong. Try again.', err?.code);
+  }
+};
 
 async function api(path, { method = 'GET', body } = {}) {
-  const authOnly = authReady() && (AUTH_ROUTE.test(path) || path === 'account/me');
-  if (cloudActive() || authOnly) {
-    try {
-      return await cloudApi(path, { method, body });
-    } catch (err) {
-      if (err instanceof ApiError) throw err;
-      throw new ApiError(err?.status || 0, err?.message || 'Something went wrong. Try again.', err?.code);
+  const opts = { method, body };
+  /* Without a server the browser is the backend. A verified cloud project still
+     keeps the account fields it owns, but the social pages beside them belong to
+     this device — a folder on a plain host has no other place to keep a chat. */
+  if (staticHost()) {
+    const route = path.split('?')[0];
+    if ((cloudActive() && CLOUD_OWN.test(route)) || (authReady() && AUTH_ROUTE.test(route))) {
+      return wrapCloud(path, opts);
     }
+    return wrapDevice(path, opts);
   }
+  const authOnly = authReady() && (AUTH_ROUTE.test(path) || path === 'account/me');
+  if (cloudActive() || authOnly) return wrapCloud(path, opts);
   let res;
   try {
     res = await fetch(`/api/${path}`, {
@@ -180,6 +207,16 @@ export async function restore() {
   try {
     applySession(await api('account/me'));
   } catch (err) {
+    /* The first request is also how a hand-uploaded copy discovers it has no
+       server: the host answered with the page itself. That flips `staticHost`,
+       so ask once more — this time the device backend answers — instead of
+       leaving a member with a saved device session signed out. */
+    if (staticHost()) {
+      try {
+        applySession(await api('account/me'));
+        return state;
+      } catch { /* fall through to the honest signed-out state */ }
+    }
     set({ status: err.status === 0 ? 'offline' : 'signedout', user: null });
   }
   return state;
@@ -229,11 +266,12 @@ export async function setNewPassword(password) {
  * Can this copy sign anybody in at all?
  *
  * `staticHost()` means "no Node server behind these files", which used to be
- * the same thing as "no accounts". A verified Supabase project breaks that
- * equation: sign-up, sign-in and reset are answered by the project itself, from
- * the browser, so a folder on any plain host can have real members.
+ * the same thing as "no accounts". Two things broke that equation: a verified
+ * Supabase project answers sign-up and sign-in from the browser, and without
+ * one `lib/device.js` keeps the accounts itself. Either way the sheet can sign
+ * somebody in, so the answer is always yes.
  */
-export const authUsable = () => authReady() || !staticHost();
+export const authUsable = () => true;
 
 export async function logout() {
   try {
@@ -515,11 +553,12 @@ export const removeComment = (id) => api(`comments/${id}`, { method: 'DELETE' })
 const serverBacked = () => !staticHost();
 
 /* ---- private messages -------------------------------------------------
-   Inboxes sit in this server's file, exactly like comments: a Supabase project
-   holds profiles, not chats. So one flag decides whether the whole feature is
-   on screen at all — a Messages link that can only ever fail is worse than no
-   Messages link, and the pages ask it instead of guessing from two others. */
-export const messagesUsable = () => serverBacked();
+   On a served copy a chat lives in the server's file; on a static copy it lives
+   in this browser (see `lib/device.js`). Either way there is a real place to put
+   a line, so the page and its links are offered. What is *not* offered is the
+   server-only half of the community — deals, duels, the wheel, rooms and the
+   bell — which still asks `serverBacked()` below. */
+export const messagesUsable = () => true;
 export const inboxThreads = () => api('dms');
 export const messageThread = (withId) => api(`dms/thread?with=${encodeURIComponent(withId)}`);
 export const sendMessage = ({ to, text }) => api('dms', { method: 'POST', body: { to, text } });
@@ -599,7 +638,7 @@ export const clearNotices = () => api('notices/clear', { method: 'POST', body: {
  * drop the socket instead of leaving a tab that nobody is looking at.
  */
 export function followComments({ media, ep, onComment, onRemove, onError }) {
-  if (cloudActive()) return () => {};
+  if (staticHost() || cloudActive()) return () => {};
   const source = new EventSource(`/api/comments/stream?media=${media}&ep=${ep}`);
   source.addEventListener('comment', (e) => {
     try {
@@ -625,7 +664,10 @@ export function followComments({ media, ep, onComment, onRemove, onError }) {
  * forever. Returns a closer like the comment feed does.
  */
 export function followInbox({ onMessage, onRemove, onSeen, onTrade, onNotice, onDuel, onFriend, onError }) {
-  if (cloudActive() || !isSignedIn()) return () => {};
+  /* The device inbox has no socket: every write happens in this tab, and the
+     page that made it already knows. A feed opened against a static host would
+     only retry a route that does not exist. */
+  if (staticHost() || cloudActive() || !isSignedIn()) return () => {};
   const source = new EventSource('/api/dms/inbox');
   const read = (e, fn) => {
     try {
@@ -663,7 +705,7 @@ export function followInbox({ onMessage, onRemove, onSeen, onTrade, onNotice, on
  * second read.
  */
 export function followRoom({ id, onRoom, onSync, onStart, onHost, onMsg, onClosed, onError }) {
-  if (cloudActive() || !isSignedIn()) return () => {};
+  if (staticHost() || cloudActive() || !isSignedIn()) return () => {};
   const source = new EventSource(`/api/rooms/stream?id=${encodeURIComponent(id)}`);
   const read = (e, fn) => {
     try {

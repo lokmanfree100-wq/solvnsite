@@ -17,6 +17,7 @@
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
+import { duelsUsable, fortuneUsable } from '../lib/account.js';
 import { MAX_LEVEL, collectQuests, levelFromXp, levelReward, levelState, questRows, xpAtLevel } from '../lib/level.js';
 import { BANNER_FREE, BANNER_THEMES, badgeById, bannerLevel } from '../lib/ranks.js';
 import { nextResetAt, quota } from '../lib/cards.js';
@@ -168,6 +169,14 @@ function payLadder(level) {
    a row that filled while you were watching something else should be collectable
    the second you look at it, and a reward that pays itself in the background is
    one nobody saw. */
+
+/* A quest can only read a page this copy actually has. The wheel and the arena
+   are settled by the Node server, so on a static deploy their rows would sit at
+   0 of 1 forever; they are left off the list rather than shown as an unreachable
+   promise. The ledger is untouched — a row that comes back has its old day. */
+const questHere = (r) =>
+  r.stat === 'spin' ? fortuneUsable() : r.stat === 'duel' || r.stat === 'win' ? duelsUsable() : true;
+
 function questRow(r) {
   return h(
     `div.lv-quest${r.claimed ? '.is-banked' : r.done ? '.is-ready' : ''}`,
@@ -192,7 +201,7 @@ export function levelSheet({ onDone = null } = {}) {
 
   function paint() {
     const figures = questFigures();
-    const rows = questRows(figures);
+    const rows = questRows(figures).filter(questHere);
     const ready = rows.filter((r) => r.done && !r.claimed);
     const st = levelState();
 
@@ -228,7 +237,9 @@ export function levelSheet({ onDone = null } = {}) {
       h('div.lv-quests', {}, ...rows.map(questRow)),
       h('div.lv-questfoot', {},
         collect,
-        h('p.lv-note', {}, t('The day turns at 04:00, the same hour the packs and the wheel use.')),
+        h('p.lv-note', {}, duelsUsable()
+          ? t('The day turns at 04:00, the same hour the packs and the wheel use.')
+          : t('The day turns at 04:00, the same hour the packs use.')),
       ),
 
       h('h3.lv-h2', {}, icon('trending'), t('What the next levels pay')),
@@ -239,7 +250,9 @@ export function levelSheet({ onDone = null } = {}) {
   paint();
   return sheet({
     heading: t('Level ladder'),
-    sub: t('XP comes from packs, quests, the wheel and duels — and every level pays out.'),
+    sub: duelsUsable()
+      ? t('XP comes from packs, quests, the wheel and duels — and every level pays out.')
+      : t('XP comes from packs and quests — and every level pays out.'),
     width: 540,
     render: () => body,
   });

@@ -14,7 +14,6 @@ import {
   likePlaylist,
   account,
   isSignedIn,
-  staticHost,
 } from '../lib/account.js';
 import { authSheet } from './account.js';
 import { listEntries, favouriteEntries, continueWatching } from '../lib/store.js';
@@ -392,8 +391,6 @@ export function editPlaylistSheet(p, { onSaved } = {}) {
 
 /** The button every anime page carries — put this title into a list. */
 export function addToPlaylistButton(media) {
-  /* Lists live on the server, so a static copy would only offer a dead button. */
-  if (staticHost()) return null;
   const item = toApiItem(media);
   return h(
     'button.btn',

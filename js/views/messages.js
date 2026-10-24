@@ -31,30 +31,15 @@ import {
   searchMembers,
   sendMessage,
   shownName,
+  staticHost,
 } from '../lib/account.js';
-import { inboxState, inboxUsable, markRead, pairKey, refreshInbox, startInbox, subscribeInbox } from '../lib/dms.js';
+import { inboxState, markRead, pairKey, refreshInbox, startInbox, subscribeInbox } from '../lib/dms.js';
 import { avatar, authSheet, say, titleChip } from '../components/account.js';
 import { emptyState } from '../components/media.js';
 
 const MAX = 500;
 
 export function MessagesView({ route, onCleanup }) {
-  /* A folder on a plain host, or a Supabase project, has nowhere to put a
-     message. Say so once, in the place the link would have been, and hand the
-     viewer back to the rest of the site rather than to a form that cannot post. */
-  if (!inboxUsable()) {
-    return h(
-      'div.messages',
-      {},
-      emptyState({
-        iconName: 'offline',
-        heading: t('Messages need a Solvn server'),
-        body: t('Private chats are stored by the server that runs this site, which this copy does not have.'),
-        action: h('a.btn.btn--primary', { href: '#/' }, icon('home'), h('span', {}, t('Back to home'))),
-      }),
-    );
-  }
-
   const me = () => currentUser();
   const withId = route.query.with || null;
 
@@ -71,7 +56,7 @@ export function MessagesView({ route, onCleanup }) {
       h('h1.display', {}, t('Messages')),
       h(
         'button.btn.btn--sm',
-        { type: 'button', onclick: () => newChatSheet(openWith) },
+        { type: 'button', onclick: () => newChatSheet(openWith, paintFriends) },
         icon('plus'),
         h('span', {}, t('New chat')),
       ),
@@ -213,7 +198,7 @@ export function MessagesView({ route, onCleanup }) {
 
     const add = h(
       'button.btn.btn--sm',
-      { type: 'button', onclick: () => newChatSheet(openWith) },
+      { type: 'button', onclick: () => newChatSheet(openWith, paintFriends) },
       icon('plus'),
       h('span', {}, t('Add friend')),
     );
@@ -411,8 +396,9 @@ export function MessagesView({ route, onCleanup }) {
       addLine(data.message);
       stick();
       /* The row in the list needs its new last line. The socket brings it for a
-         pair already listed; a first message has no row yet, so ask for one. */
-      if (!inboxState().threads.some((row) => row.with?.id === withId)) await refreshInbox();
+         pair already listed; without one (a static copy) and for a first
+         message, ask for the list. */
+      if (staticHost() || !inboxState().threads.some((row) => row.with?.id === withId)) await refreshInbox();
     } catch (err) {
       toast(say(err), { tone: 'err', iconName: 'alert' });
     } finally {
@@ -516,7 +502,7 @@ export function MessagesView({ route, onCleanup }) {
    a friend is made: the button says "Add friend", "Requested", "Accept" or
    "Friends" and does exactly that. The state is read once on open and then kept
    in `states`, so pressing one row does not re-ask the server about the others. */
-function newChatSheet(openWith) {
+function newChatSheet(openWith, onChanged) {
   const field = h('input.input', {
     type: 'search',
     placeholder: t('Name or user ID…'),
@@ -550,6 +536,9 @@ function newChatSheet(openWith) {
           states.set(u.id, data.state === 'friend' ? 'friend' : data.state || 'out');
           btn.textContent = verb();
           btn.classList.toggle('is-done', states.get(u.id) === 'friend');
+          /* Without a socket the panel behind the sheet would not hear the new
+             friend until the page was reloaded. */
+          onChanged?.();
         } catch (err) {
           toast(say(err), { tone: 'err', iconName: 'alert' });
         } finally {

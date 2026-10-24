@@ -12,7 +12,6 @@ import { sheet, toast } from '../lib/ui.js';
 import { go } from '../lib/router.js';
 import {
   account,
-  authUsable,
   forgotPassword,
   isSignedIn,
   login,
@@ -20,6 +19,7 @@ import {
   setNewPassword,
   shownName,
   signup,
+  staticHost,
 } from '../lib/account.js';
 import { authReady, googleReady, googleSignInUrl } from '../lib/cloud.js';
 import { divisionOf, titleById, titleUnlocked } from '../lib/ranks.js';
@@ -221,6 +221,7 @@ function field(key, props) {
 /** The first thing a new member sees — the site speaking to them by name. */
 export function welcomeSheet(user) {
   const name = shownName(user) || t('friend');
+  const localOnly = staticHost() && !authReady();
   const api = sheet({
     heading: t('Welcome to Solvn'),
     width: 460,
@@ -230,7 +231,9 @@ export function welcomeSheet(user) {
         {},
         avatar(user, { size: 'lg' }),
         h('h3.welcome-title', {}, t('Welcome to Solvn, {name}! Enjoy streaming.', { name })),
-        h('p.faint', {}, t('Your name, your picture and your lists now follow your account.')),
+        h('p.faint', {}, localOnly
+          ? t('Your name, your picture and your lists are saved on this browser.')
+          : t('Your name, your picture and your lists now follow your account.')),
         h(
           'div.auth-foot',
           {},
@@ -530,11 +533,20 @@ export function authSheet(mode = 'login', { welcome = false } = {}) {
     signup: welcome ? t('Welcome to Solvn') : t('Create your account'),
     forgot: t('Reset your password'),
   };
+  /* Without a cloud project the account lives in this browser, and the sheet
+     says so rather than promising it will follow the member to another device. */
+  const localOnly = staticHost() && !authReady();
   const subs = {
-    login: t('An account keeps your name, your picture, your favourite anime and your lists in one place.'),
-    signup: welcome
-      ? t('You can watch without one — but signing up keeps your name, your picture and your lists waiting for you on any device.')
+    login: localOnly
+      ? t('This copy keeps accounts in this browser — signing in brings back the name, picture and lists saved here.')
       : t('An account keeps your name, your picture, your favourite anime and your lists in one place.'),
+    signup: welcome
+      ? localOnly
+        ? t('You can watch without one — but an account keeps your name, your picture and your lists on this browser.')
+        : t('You can watch without one — but signing up keeps your name, your picture and your lists waiting for you on any device.')
+      : localOnly
+        ? t('This copy keeps accounts in this browser, so your name, picture and lists stay on this device.')
+        : t('An account keeps your name, your picture, your favourite anime and your lists in one place.'),
     forgot: t('Tell us the email you signed up with and we send a link that lets you choose a new password.'),
   };
 
@@ -551,11 +563,10 @@ export function authSheet(mode = 'login', { welcome = false } = {}) {
 /* ---- the first visit --------------------------------------------------
    One automatic ask per device, after the startup intro has lifted. Every
    condition is a reason not to interrupt: an account already held, a "Continue
-   as Guest" already chosen, an ask already made, or no server and no connected
-   Supabase project to answer a sign-up — in which case the sheet would only be
-   full of buttons that cannot work. */
+   as Guest" already chosen, or an ask already made. The sheet can always create
+   one — `lib/device.js` answers when there is no server to ask. */
 export function askAboutAccount() {
-  if (wasAsked() || isGuest() || !authUsable() || isSignedIn()) return;
+  if (wasAsked() || isGuest() || isSignedIn()) return;
   markAsked();
   authSheet('signup', { welcome: true });
 }
@@ -610,17 +621,6 @@ function accountMenu(user) {
 /* ---- the thing in the top bar --------------------------------------- */
 export function accountChip() {
   const { status, user } = account();
-  /* No server and no connected Supabase project: there is no session to show or
-     create, and a "Sign in" button that can only fail is worse than no button.
-     The chip links to the history this device keeps instead. */
-  if (!authUsable()) {
-    return h(
-      'button.btn.btn--account',
-      { type: 'button', title: t('Profile'), 'aria-label': t('Profile'), onclick: () => go('/profile') },
-      icon('user'),
-      h('span.account-name', {}, t('Profile')),
-    );
-  }
   if (status === 'signedin' && user) {
     return h(
       'button.btn.btn--account',

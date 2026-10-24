@@ -16,7 +16,7 @@
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
-import { account, answerFriend, askFriend, authUsable, duelsUsable, fortuneUsable, isSignedIn, isStaff, publicProfile, patchMe, setAvatar, setBanner, setFavourite, setTitle, shownName, staticHost, tradesUsable } from '../lib/account.js';
+import { account, answerFriend, askFriend, authUsable, duelsUsable, fortuneUsable, isSignedIn, isStaff, publicProfile, patchMe, setAvatar, setBanner, setFavourite, setTitle, shownName, tradesUsable } from '../lib/account.js';
 import { intlDate } from '../lib/util.js';
 import { AVATAR_UPLOAD, BANNER_FREE, BANNER_KEYS, BANNER_UPLOAD, TITLES, avatarFromImageFile, bannerFromImageFile, bannerRows, titleUnlocked } from '../lib/ranks.js';
 import { search } from '../lib/anilist.js';
@@ -1186,7 +1186,7 @@ function favouriteCard(user, { canEdit, onChanged }) {
    pride should be is worse than no frame at all. */
 
 /** Pinning is a binder act, and the binder is one device's `storage` key. */
-const canPin = () => isSignedIn() && !staticHost();
+const canPin = () => isSignedIn();
 
 function showcaseRow(user, editable) {
   if (editable) {

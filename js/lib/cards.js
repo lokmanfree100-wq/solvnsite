@@ -36,7 +36,7 @@
  */
 
 import { storage } from './store.js';
-import { currentUser, isSignedIn, isStaff, pushCards, staticHost } from './account.js';
+import { currentUser, isSignedIn, isStaff, pushCards } from './account.js';
 import { roster } from './anilist.js';
 import { t } from './i18n.js';
 import { LOGO_SRC } from './brand.js';
@@ -1154,7 +1154,7 @@ let publishTimer = 0;
 
 /** Ship the summary now, and hand back what the server stored. */
 export function publish() {
-  if (!isSignedIn() || staticHost()) return Promise.resolve(null);
+  if (!isSignedIn()) return Promise.resolve(null);
   return pushCards(cardSummary());
 }
 

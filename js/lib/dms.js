@@ -8,9 +8,11 @@
  * person is what the server's `inbox:<id>` feed is for, and a second copy of it
  * would double every delivery.
  *
- * Like comments, this is a local-server feature. `messagesUsable()` says whether
- * the copy on screen has a place to store a message at all, and every entry
- * point asks it before offering one.
+ * `messagesUsable()` says whether the copy on screen has a place to store a
+ * message at all. A server keeps them in its file; a folder on a plain host
+ * keeps them in this browser through `lib/device.js`. There is no socket in the
+ * second case, so the pages refresh after their own writes and a line the other
+ * tab sent arrives on the next read.
  */
 
 import {
