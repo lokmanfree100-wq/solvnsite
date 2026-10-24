@@ -1,0 +1,340 @@
+/* Layout rework: editorial shapes for the Home rails and the Discover grid.
+   Owned by the layout pass; `components.css` still defines the cards themselves,
+   so nothing here restates a card — it only arranges them.
+
+   Three rules this file lives by:
+   - It never touches `.card`, `.card-art`, `.card-rank` or `.card-progress` as
+     things in themselves. It only says, via a wrapper class, where a card sits
+     and how wide the cell it landed in is. The hover lift, the tilt transform
+     and the poster ladder all stay exactly as `components.css` wrote them —
+     which is also why nothing here sets `transform` on a card.
+   - Every frame that gets art has a declared `aspect-ratio`, and the skeleton
+     painted before it declares the same one, so an image arriving late cannot
+     push the page around.
+   - Colour stays neutral: charcoal surfaces, hairline borders, grey text. The
+     the accent only ever arrives on hover, on focus or on a link — the same rule the
+     rest of the site follows. */
+
+/* ==========================================================================
+   Home — feature block: one large card, a stack of smaller ones beside it
+   ========================================================================== */
+
+.feature-wrap {
+  position: relative;
+}
+
+/* Phone and tablet: the two columns give up and everything settles into one
+   plain 2-up grid. `display: contents` hands the lead card and the stack back
+   to the outer grid as equals, which is the only arrangement that stays legible
+   under the app's own desktop line at 1000px. */
+.feature {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-6) var(--sp-4);
+  align-items: start;
+}
+.feature-lead,
+.feature-stack {
+  display: contents;
+}
+.feature-lead > .card,
+.feature-stack > .card {
+  inline-size: 100%;
+}
+
+@media (max-width: 699px) {
+  .feature {
+    gap: var(--sp-6) 10px;
+  }
+}
+
+/* Desktop — and desktop is where this app already draws the line, at 1000px,
+   where the side nav and the rail arrows appear. Five parts to the lead, seven
+   to the stack of six: the ratio at which the big poster and a 3x2 grid of small
+   ones finish at the same height, so neither column leaves a hole under the
+   other. */
+@media (min-width: 1000px) {
+  .feature {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--sp-5);
+  }
+  .feature-lead {
+    display: block;
+  }
+  .feature-stack {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-5) var(--sp-4);
+  }
+  .feature-lead .card-title {
+    font-size: 20px;
+  }
+  .feature-lead .card-meta {
+    font-size: 13px;
+  }
+  /* A rank numeral is sized for a poster rail. The same numeral next to a
+     400px lead poster would be small and next to a 200px stacked one would be
+     huge, so both ends come back to the scale of the card they belong to. */
+  .feature-lead .card-rank {
+    font-size: 76px;
+    padding-block-end: 14px;
+  }
+  .feature-stack .card-rank {
+    font-size: 38px;
+    -webkit-text-stroke-width: 1.5px;
+    margin-inline-end: -10px;
+    padding-block-end: 8px;
+  }
+  .feature-lead .card--rank .card-art,
+  .feature-stack .card--rank .card-art {
+    flex: 1 1 0;
+    inline-size: auto;
+    min-inline-size: 0;
+  }
+}
+
+/* The stack is not a wall of equal tiles: every other card sits a little lower,
+   so the block reads as cards laid down rather than rows printed out. */
+.feature-stack > :nth-child(even) {
+  margin-block-start: var(--sp-3);
+}
+
+/* ==========================================================================
+   Home — magazine split: one wide art card beside a short list of titled rows
+   ========================================================================== */
+
+.split-wrap {
+  position: relative;
+}
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+}
+@media (min-width: 1000px) {
+  .split {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: var(--sp-6);
+  }
+}
+
+.split-art .card {
+  inline-size: 100%;
+}
+/* Landscape art for the wide card — the banner the API already sends, cropped
+   into a declared frame. `.sk--wide` in the skeleton uses the same ratio. */
+.split-art .card-art {
+  aspect-ratio: 16 / 9;
+}
+@media (min-width: 1000px) {
+  .split-art .card-title {
+    font-size: 18px;
+  }
+  .split-art .card-meta {
+    font-size: 12.5px;
+  }
+}
+
+.split-list {
+  display: grid;
+  gap: var(--sp-2);
+}
+.split-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px 54px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-3);
+  min-block-size: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+  transition: background var(--t-fast), border-color var(--t-fast),
+    inset-inline-start var(--t-med) var(--ease);
+}
+.split-item.is-skeleton {
+  background: none;
+  border-color: transparent;
+}
+/* Gated to hover devices so a tapped row cannot stay lit on a phone, which is
+   how the rest of the site treats a hover affordance. */
+@media (hover: hover) {
+  .split-item:hover {
+    background: var(--surface-hover);
+    border-color: var(--line-strong);
+    /* Logical, so the row leans toward the reading direction, not toward the
+       right-hand side of the screen. */
+    inset-inline-start: 3px;
+  }
+  .split-item:hover .split-item-title {
+    color: var(--accent-text);
+  }
+}
+.split-num {
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+}
+.split-thumb {
+  position: relative;
+  inline-size: 54px;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: var(--r-xs);
+  background: var(--surface-3);
+}
+.split-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--t-slow) var(--ease);
+}
+.split-thumb img.is-loaded {
+  opacity: 1;
+}
+.split-thumb .card-ph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  opacity: 0.5;
+}
+.split-thumb .card-ph svg {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.split-copy {
+  min-inline-size: 0;
+}
+.split-item-title {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.28;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  transition: color var(--t-fast);
+}
+.split-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-block-start: 2px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.split-item-meta > span {
+  flex: none;
+}
+.split-dot {
+  inline-size: 2.5px;
+  block-size: 2.5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+/* ==========================================================================
+   Both blocks — a state (empty, or the error card) instead of an arrangement
+   ========================================================================== */
+
+.block-track.is-static {
+  display: block;
+}
+
+/* ==========================================================================
+   Discover — the same grid, cut asymmetrically
+   ========================================================================== */
+
+/* The nested grid `loadingGrid()` paints inside this one while a page is in
+   flight; left alone it would be squeezed into a single column. */
+.grid--staggered > .grid {
+  grid-column: 1 / -1;
+}
+
+/* Position decides shape, and the position never changes once a card is on the
+   page, so scrolling cannot re-cut the grid and "Load more" only ever adds rows
+   below the fold. Below 700px the grid has three narrow columns and every card
+   is the same — that is where an asymmetric cut reads as a broken row. */
+@media (min-width: 700px) {
+  .grid--staggered > .card.is-wide {
+    grid-column: span 2;
+  }
+  .grid--staggered > .card.is-wide .card-art {
+    aspect-ratio: 16 / 9;
+  }
+  .grid--staggered > .card.is-tall .card-art {
+    aspect-ratio: 3 / 5;
+  }
+  .grid--staggered > .card.is-wide .card-title {
+    font-size: 16px;
+  }
+}
+@media (min-width: 1100px) {
+  .grid--staggered > .card.is-wide .card-title {
+    font-size: 17px;
+  }
+  .grid--staggered > .card.is-wide .card-meta {
+    font-size: 12.5px;
+  }
+}
+
+/* ==========================================================================
+   Entrance — settled in place, never scrolled for
+   ========================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes layout-rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  /* Only the wrappers and the split rows move. A card owns its own transform
+     for the tilt, so animating a card directly would fight it. */
+  .feature-lead,
+  .feature-stack,
+  .split-art {
+    animation: layout-rise var(--t-slow) var(--ease) both;
+  }
+  .feature-stack {
+    animation-delay: 80ms;
+  }
+  .split-list .split-item:nth-child(1) {
+    animation: layout-rise var(--t-slow) var(--ease) 60ms both;
+  }
+  .split-list .split-item:nth-child(2) {
+    animation: layout-rise var(--t-slow) var(--ease) 120ms both;
+  }
+  .split-list .split-item:nth-child(3) {
+    animation: layout-rise var(--t-slow) var(--ease) 180ms both;
+  }
+  .split-list .split-item:nth-child(4) {
+    animation: layout-rise var(--t-slow) var(--ease) 240ms both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-lead,
+  .feature-stack,
+  .split-art,
+  .split-item {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

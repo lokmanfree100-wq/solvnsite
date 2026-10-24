@@ -1,0 +1,512 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+  /* The page sits in a faint violet field: two wide radial washes at single-
+     digit alpha, one off the top-right and one low on the left. Static, so it
+     never moves under the text, and light enough that the black still reads as
+     black. */
+  background:
+    radial-gradient(1100px 620px at 78% -10%, var(--ambient), transparent 62%),
+    radial-gradient(900px 760px at 6% 26%, var(--ambient-soft), transparent 66%),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+/* Icons are 24-unit viewBoxes with no intrinsic size, so without a default they
+   fill their container. Contextual rules override this. */
+svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* We ship our own clear button; suppress the native decorations that
+   would otherwise render a second one inside type="search" fields. */
+input[type='search']::-webkit-search-decoration,
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-results-button,
+input[type='search']::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.18;
+}
+
+p {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+  box-shadow: 0 0 0 4px var(--accent-wash);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* ---- scrollbars ------------------------------------------------------ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-3) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--r-pill);
+}
+@media (hover: hover) {
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--text-faint);
+    background-clip: content-box;
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- app shell ------------------------------------------------------- */
+.app-shell {
+  min-height: 100%;
+  display: grid;
+  grid-template-areas:
+    'top'
+    'view'
+    'foot'
+    'tabs';
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto auto;
+}
+
+.view {
+  grid-area: view;
+  width: 100%;
+  max-width: var(--page-max);
+  min-width: 0;
+  margin-inline: auto;
+  padding: 0 var(--gutter) var(--sp-6);
+  outline: none;
+}
+
+/* The footer closes every page, so it carries the clearance the fixed tab bar
+   used to take out of the view itself. */
+.site-foot {
+  grid-area: foot;
+  width: 100%;
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+  padding-bottom: calc(var(--tabbar-h) + var(--sp-3) + env(safe-area-inset-bottom) + var(--sp-5));
+}
+
+.skip-link {
+  position: absolute;
+  inset-inline-start: -9999px;
+  top: 0;
+  z-index: 999;
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  border-end-start-radius: var(--r-sm);
+}
+.skip-link:focus {
+  inset-inline-start: 0;
+}
+
+/* ---- startup intro ---------------------------------------------------
+   3.5 seconds on true black. The cat art fades up out of a slight
+   perspective tilt, settles into a slow float, takes one pass of light
+   across the frame, and then the veil lifts. The artwork already carries its
+   own eye-glow, so nothing here paints colour: the only light in this scene
+   is white. `pointer-events` stays off so a tap during the intro reaches the
+   page underneath, and app.js lifts the node out of the DOM when it ends. */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: var(--void);
+  animation: splash-veil 3.5s var(--ease) both;
+}
+.splash-mark {
+  display: grid;
+  place-items: center;
+  gap: var(--sp-5);
+}
+.splash-stage {
+  position: relative;
+  /* The frame is square and the art's own background is only almost black, so
+     a radial mask feathers its edges into the veil and no box outline shows. */
+  -webkit-mask-image: radial-gradient(closest-side, #000 56%, transparent 98%);
+  mask-image: radial-gradient(closest-side, #000 56%, transparent 98%);
+  animation: cat-rise 1.5s var(--ease) both;
+}
+.splash-cat {
+  width: clamp(190px, 36vmin, 330px);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  animation: cat-float 3.2s ease-in-out 1.2s infinite;
+  will-change: transform;
+}
+/* One cinematic light sweep, not a coloured gradient: a soft white band that
+   crosses the frame once and leaves. */
+.splash-stage::after {
+  content: '';
+  position: absolute;
+  inset: -18% -30%;
+  background: linear-gradient(
+    104deg,
+    transparent 34%,
+    rgba(255, 255, 255, 0.05) 44%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0.05) 56%,
+    transparent 66%
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: light-pass 1.5s ease-in-out 1.35s both;
+}
+.splash-word {
+  font-family: var(--font-display);
+  font-size: clamp(19px, 4.2vw, 30px);
+  font-weight: 800;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  text-transform: uppercase;
+  color: var(--text);
+  /* Tracking is the whole effect of a title settling, and this is one short
+     line inside a fixed overlay — the reflow is bounded and it never repeats. */
+  animation: word-land 1s var(--ease) 1.75s both;
+}
+.splash-sub {
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  animation: word-land 0.9s var(--ease) 2.1s both;
+}
+@keyframes splash-veil {
+  0%,
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes cat-rise {
+  from {
+    opacity: 0;
+    transform: perspective(900px) rotateX(9deg) scale(0.93);
+  }
+  55% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: perspective(900px) rotateX(0deg) scale(1);
+  }
+}
+@keyframes cat-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes light-pass {
+  from {
+    opacity: 0;
+    transform: translateX(-58%);
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(58%);
+  }
+}
+@keyframes word-land {
+  from {
+    opacity: 0;
+    letter-spacing: 0.62em;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* A startup flourish is exactly what asks to be skipped, so it is: the frame
+   appears already settled, the float and the sweep are dropped, and JS lifts
+   the node a beat later. */
+@media (prefers-reduced-motion: reduce) {
+  .splash {
+    animation: splash-veil 0.9s var(--ease) both;
+  }
+  .splash-stage,
+  .splash-cat,
+  .splash-stage::after,
+  .splash-word,
+  .splash-sub {
+    animation: none;
+  }
+  .splash-stage::after {
+    display: none;
+  }
+  .splash-word,
+  .splash-sub {
+    opacity: 1;
+  }
+}
+
+/* ---- typography helpers ---------------------------------------------- */
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+.eyebrow {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+.muted {
+  color: var(--text-dim);
+}
+.faint {
+  color: var(--text-faint);
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+.clamp-1,
+.clamp-2,
+.clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.clamp-1 {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+.clamp-2 {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.clamp-3 {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+/* ---- motion ---------------------------------------------------------- */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---- desktop layout -------------------------------------------------- */
+@media (min-width: 1000px) {
+  :root {
+    --gutter: 32px;
+    --tabbar-h: 0px;
+  }
+  .app-shell {
+    grid-template-areas:
+      'side top'
+      'side view'
+      'side foot';
+    grid-template-columns: var(--sidenav-w) minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+  }
+  .view {
+    padding-bottom: var(--sp-8);
+  }
+  .site-foot {
+    padding-bottom: var(--sp-7);
+  }
+  .tabbar {
+    display: none !important;
+  }
+}
+
+/* ---- Arabic / RTL ---------------------------------------------------- */
+/* Outfit and Inter ship no Arabic glyphs, so the stack switches wholesale
+   instead of letting the browser mix fonts mid-sentence. */
+html[dir='rtl'] {
+  --font-display: 'Cairo', 'Outfit', system-ui, sans-serif;
+  --font-body: 'Cairo', 'Inter', system-ui, sans-serif;
+}
+
+/* Arabic is cursive: any tracking, tight or wide, pulls the joined letters
+   apart and makes labels look broken. Numerals keep their own classes. */
+html[dir='rtl'] :is(
+  .display,
+  .eyebrow,
+  .hero-eyebrow,
+  .brand,
+  .side-title,
+  .suggest-head,
+  .set-group > h3,
+  .field > label,
+  .fact dt,
+  .stat .l,
+  .now-playing .np-1,
+  .page-head h1,
+  .hero-title,
+  .detail-title,
+  .card-title,
+  .section-head h2
+) {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html[dir='rtl'] body {
+  line-height: 1.75;
+}
+
+/* Chevrons, arrows and play heads point the wrong way in a right-to-left UI. */
+[dir='rtl'] .flip {
+  transform: scaleX(-1);
+}

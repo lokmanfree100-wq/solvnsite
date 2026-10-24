@@ -1,0 +1,82 @@
+/** Feature styles for theater. Loaded after layout.css, before mobile.css. */
+
+/* Theater mode / dim lights.
+   `html.theater` is set by watch.js while the watch page is mounted and removed
+   on cleanup, so nothing here can leak into another route. Only opacity changes
+   — never width, height or layout — so the player never reflows as the lights go
+   down. The chrome fades, the player column stays at full strength. */
+
+/* Transitions sit in the resting state, not under `html.theater`, so lifting the
+   class animates back up as well as down. `.topbar` already transitions its
+   border and fill on scroll; those are repeated here so adding opacity does not
+   silently drop them. */
+.topbar {
+  transition:
+    opacity var(--t-med) var(--ease),
+    border-color var(--t-med) var(--ease),
+    background var(--t-med) var(--ease);
+}
+.sidenav,
+.tabbar,
+.site-foot,
+.watch > :not(.player-shell) {
+  transition: opacity var(--t-med) var(--ease);
+}
+
+html.theater .topbar,
+html.theater .sidenav,
+html.theater .tabbar,
+html.theater .site-foot {
+  opacity: 0.28;
+}
+
+/* Everything on the watch page that is not the player recedes; the topbar,
+   sidenav and footer already dim above, and `.player-shell` is excluded here and
+   pinned at full strength below, so the eye lands on the frame. */
+html.theater .watch > :not(.player-shell) {
+  opacity: 0.42;
+}
+html.theater .player-shell {
+  opacity: 1;
+}
+
+/* The dimmed chrome still has to be usable — search, nav and the episode rail all
+   stay clickable — so it lifts back near-full on hover or keyboard focus instead of
+   staying unreadable. The watch content itself does not lift; it is the thing the
+   eye is meant to leave alone. */
+html.theater .topbar:hover,
+html.theater .topbar:focus-within,
+html.theater .sidenav:hover,
+html.theater .sidenav:focus-within,
+html.theater .tabbar:hover,
+html.theater .tabbar:focus-within {
+  opacity: 0.92;
+}
+
+/* The toggle reuses `.btn--sm.btn--icon` (32px) to match its neighbours in the
+   player bar. The hit target is grown to 44px with an invisible halo rather than
+   resizing the control, so the row stays visually even. */
+.theater-toggle {
+  position: relative;
+}
+.theater-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: var(--r-pill);
+}
+.theater-toggle[aria-pressed='true'] {
+  color: var(--accent-text);
+  background: var(--accent-wash);
+  border-color: var(--accent-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar,
+  .sidenav,
+  .tabbar,
+  .site-foot,
+  .watch > :not(.player-shell) {
+    transition-duration: 0ms;
+  }
+}

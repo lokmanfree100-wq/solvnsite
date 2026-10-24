@@ -1,0 +1,67 @@
+/** Feature styles for art. Loaded after layout.css, before mobile.css. */
+
+/* ---- artwork vibrancy -------------------------------------------------
+   Every slot on this page sits on near-black, and the catalogue's key art is
+   graded for a bright room, so a flat poster reads as a hole rather than as
+   artwork. A lift of a few percent on each channel puts the colour back
+   without crushing the blacks or banding the skies — past ~1.15 on any one of
+   them and skin goes orange and gradients start to posterise.
+
+   Applied to the <img> only. `filter` makes a containing block and a stacking
+   context, and the flags, score pills and play affordances are siblings of the
+   image inside `.card-art`, so filtering the frame would move them; filtering
+   the leaf cannot.
+
+   Deliberately untouched: `.hero-blur` and `.detail-backdrop img` already carry
+   a filter chain (a blur stage and a 42%-opacity wash behind headline text),
+   and `.ep-thumb`, `.split-thumb`, `.rank-art`, `.fav-art`, `.person-art`,
+   `.now-art`, `.pick-art` and `.up-next-art` are 46–132px frames where the
+   lift is invisible and the repaint is not. `image-rendering` is left alone:
+   these are illustrations downsampled from a larger source, where the default
+   smoothing is already the right answer. */
+
+.card-art img {
+  filter: saturate(1.08) contrast(1.05) brightness(1.03);
+}
+
+/* The hero stage and the three slots that render art at two densities or
+   larger get the stronger step: they bind the biggest sources, so there is
+   real detail to reveal rather than noise to exaggerate. */
+.hero-banner {
+  filter: saturate(1.1) contrast(1.06) brightness(1.04);
+}
+.hero-poster,
+.feature-lead .card-art img,
+.split-art .card-art img,
+.detail-poster .card-art img {
+  filter: saturate(1.12) contrast(1.06) brightness(1.04);
+}
+
+/* Text never sits on filtered art without its own scrim — `.hero-scrim` and
+   `.card-art::after` already darken exactly the bands the copy lands on, so
+   the lift below them stays legible. */
+@media (prefers-reduced-motion: no-preference) {
+  .card-art img {
+    /* `transition` replaces rather than adds, so the full list from
+       components.css is restated: dropping it would kill the fade-in. */
+    transition:
+      opacity var(--t-slow) var(--ease),
+      transform var(--t-slow) var(--ease),
+      filter var(--t-med) var(--ease);
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .card:hover .card-art img {
+    filter: saturate(1.14) contrast(1.08) brightness(1.05);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-art img {
+    /* The colour lift still applies, but it never animates: this is the same
+       list components.css gives the fade-in and the hover scale, minus the
+       `filter` line, so nothing else about a card's behaviour changes. */
+    transition:
+      opacity var(--t-slow) var(--ease),
+      transform var(--t-slow) var(--ease);
+  }
+}

@@ -1,0 +1,386 @@
+/* ==========================================================================
+   Mobile layer — loaded last on purpose.
+
+   Every rule here is scoped either to (pointer: coarse) or to a narrow
+   viewport, so the desktop stylesheet above stays authoritative and a phone
+   gets touch-sized targets without a resized desktop window.
+   ========================================================================== */
+
+/* ---- touch behaviour ---------------------------------------------------- */
+@media (pointer: coarse) {
+  body {
+    /* iOS repaints a background that is attached fixed on every scroll frame. */
+    background-attachment: scroll;
+  }
+
+  a,
+  button,
+  input,
+  select,
+  summary,
+  label,
+  [role='button'],
+  [role='link'] {
+    -webkit-tap-highlight-color: transparent;
+    /* Without this the browser waits ~300ms for a possible double-tap zoom. */
+    touch-action: manipulation;
+  }
+
+  .searchbar kbd {
+    display: none;
+  }
+}
+
+/* ---- tap-sized controls -------------------------------------------------- */
+/* Width is part of the gate as well as pointer type: a phone matches both, and
+   this way a narrow window or a hybrid stylus device gets thumb-sized targets. */
+@media (pointer: coarse), (max-width: 760px) {
+  /* WCAG 2.5.5 — nothing you can tap is smaller than 44px. */
+  .btn {
+    height: 46px;
+    padding: 0 var(--sp-5);
+    font-size: 14.5px;
+  }
+  .btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .btn--sm {
+    height: 44px;
+    padding: 0 16px;
+    font-size: 13.5px;
+  }
+  .btn--sm svg {
+    width: 16px;
+    height: 16px;
+  }
+  .btn--icon {
+    width: 46px;
+    height: 46px;
+  }
+  .btn--icon.btn--sm {
+    width: 44px;
+    height: 44px;
+  }
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .chip,
+  .genre-pill {
+    height: 44px;
+    padding: 0 16px;
+    font-size: 13.5px;
+  }
+  .chip--xs {
+    height: 42px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+  .seg {
+    padding: 4px;
+    gap: 3px;
+  }
+  .seg button {
+    height: 40px;
+    padding: 0 17px;
+    font-size: 13px;
+  }
+  /* Scaled up rather than re-plumbed: the pill is the button, so the knob
+     keeps the same proportions at a thumb-friendly size. */
+  .switch {
+    width: 60px;
+    height: 40px;
+  }
+  .switch::after {
+    width: 32px;
+    height: 32px;
+    top: 3px;
+    inset-inline-start: 3px;
+  }
+  .switch[aria-checked='true']::after {
+    transform: translateX(22px);
+  }
+  [dir='rtl'] .switch[aria-checked='true']::after {
+    transform: translateX(-22px);
+  }
+  .tab-btn {
+    min-height: 46px;
+    padding: 13px 16px;
+  }
+  .side-link {
+    min-height: 46px;
+  }
+  .pill-x {
+    height: 36px;
+  }
+  .pill-x button {
+    width: 28px;
+    height: 28px;
+  }
+  .brand {
+    min-height: 44px;
+  }
+
+  /* 16px is the threshold below which iOS Safari zooms the page on focus. */
+  .input,
+  .select,
+  .searchbar input {
+    height: 46px;
+    font-size: 16px;
+  }
+  .select--filter {
+    height: 44px;
+    font-size: 14px;
+  }
+
+  /* Small glyphs and inline text links stay visually compact; their hit area
+     is padded out with an invisible pseudo-element instead of the box. */
+  .hero-dots button,
+  .hero-chip,
+  .swatch {
+    position: relative;
+  }
+  /* Text links: real padding buys the tap box, the negative margin puts the
+     ink back where it was so nothing shifts. */
+  .link-all,
+  .read-more {
+    padding-block: 12px;
+    margin-block: -12px;
+  }
+  .link-all {
+    padding-inline: 8px;
+    margin-inline: -8px;
+  }
+  .hero-chip::after {
+    content: '';
+    position: absolute;
+    inset: -10px -3px;
+  }
+  .swatch::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+  }
+}
+
+/* ---- one column of content, edge-to-edge player ------------------------- */
+@media (max-width: 760px) {
+  /* `clip` rather than `hidden`: hidden would turn the body into a scroll
+     container and break the sticky top bar. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
+  .page-head h1,
+  .watch-info h1,
+  .detail-title {
+    overflow-wrap: anywhere;
+  }
+
+  /* A full-bleed 16:9 frame is ~10% bigger than the inset one, and reads as
+     intentional rather than as a squeezed desktop card. */
+  .player-shell {
+    margin-inline: calc(var(--gutter) * -1);
+    border-radius: 0;
+    border-inline-width: 0;
+    box-shadow: none;
+  }
+  .watch-layout {
+    padding-inline: var(--gutter);
+  }
+
+  .filter-bar,
+  .list-tabs,
+  .tabs {
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    padding-inline-end: var(--gutter);
+  }
+  .filter-bar {
+    gap: var(--sp-2);
+  }
+  /* The detail tab strip swipes sideways on a phone; without a peek of the next
+     label it reads as a hard cut rather than a scrollable rail. */
+  .tabs {
+    scroll-snap-type: x proximity;
+  }
+  .tabs > .tab-btn {
+    scroll-snap-align: start;
+  }
+
+  .sheet-foot {
+    padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom));
+  }
+  .sheet-body {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ---- poster density on phones ------------------------------------------- */
+@media (max-width: 560px) {
+  .grid {
+    /* Three across, and `minmax(0,1fr)` so a long title can never push a
+       fourth column off-screen. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-5) 10px;
+  }
+  .row {
+    --card-w: 124px;
+    gap: 10px;
+  }
+  .card-title {
+    font-size: 13px;
+    line-height: 1.28;
+  }
+  .card-meta {
+    font-size: 10.5px;
+  }
+  .card-score {
+    height: 21px;
+    padding: 0 6px;
+    font-size: 10px;
+    border-radius: 7px;
+  }
+  .card-score svg {
+    width: 9px;
+    height: 9px;
+  }
+  /* The flag is the pill itself, so shrink the pill — clipping the wrapper cut
+     its rounded ends in half. */
+  .card-flag {
+    max-width: calc(100% - 48px);
+  }
+  .card-flag .flag {
+    height: 21px;
+    gap: 4px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+  .card-flag .flag svg {
+    width: 11px;
+    height: 11px;
+  }
+  /* The player bar wraps into two tidy lines instead of three ragged ones:
+     controls first, then the episode title across the full width. */
+  .player-bar {
+    gap: 8px;
+    padding: var(--sp-3) var(--gutter);
+  }
+  .player-bar .seg button {
+    padding: 0 12px;
+  }
+  .player-bar .now-playing {
+    order: 5;
+    flex-basis: 100%;
+  }
+  /* The episode title is repeated in the block directly under the player. */
+  .player-bar .np-2 {
+    display: none;
+  }
+  .player-bar > .rowline {
+    order: 4;
+    margin-inline-start: auto;
+  }
+
+  .ep-scroll {
+    overscroll-behavior: contain;
+    max-height: min(460px, 60vh);
+    max-height: min(460px, 60dvh);
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ---- dynamic viewport units ---------------------------------------------- */
+/* Mobile Safari and Chrome report `vh` against the *largest* viewport, so with
+   the address bar showing, anything sized in vh is partly hidden behind it.
+   `dvh` tracks the visible area; the vh line above stays as the fallback. */
+@media (pointer: coarse), (max-width: 760px) {
+  .hero {
+    min-height: clamp(400px, 62dvh, 520px);
+  }
+}
+
+/* ---- very small phones --------------------------------------------------- */
+@media (max-width: 380px) {
+  .row {
+    --card-w: 112px;
+  }
+  .tab {
+    font-size: 9.5px;
+  }
+  .tab svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ---- top bar with the surprise-me button -------------------------------- */
+/* The flexible gap in front of the search field gives up its room so adding
+   the button never costs the field width on a phone. */
+@media (max-width: 760px) {
+  .topbar {
+    gap: 8px;
+  }
+  .topbar-spacer {
+    display: none;
+  }
+  .btn--random {
+    flex: none;
+    padding-inline: 12px;
+  }
+  .lang-menu {
+    min-width: 178px;
+  }
+}
+
+/* The picker needs a thumb-sized hit area, and on a narrow phone the wordmark
+   is what pays for it — without dropping it the search field starves. */
+@media (pointer: coarse) {
+  .btn--lang,
+  .lang-option {
+    height: 44px;
+  }
+}
+@media (max-width: 560px) {
+  .brand-word {
+    display: none;
+  }
+  .btn--lang {
+    gap: 5px;
+    padding-inline: 9px;
+  }
+  .btn--lang .lang-caret {
+    display: none;
+  }
+}
+
+/* ---- fullscreen ---------------------------------------------------------- */
+/* Both the shell we ask to fullscreen and the embed going native on Android. */
+.player-shell:fullscreen,
+.player-shell:-webkit-full-screen {
+  display: flex;
+  flex-direction: column;
+  background: var(--void);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  margin-inline: 0;
+}
+.player-shell:fullscreen .player-frame,
+.player-shell:-webkit-full-screen .player-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+.player-shell:fullscreen .player-bar,
+.player-shell:-webkit-full-screen .player-bar {
+  padding-inline: max(var(--sp-4), env(safe-area-inset-left)) max(var(--sp-4), env(safe-area-inset-right));
+  padding-bottom: max(var(--sp-3), env(safe-area-inset-bottom));
+}
+.player-frame iframe:fullscreen,
+.player-frame iframe:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+}

@@ -1,0 +1,82 @@
+/* ==========================================================================
+   Footer actions (Discord invite + issue report) and the report sheet.
+   The sheet itself is `lib/ui.js`'s `.sheet` and the shared `.field` / `.input` /
+   `.field-err` forms — this file only gives the two footer controls their shape,
+   in the footer's own language: charcoal glass, a hairline, violet on hover only.
+   ========================================================================== */
+
+.foot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.foot-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    background var(--t-fast) var(--ease);
+}
+.foot-action svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+
+.foot-action:hover,
+.foot-action:focus-visible {
+  color: var(--text);
+  border-color: var(--accent-line);
+  background: var(--surface-hover);
+}
+
+.foot-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- the report sheet -------------------------------------------------- */
+/* The description is where a report begins, so it gets the room; the two short
+   fields are one line each. */
+#report-detail {
+  min-height: 104px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.6;
+}
+
+.sheet-foot .btn {
+  min-height: 44px;
+}
+
+/* Arabic tracking would pull the two labels apart, as everywhere else. */
+html[dir='rtl'] .foot-action {
+  letter-spacing: 0;
+}
+
+@media (max-width: 420px) {
+  .foot-actions {
+    gap: var(--sp-2);
+  }
+  .foot-action {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0 12px;
+  }
+}

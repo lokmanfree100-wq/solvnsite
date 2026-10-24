@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en" data-api="off">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#050505" />
+    <meta name="description" content="Solvn — browse, search and watch anime with polished episode pages." />
+    <title>Solvn — Watch Anime</title>
+    <link rel="preload" as="image" href="assets/solvn-cat.jpg" fetchpriority="high" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Poster art is the bulk of the first paint, so its DNS + TLS handshake
+         starts while the stylesheet loads. The player host is deliberately not
+         named here: its address lives in exactly one place (lib/sources.js), and
+         the frame itself is a click or two away anyway. -->
+    <link rel="preconnect" href="https://s4.anilist.co" crossorigin />
+    <link rel="dns-prefetch" href="https://graphql.anilist.co" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Cairo:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles/tokens.css" />
+    <link rel="stylesheet" href="styles/base.css" />
+    <link rel="stylesheet" href="styles/components.css" />
+    <link rel="stylesheet" href="styles/views.css" />
+    <link rel="stylesheet" href="styles/profile.css" />
+    <link rel="stylesheet" href="styles/community.css" />
+    <link rel="stylesheet" href="styles/footer.css" />
+    <link rel="stylesheet" href="styles/layout.css" />
+    <link rel="stylesheet" href="styles/theater.css" />
+    <link rel="stylesheet" href="styles/search.css" />
+    <link rel="stylesheet" href="styles/discuss.css" />
+    <link rel="stylesheet" href="styles/report.css" />
+    <link rel="stylesheet" href="styles/art.css" />
+    <link rel="stylesheet" href="styles/mobile.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23050505'/%3E%3Cpath d='M7.5 13 5 4.5l7.5 4h7L27 4.5 24.5 13a10 10 0 1 1-17 0z' fill='%23f5f6f7'/%3E%3Ccircle cx='12.4' cy='16.6' r='1.9' fill='%238b6cff'/%3E%3Ccircle cx='19.6' cy='16.6' r='1.9' fill='%238b6cff'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div id="splash" class="splash" aria-hidden="true">
+      <div class="splash-mark">
+        <div class="splash-stage">
+          <img
+            class="splash-cat"
+            src="assets/solvn-cat.jpg"
+            alt=""
+            width="736"
+            height="736"
+            decoding="async"
+            fetchpriority="high"
+          />
+        </div>
+        <span class="splash-word">Solvn</span>
+        <span class="splash-sub">Free HD Anime</span>
+      </div>
+    </div>
+
+    <a class="skip-link" href="#view">Skip to content</a>
+
+    <div class="app-shell">
+      <header id="topbar" class="topbar"></header>
+      <nav id="sidenav" class="sidenav" aria-label="Primary"></nav>
+      <main id="view" class="view" tabindex="-1"></main>
+      <footer id="sitefoot" class="site-foot"></footer>
+      <nav id="tabbar" class="tabbar" aria-label="Primary"></nav>
+    </div>
+
+    <div id="toasts" class="toast-stack" role="status" aria-live="polite"></div>
+    <div id="modal-root"></div>
+
+    <noscript
+      ><div style="padding: 2rem; color: #fff">Solvn needs JavaScript enabled.</div></noscript
+    >
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

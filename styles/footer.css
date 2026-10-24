@@ -1,0 +1,265 @@
+/* ==========================================================================
+   Site footer + Home welcome strip.
+   `footer.css` is the only stylesheet this feature owns, so the Home-only
+   greeting strip below it shares this file. Both follow the mono rules: charcoal
+   glass and hairlines, and the accent only on hover / focus / links — never a gradient,
+   never a glow. `base.css` already gives `.site-foot` its gutter padding and its
+   clearance for the fixed mobile tab bar, so nothing is repeated here.
+   ========================================================================== */
+
+/* `hidden` is what hides the footer on the watch page, so it must win. */
+.site-foot[hidden] {
+  display: none;
+}
+
+.foot-inner {
+  display: grid;
+  gap: var(--sp-6) var(--sp-7);
+  grid-template-columns: 1fr;
+  margin-top: var(--sp-7);
+  padding: var(--sp-6) 0 0;
+  border-top: 1px solid var(--line);
+}
+
+/* ---- brand column ---------------------------------------------------- */
+.foot-brand {
+  display: grid;
+  gap: var(--sp-4);
+  align-content: start;
+  max-width: 38ch;
+}
+
+.foot-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: fit-content;
+  border-radius: var(--r-md);
+}
+
+/* The cat head from the favicon, drawn in currentColor with blue eyes: it stays
+   legible at this size where the full startup scene would just be a dark square. */
+.foot-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+}
+.foot-mark svg {
+  width: 28px;
+  height: 28px;
+}
+
+.foot-word {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.foot-logo:hover .foot-word,
+.foot-logo:focus-visible .foot-word {
+  color: var(--accent-text);
+}
+
+.foot-tagline {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+/* ---- navigation ------------------------------------------------------ */
+.foot-h {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: var(--sp-3);
+}
+
+.foot-list {
+  display: grid;
+  gap: 2px;
+}
+
+.foot-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  font-size: 14px;
+  color: var(--text-dim);
+  border-radius: var(--r-xs);
+  transition: color var(--t-fast) var(--ease);
+}
+
+/* The nav column is a dense list, so links pad to a 44px touch box on mobile
+   only; desktop keeps them tight. */
+@media (max-width: 719px) {
+  .foot-link {
+    min-height: 44px;
+  }
+}
+
+.foot-link:hover,
+.foot-link:focus-visible {
+  color: var(--accent-text);
+}
+
+/* ---- DMCA ------------------------------------------------------------- */
+.foot-dmca {
+  display: grid;
+  gap: var(--sp-2);
+  align-content: start;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-faint);
+  max-width: 52ch;
+}
+
+/* The required sentence, set apart so it is never buried in the paragraph. */
+.foot-dmca-line {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.foot-dmca a {
+  color: var(--accent-text);
+  text-underline-offset: 3px;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+}
+.foot-dmca a:hover,
+.foot-dmca a:focus-visible {
+  text-decoration-color: currentColor;
+}
+
+/* ---- legal bottom row ------------------------------------------------- */
+.foot-bottom {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--sp-5);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+.foot-note {
+  color: var(--text-faint);
+  opacity: 0.85;
+}
+
+/* ---- desktop: brand / navigation / DMCA side by side ------------------ */
+@media (min-width: 1000px) {
+  .foot-inner {
+    grid-template-columns: minmax(240px, 1.4fr) minmax(150px, 0.8fr) minmax(240px, 1.2fr);
+    gap: var(--sp-7) var(--sp-6);
+  }
+}
+
+/* ==========================================================================
+   Home welcome strip — above the spotlight, dismissed once and remembered.
+   ========================================================================== */
+.welcome {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  box-shadow: var(--sh-1);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  overflow: hidden;
+  max-height: 150px;
+  transition:
+    opacity var(--t-med) var(--ease),
+    transform var(--t-med) var(--ease),
+    max-height var(--t-med) var(--ease),
+    padding var(--t-med) var(--ease),
+    margin var(--t-med) var(--ease),
+    border-color var(--t-med) var(--ease);
+}
+
+/* Closing collapses the strip instead of yanking it out mid-paint. */
+.welcome.is-gone {
+  opacity: 0;
+  transform: translateY(-6px);
+  max-height: 0;
+  padding-block: 0;
+  margin-block: 0;
+  border-color: transparent;
+}
+
+.welcome-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.welcome-title {
+  font-family: var(--font-display);
+  font-size: clamp(15px, 2.6vw, 19px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.welcome-sub {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.welcome-close {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-inline-start: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-dim);
+  transition:
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
+}
+.welcome-close svg {
+  width: 16px;
+  height: 16px;
+}
+.welcome-close:hover,
+.welcome-close:focus-visible {
+  color: var(--accent-text);
+  border-color: var(--accent-line);
+}
+
+/* At 360px the greeting alone is enough; drop the supporting line, not the box. */
+@media (max-width: 420px) {
+  .welcome {
+    padding: var(--sp-3) var(--sp-4);
+    gap: var(--sp-2);
+  }
+  .welcome-sub {
+    display: none;
+  }
+}
+
+/* Arabic tracking pulls joined letters apart, as elsewhere in the theme. */
+html[dir='rtl'] .foot-word,
+html[dir='rtl'] .welcome-title {
+  letter-spacing: 0;
+  text-transform: none;
+}

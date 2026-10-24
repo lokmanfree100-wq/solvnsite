@@ -1,0 +1,16 @@
+Solvn — static build
+
+1. Upload the CONTENTS of this folder into htdocs (index.html must end up at
+   htdocs/index.html, not htdocs/dist/index.html).
+2. That is the whole install. There is no server code, no database and nothing
+   to build — any plain web host will do.
+
+What this copy does without a backend:
+  - Search, browse, details pages, the player, watch history, favourites,
+    settings and all 12 languages work as normal.
+  - Accounts, comments, playlists, the issue form and the Discord bridge are
+    absent. They need the Node server (server.js); a button that can only fail
+    is not a button, so they are not shown.
+
+After uploading, open the site once and press Ctrl+F5 so the old copies held in
+your browser are replaced by these files.
