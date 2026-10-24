@@ -1,11 +1,17 @@
 /**
- * The daily wheel: one spin, and the server decides where it stops.
+ * The daily wheel: five spins, and the server decides where each one stops.
  *
  * This page cannot roll a prize. It draws the slices it was handed, turns the
  * wheel until the index the server named sits under the pointer, and then prints
  * what came up. That order is the entire honesty of the thing: a slice labelled
  * one in two thousand is only worth believing if the roll behind it happened
  * somewhere a re-load cannot reach.
+ *
+ * The counter under the wheel is the one written by `lib/fortune.js` under
+ * `solvn_spins_YYYY-MM-DD`: the button locks at five before a sixth request is
+ * sent, and the server keeps the same cap for the account. The screen says how
+ * many are left, fills a pip for each spent spin, and turns into a limit card
+ * with the midnight countdown when the fifth one lands.
  *
  * The odds table underneath is the same table the draw ran on — the weights come
  * back from `GET /api/fortune` as shares of exactly one hundred thousand, so the
@@ -27,7 +33,7 @@ import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
 import { isSignedIn, isStaff, currentUser, fortuneUsable, setAvatar } from '../lib/account.js';
 import { rarityOf } from '../lib/cards.js';
-import { loadFortune, pickFace, spin, spinInMs, fortuneState } from '../lib/fortune.js';
+import { loadFortune, pickFace, spin, spinInMs, fortuneState, DAILY_SPINS, spinsLeft, spinDayKey } from '../lib/fortune.js';
 import { faces, matchFaces } from '../lib/faces.js';
 import { bannerLabel, bannerRows } from '../lib/ranks.js';
 import { loadingGrid, emptyState } from '../components/media.js';
@@ -256,7 +262,7 @@ export function SpinView({ onCleanup }) {
       emptyState({
         iconName: 'star',
         heading: t('Sign in to spin'),
-        body: t('One spin a day is a thing an account keeps, so there has to be an account to keep it for.'),
+        body: t('Free spins are a thing an account keeps, so there has to be an account to keep them for.'),
         action: h(
           'button.btn.btn--primary',
           { type: 'button', onclick: () => authSheet('login') },
@@ -275,16 +281,54 @@ export function SpinView({ onCleanup }) {
     return id;
   };
 
+  const aura = h('span.fw-aura', { 'aria-hidden': 'true' });
+  const rim = h('span.fw-rim', { 'aria-hidden': 'true' });
+  const ticks = h('span.fw-ticks', { 'aria-hidden': 'true' });
   const wheel = h('div.fw-wheel');
   const pointer = h('span.fw-pointer', { 'aria-hidden': 'true' }, icon('chevronDown'));
   const hub = h('div.fw-hub', { 'aria-hidden': 'true' }, icon('star'));
-  const board = h('div.fw-board', {}, wheel, pointer, hub);
-  const counter = h('p.fw-clock.tnum', {}, '');
+  const board = h('div.fw-board', {}, aura, rim, ticks, wheel, pointer, hub);
+  /* The arena's atmosphere: light motes that never reach the wheel, a shadow it
+     sits on, and the tilt that makes the disc a coin rather than a sticker. */
+  const sparks = h(
+    'span.fw-sparks',
+    { 'aria-hidden': 'true' },
+    ...Array.from({ length: 9 }, (_, i) =>
+      h('i.fw-spark', {
+        style: {
+          left: `${7 + i * 10.3}%`,
+          top: `${16 + ((i * 37) % 62)}%`,
+          animationDelay: `${-i * 1.7}s`,
+          animationDuration: `${6 + (i % 4) * 1.5}s`,
+        },
+      }),
+    ),
+  );
+  const floor = h('span.fw-floor', { 'aria-hidden': 'true' });
+  const tilt = h('div.fw-tilt', {}, floor, board);
+  const pips = h('div.fw-pips', { 'aria-hidden': 'true' });
+  const spinsText = h('p.fw-spins-left.tnum', { 'aria-live': 'polite' }, '');
+  const limitBody = h('p.fw-limit-body', {}, '');
+  const limit = h(
+    'div.fw-limit',
+    { hidden: true, role: 'status' },
+    h('span.fw-limit-badge', { 'aria-hidden': 'true' }, icon('clock')),
+    h('div.fw-limit-copy', {}, h('b', {}, t('Daily Limit Reached')), limitBody),
+  );
   const spinBtn = h(
     'button.btn.btn--primary.fw-go',
-    { type: 'button', onclick: () => take() },
+    { type: 'button', 'data-sfx': 'none', onclick: () => take() },
     icon('refresh'),
     h('span', {}, t('Spin the wheel')),
+  );
+  const stage = h(
+    'div.fw-stage',
+    {},
+    h('span.fw-arena-glow', { 'aria-hidden': 'true' }),
+    h('span.fw-arena-grid', { 'aria-hidden': 'true' }),
+    sparks,
+    tilt,
+    h('div.fw-controls', {}, pips, spinsText, spinBtn, limit),
   );
   const faceBtn = h('div.fw-bank');
   const result = h('div.fw-result', { 'aria-live': 'polite' });
@@ -357,11 +401,18 @@ export function SpinView({ onCleanup }) {
     );
   }
 
+  let lastPrizeKey = '';
   function showPrize(p) {
     if (!p) {
       result.replaceChildren();
+      lastPrizeKey = '';
       return;
     }
+    /* A refresh after the landing repaints the same stored prize; replacing the
+       card would replay its deal animation a second time. */
+    const key = JSON.stringify(p);
+    if (key === lastPrizeKey && result.firstChild) return;
+    lastPrizeKey = key;
     const name = p.kind === 'banner' && p.theme ? t('{name} banner', { name: t(bannerLabel(p.theme)) }) : prizeName(p);
     result.replaceChildren(
       h(
@@ -381,6 +432,54 @@ export function SpinView({ onCleanup }) {
     );
   }
 
+  /** How much the landing is allowed to shout: the same ladder the reveal cue
+      uses, so the picture and the sound agree about the size of the win. */
+  const drama = (p) => {
+    if (!p) return 0;
+    if (p.kind === 'card') return p.amount >= 20 ? 4 : p.amount >= 12 ? 3 : 2;
+    if (p.kind === 'banner' || p.kind === 'avatar') return 3;
+    return 1;
+  };
+
+  /* A burst is eighteen paper chips thrown from the hub, painted in the tier's
+     own two hues when a card landed. Nothing is fetched; the threads are spans
+     and the flight is one transform per chip. */
+  let burstEl = null;
+  function burst(p) {
+    burstEl?.remove();
+    const r = p?.kind === 'card' ? rarityOf(p.amount) : null;
+    const colors = r
+      ? [r.a, r.b, '#f4f7ff']
+      : ['var(--accent)', 'var(--accent-bright)', 'var(--gold)', '#f4f7ff'];
+    burstEl = h('span.fw-burst', { 'aria-hidden': 'true' });
+    for (let i = 0; i < 18; i += 1) {
+      const piece = h('i.fw-confetti');
+      const angle = ((i / 18) * 360 + Math.random() * 12) * (Math.PI / 180);
+      const dist = 96 + Math.random() * 132;
+      piece.style.setProperty('--x', `${Math.cos(angle) * dist}px`);
+      piece.style.setProperty('--y', `${Math.sin(angle) * dist - 34}px`);
+      piece.style.setProperty('--r', `${Math.round(Math.random() * 680 - 340)}deg`);
+      piece.style.setProperty('--d', `${Math.round(Math.random() * 130)}ms`);
+      piece.style.setProperty('--c', colors[i % colors.length]);
+      burstEl.append(piece);
+    }
+    board.append(burstEl);
+    later(() => {
+      burstEl?.remove();
+      burstEl = null;
+    }, 1900);
+  }
+
+  /** What happens the moment the disc stops: the card, the cue, the burst. */
+  function celebrate(prize) {
+    showPrize(prize);
+    sfx.land(drama(prize), prize?.kind || '');
+    if (reduced()) return;
+    burst(prize);
+    stage.classList.add('is-win');
+    later(() => stage.classList.remove('is-win'), 1500);
+  }
+
   function paintBank(st) {
     const n = Number(st.faces) || 0;
     faceBtn.replaceChildren(
@@ -395,17 +494,36 @@ export function SpinView({ onCleanup }) {
     );
   }
 
+  /** The cap, the pips and the lock card all read the same stored count. */
+  function paintSpins(st) {
+    const left = spinsLeft();
+    const used = DAILY_SPINS - left;
+    const exhausted = left <= 0;
+    pips.replaceChildren(
+      ...Array.from({ length: DAILY_SPINS }, (_, i) => {
+        const pip = h('span.fw-pip', { 'aria-hidden': 'true' });
+        if (i < used) pip.classList.add('is-used');
+        return pip;
+      }),
+    );
+    spinsText.textContent = exhausted
+      ? t('Fresh spins in {time}', { time: clockText(spinInMs()) })
+      : t('{left} of {n} spins left today', { left, n: DAILY_SPINS });
+    limit.hidden = !exhausted;
+    if (exhausted) limitBody.textContent = t('Come back in {time} for five new spins.', { time: clockText(spinInMs()) });
+    spinBtn.disabled = turning || exhausted || !st.loaded || st.failed;
+    spinBtn.querySelector('span').textContent = exhausted ? t('Daily Limit Reached') : t('Spin the wheel');
+    spinBtn.classList.toggle('is-locked', exhausted);
+    stage.classList.toggle('is-exhausted', exhausted);
+  }
+
   function paint(st) {
     const prizes = st.prizes || [];
     if (prizes.length) paintWheel(prizes);
     paintOdds(prizes);
     paintBank(st);
     if (!turning) showPrize(st.prize);
-    spinBtn.disabled = turning || Boolean(st.spun) || !st.loaded || st.failed;
-    spinBtn.querySelector('span').textContent = st.spun ? t('Come back after 04:00') : t('Spin the wheel');
-    counter.textContent = st.spun
-      ? t('Next spin in {time}', { time: clockText(spinInMs()) })
-      : t('One free spin today. Next one in {time}', { time: clockText(spinInMs()) });
+    paintSpins(st);
     if (st.failed && st.loaded) {
       wheel.replaceChildren(h('p.fw-faint', {}, t('The wheel is not answering right now.')));
       wheel.style.background = '';
@@ -414,17 +532,26 @@ export function SpinView({ onCleanup }) {
 
   async function take() {
     if (turning) return;
-    const st = fortuneState();
-    if (st.spun) return;
+    if (spinsLeft() <= 0) {
+      sfx.toggle(false);
+      toast(t('Daily limit reached. Try again tomorrow.'), { tone: 'err', iconName: 'alert' });
+      paintSpins(fortuneState());
+      return;
+    }
     turning = true;
-    paint(st);
+    stage.classList.add('is-spinning');
+    /* The press answers at once; the server's draw arrives while the rim is
+       already building speed, so a slow reply costs animation, never feedback. */
+    sfx.wheel();
+    paint(fortuneState());
     const d = await spin();
-    turning = false;
     if (d.blocked) {
+      turning = false;
+      stage.classList.remove('is-spinning');
       sfx.toggle(false);
       toast(
-        d.blocked === 'used'
-          ? t('Your spin is used. Come back after 04:00.')
+        d.blocked === 'limit'
+          ? t('Daily limit reached. Try again tomorrow.')
           : d.blocked === 'signedout'
             ? t('Sign in to spin the wheel.')
             : say({ message: d.message }, t('The wheel did not answer.')),
@@ -451,18 +578,19 @@ export function SpinView({ onCleanup }) {
     angle += 360 * TURN_ROUNDS + ((360 - ((angle + mid) % 360)) % 360);
 
     if (reduced()) {
+      turning = false;
+      stage.classList.remove('is-spinning');
       wheel.style.transform = `rotate(${(360 - mid) % 360}deg)`;
-      showPrize(d.prize);
-      sfx.reveal(3);
+      celebrate(d.prize);
       refresh();
       return;
     }
     wheel.style.transition = `transform ${TURN_MS}ms cubic-bezier(.12,.78,.18,1)`;
     wheel.style.transform = `rotate(${angle}deg)`;
-    sfx.pack();
     later(() => {
-      showPrize(d.prize);
-      sfx.reveal(d.prize?.kind === 'card' && d.prize.amount >= 15 ? 3 : d.prize?.kind === 'banner' ? 3 : 2);
+      turning = false;
+      stage.classList.remove('is-spinning');
+      celebrate(d.prize);
       refresh();
     }, TURN_MS + 60);
   }
@@ -483,12 +611,20 @@ export function SpinView({ onCleanup }) {
     })
     .catch(() => null);
   /* One tick a second for a clock nobody can settle by eye, and it only rewrites
-     two short strings — no layout, no fetch. */
+     two short strings — no layout, no fetch. At midnight the key under the button
+     changes; the page refetches once so the fresh five appear without a reload. */
+  let dayKey = spinDayKey();
   const tick = setInterval(() => {
-    const st = fortuneState();
-    counter.textContent = st.spun
-      ? t('Next spin in {time}', { time: clockText(spinInMs()) })
-      : t('One free spin today. Next one in {time}', { time: clockText(spinInMs()) });
+    if (spinDayKey() !== dayKey) {
+      dayKey = spinDayKey();
+      refresh();
+      return;
+    }
+    if (spinsLeft() <= 0) {
+      const time = clockText(spinInMs());
+      spinsText.textContent = t('Fresh spins in {time}', { time });
+      limitBody.textContent = t('Come back in {time} for five new spins.', { time });
+    }
   }, 1000);
   const onAccount = () => refresh();
   document.addEventListener('kitsune:account', onAccount);
@@ -505,17 +641,12 @@ export function SpinView({ onCleanup }) {
       'div',
       {},
       h('h1.display', {}, t('Fortune wheel')),
-      h('p.muted.fw-sub', {}, t('One free spin every day, drawn by the server. The odds printed under the wheel are the odds the draw ran on.')),
+      h('p.muted.fw-sub', {}, t('Five free spins a day, drawn by the server. The odds printed under the wheel are the odds the draw ran on.')),
       h('p.fw-tally.tnum', {}, t('{n} spins taken', { n: Number(fortuneState().spins) || 0 })),
     ),
     faceBtn,
   );
 
-  wrap.replaceChildren(
-    head,
-    h('div.fw-stage', {}, board, h('div.fw-controls', {}, counter, spinBtn)),
-    result,
-    odds,
-  );
+  wrap.replaceChildren(head, stage, result, odds);
   return wrap;
 }

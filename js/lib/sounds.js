@@ -191,6 +191,34 @@ export const sfx = {
       tone({ freq: 190, to: 92, ms: 190, type: 'triangle', peak: 0.5 });
     });
   },
+  /** The rim is pushed: air builds under a low body, with the first clicks of
+      the disc catching on their notches. One press, one cue. */
+  wheel() {
+    once('wheel', () => {
+      sweep({ ms: 620, from: 180, to: 3400, peak: 0.5 });
+      tone({ freq: 74, ms: 540, type: 'triangle', peak: 0.42 });
+      for (let i = 0; i < 5; i += 1) {
+        tone({ freq: 760 + i * 90, ms: 24, type: 'square', peak: 0.1, delay: 0.03 + i * 0.055 });
+      }
+    });
+  },
+  /** The wheel comes to rest: a metal brake, a body thud, then the notes for
+      the tier that actually landed. XP and packs add a small coin shimmer. */
+  land(stage = 0, kind = '') {
+    const draw = REVEALS[Math.max(0, Math.min(REVEALS.length - 1, stage))];
+    once(`land${stage}${kind}`, () => {
+      sweep({ ms: 150, from: 4800, to: 700, peak: 0.4 });
+      tone({ freq: 82, to: 46, ms: 270, type: 'triangle', peak: 0.56 });
+      for (const [from, to, ms, delay, peak] of draw.notes) {
+        tone({ freq: from, to, ms, delay: delay + 0.06, peak, type: 'sine' });
+      }
+      if (draw.sweep) sweep({ ms: draw.sweep[2], from: draw.sweep[0], to: draw.sweep[1], peak: 0.5, delay: 0.1 });
+      if (kind === 'xp' || kind === 'pack') {
+        tone({ freq: 1319, ms: 80, delay: 0.2, peak: 0.16 });
+        tone({ freq: 1760, ms: 120, delay: 0.26, peak: 0.12 });
+      }
+    });
+  },
   /** A card lands. The stage comes from the tier that was actually rolled, so
       the cue never promises more than the drop table delivered: a Basic card is
       one soft note, a GODLIKE is a fanfare over a sub-thud. */

@@ -1,9 +1,9 @@
 /* ==========================================================================
-   Fortune wheel — one spin a day, and the odds printed as the truth.
-   The wheel is the only decorative object on this site, so it gets the room: a
-   disc that turns, a pointer that never moves, and underneath it the exact table
-   the draw ran on. Everything that animates here is a transform or an opacity, and
-   the whole page stops moving when the system asks it to.
+   Fortune wheel — five spins a day, and the odds printed as the truth.
+   The wheel is the only decorative object on this site, so it gets an arena: a
+   lit floor, a metal housing, a gem pointer that never moves, and underneath it
+   the exact table the draw ran on. Everything that animates here is a transform
+   or an opacity, and the whole page stops moving when the system asks it to.
    ========================================================================== */
 
 .spin {
@@ -23,7 +23,9 @@
 }
 .fw-head .display {
   margin: 0;
-  font-size: clamp(22px, 3.6vw, 30px);
+  font-size: clamp(23px, 3.6vw, 32px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 .fw-sub {
   margin: 6px 0 0;
@@ -31,9 +33,19 @@
   font-size: 13.5px;
   line-height: 1.6;
 }
+/* The tally is a badge rather than a line of small print, because it is the one
+   number on the page that only goes up. */
 .fw-tally {
-  margin: 8px 0 0;
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  margin: 10px 0 0;
+  padding: 3px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--text-faint);
 }
 
@@ -45,39 +57,218 @@
   min-height: 44px;
 }
 
-/* ---- the wheel ---------------------------------------------------------- */
+/* ---- the arena ---------------------------------------------------------- */
+/* The wheel stands on a lit floor rather than sitting in a card: a violet bloom
+   behind the disc, a grid running to a horizon, and a border that catches the
+   same light. Every layer here is static — only the disc and the result move,
+   which is what keeps five turns a day cheap on a phone. */
 .fw-stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--sp-4);
-  padding: var(--sp-5) var(--sp-4);
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-lg);
+  padding: var(--sp-6) var(--sp-4) var(--sp-5);
+  border: 1px solid var(--accent-line);
+  border-radius: calc(var(--r-lg) + 6px);
   background:
-    radial-gradient(58% 46% at 50% 0%, var(--accent-wash), transparent 70%),
-    var(--glass);
-  box-shadow: var(--sh-2);
+    radial-gradient(74% 56% at 50% 10%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
+    radial-gradient(120% 80% at 50% 118%, rgba(0, 0, 0, 0.66), transparent 68%),
+    linear-gradient(180deg, #14151b 0%, #0b0c10 62%, #07080a 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 46px -18px var(--accent-glow),
+    0 34px 90px -48px #000,
+    var(--inner-hi);
+  transition:
+    box-shadow 420ms var(--ease),
+    border-color 420ms var(--ease);
 }
-
+/* A win lights the whole room, then the room settles again. */
+.fw-stage.is-win {
+  border-color: color-mix(in srgb, var(--accent) 74%, transparent);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 96px -18px var(--accent-glow),
+    0 34px 90px -48px #000,
+    var(--inner-hi);
+}
+/* A room's light, not a spotlight on the card: wide, soft, and entirely behind
+   the disc. It brightens only while the wheel is actually turning. */
+.fw-arena-glow {
+  position: absolute;
+  top: -14%;
+  left: 50%;
+  width: 132%;
+  height: 96%;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 17%, transparent), transparent 74%);
+  pointer-events: none;
+}
+/* The floor: two grids in perspective, faded out before the horizon so the lines
+   never end in a hard edge. */
+.fw-arena-grid {
+  position: absolute;
+  inset: auto 0 0;
+  height: 46%;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.075) 0 1px, transparent 1px 58px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 46px);
+  transform: perspective(520px) rotateX(64deg);
+  transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 88%);
+  mask-image: linear-gradient(to top, #000 10%, transparent 88%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+/* Light motes in the air of the room. They drift, they never cross the disc,
+   and they are the only ambient motion while the wheel is still. */
+.fw-sparks {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.fw-spark {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--accent-text);
+  box-shadow: 0 0 10px var(--accent-glow);
+  opacity: 0;
+  animation: fw-drift 7s linear infinite;
+}
+.fw-sparks .fw-spark:nth-child(3n) {
+  width: 3px;
+  height: 3px;
+  background: var(--gold);
+}
+.fw-sparks .fw-spark:nth-child(4n) {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f4f7ff;
+}
+/* The shadow the disc casts on the floor. It lives under the tilt wrapper so it
+   stays in the room's plane while the disc sits above it. */
+.fw-floor {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  bottom: -5%;
+  width: 88%;
+  height: 54px;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.8), transparent 72%);
+  filter: blur(7px);
+  pointer-events: none;
+}
+/* The tilt is the 3D: a shallow rotateX on the board, with the pointer and hub
+   lifted in front of it, so the wheel reads as a coin standing on the floor. */
+.fw-tilt {
+  position: relative;
+  z-index: 1;
+  perspective: 1100px;
+}
 .fw-board {
   position: relative;
+  z-index: 1;
   width: min(340px, 78vw);
   aspect-ratio: 1;
+  transform-style: preserve-3d;
+  transform: rotateX(11deg);
+}
+/* The halo the disc turns inside: a thin accent ring over a wider bloom. */
+.fw-aura {
+  position: absolute;
+  inset: -16%;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side, transparent 61%, color-mix(in srgb, var(--accent) 30%, transparent) 76%, transparent 83%),
+    radial-gradient(closest-side, transparent 44%, var(--accent-wash) 62%, transparent 80%);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.fw-stage.is-spinning .fw-aura {
+  animation: fw-aura 1.9s ease-in-out infinite;
+}
+/* The metal housing: one conic gradient gives a brushed ring a highlight where
+   the light falls, without a picture or a gradient border hack. It fills the
+   five-pixel annulus the disc leaves inside the board. */
+.fw-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 200deg,
+    #22252d,
+    #99a2b3 10%,
+    #383d49 24%,
+    #6d7585 40%,
+    #d7dde9 52%,
+    #3c414d 66%,
+    #8b93a3 80%,
+    #22252d
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.6));
+  transform: translateZ(4px);
+  pointer-events: none;
+}
+/* A highlight riding the bezel like a marquee light. One rotating layer, and it
+   is clipped to the ring by the mask above, so only the metal catches it. */
+.fw-rim::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 31%, rgba(255, 255, 255, 0.6) 39%, transparent 47% 100%);
+  animation: fw-marquee 7s linear infinite;
+}
+.fw-stage.is-spinning .fw-rim::after {
+  animation-duration: 1.3s;
+}
+/* Forty tick marks on an outer dial, so the rim reads as a machined bezel. */
+.fw-ticks {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from -0.5deg, rgba(255, 255, 255, 0.34) 0deg 1deg, transparent 1deg 9deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px));
+  opacity: 0.45;
+  transform: translateZ(-2px);
+  pointer-events: none;
+}
+.fw-stage.is-exhausted .fw-aura {
+  opacity: 0.25;
+  filter: saturate(0.25);
+}
+.fw-stage.is-exhausted .fw-arena-glow {
+  opacity: 0.45;
 }
 /* The disc itself: the conic gradient is painted in JS from the server's weights,
    so a slice's width on screen is its width in the draw. */
 .fw-wheel {
   position: absolute;
-  inset: 0;
+  inset: 5px;
   overflow: hidden;
   border-radius: 50%;
-  border: 3px solid var(--line-strong);
+  border: 4px solid #2a2d36;
   box-shadow:
-    0 0 0 6px rgba(0, 0, 0, 0.42),
-    0 18px 44px -18px rgba(0, 0, 0, 0.9),
-    var(--inner-hi);
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 0 5px rgba(0, 0, 0, 0.5),
+    0 26px 60px -26px #000,
+    inset 0 0 46px rgba(0, 0, 0, 0.55),
+    inset 0 2px 0 rgba(255, 255, 255, 0.08);
   transform: rotate(0deg);
+}
+.fw-stage.is-spinning .fw-wheel {
+  will-change: transform;
 }
 /* Every tag is a full-size layer turned about the hub; its label rides near the
    rim, which is where a stopped wheel puts the prize it means. */
@@ -87,7 +278,7 @@
 }
 .fw-tag-text {
   position: absolute;
-  top: 9%;
+  top: 12.5%;
   left: 50%;
   transform: translateX(-50%);
   max-width: 46%;
@@ -102,70 +293,300 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
 }
 /* The pointer is the only thing that says *here is what came up*, so it is the
-   one element that is bright, and it never moves while the disc does. */
+   one element that is bright, and it never moves while the disc does. A chevron
+   in a gem, with a tail that hangs over the rim. */
 .fw-pointer {
   position: absolute;
-  z-index: 3;
-  top: -14px;
+  z-index: 4;
+  top: -19px;
   left: 50%;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-left: -14px;
+  width: 42px;
+  height: 42px;
+  margin-left: -21px;
   border-radius: var(--r-pill);
-  border: 1px solid var(--accent-line);
-  background: var(--accent);
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  background: radial-gradient(
+    120% 120% at 30% 18%,
+    color-mix(in srgb, var(--accent-bright) 68%, #fff),
+    var(--accent) 46%,
+    var(--accent-deep) 100%
+  );
   color: var(--accent-ink);
-  box-shadow: 0 6px 18px -6px var(--accent-glow);
+  box-shadow:
+    0 0 0 4px rgba(8, 9, 12, 0.72),
+    0 10px 24px -8px var(--accent-glow),
+    inset 0 2px 3px rgba(255, 255, 255, 0.6),
+    inset 0 -8px 12px rgba(0, 0, 0, 0.35);
+  transform: translateZ(38px);
   pointer-events: none;
 }
-.fw-pointer svg {
-  width: 16px;
-  height: 16px;
+.fw-pointer::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin: 4px 0 0 -7px;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 10px solid var(--accent);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
 }
+.fw-pointer svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 3;
+}
+/* The hub is a dark metal puck with the star set into it, so the disc looks
+   mounted rather than printed. */
 .fw-hub {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   top: 50%;
   left: 50%;
   display: grid;
   place-items: center;
-  width: 54px;
-  height: 54px;
-  margin: -27px 0 0 -27px;
+  width: 66px;
+  height: 66px;
+  margin: -33px 0 0 -33px;
   border-radius: var(--r-pill);
-  border: 1px solid var(--line-strong);
-  background: var(--glass-strong);
+  border: 2px solid #3a3f4b;
+  background: radial-gradient(140% 140% at 32% 22%, #3c414d, #16181e 58%, #090a0d);
   color: var(--accent-text);
-  box-shadow: var(--sh-1);
+  box-shadow:
+    0 0 0 4px rgba(8, 9, 12, 0.55),
+    0 12px 26px -10px #000,
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.7);
+  transform: translateZ(18px);
   pointer-events: none;
 }
 .fw-hub svg {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 0 8px var(--accent-glow));
+}
+/* The burst is thrown from the hub and lives in the disc's own 3D plane, so the
+   paper hops off the board towards the viewer instead of sliding across it. */
+.fw-burst {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  transform: translateZ(26px);
+  pointer-events: none;
+}
+/* The stop throws one ring out of the hub before the paper. It is the sound of
+   the wheel arriving, drawn. */
+.fw-burst::before {
+  content: '';
+  position: absolute;
+  inset: 41%;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent-bright) 72%, transparent);
+  box-shadow:
+    0 0 22px var(--accent-glow),
+    inset 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: fw-shock 620ms cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
+.fw-confetti {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 12px;
+  margin: -6px 0 0 -4px;
+  border-radius: 1px;
+  background: var(--c, var(--accent));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--c, var(--accent)) 55%, transparent);
+  opacity: 0;
+  animation: fw-confetti 1.5s cubic-bezier(0.16, 0.72, 0.3, 1) var(--d, 0ms) forwards;
+}
+.fw-confetti:nth-child(3n) {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.fw-confetti:nth-child(4n) {
+  width: 4px;
+  height: 13px;
+}
+.fw-confetti:nth-child(5n) {
+  height: 8px;
 }
 
 .fw-controls {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--sp-2);
+  width: min(100%, 430px);
 }
-.fw-clock {
+/* Five pips are the cap made visible before the button says it in words: each
+   one is a turn spent, so the countdown to the cap is one glance. */
+.fw-pips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 8px;
+}
+.fw-pip {
+  width: 24px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent-deep));
+  box-shadow:
+    0 0 10px -2px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition:
+    background var(--t-med) var(--ease),
+    box-shadow var(--t-med) var(--ease),
+    opacity var(--t-med) var(--ease);
+}
+.fw-pip.is-used {
+  background: rgba(255, 255, 255, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  opacity: 0.65;
+}
+.fw-spins-left {
   margin: 0;
   font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text-dim);
-  font-variant-numeric: tabular-nums;
 }
-/* 48px tall and full-width-capped: the one button on the page a thumb aims at. */
+/* 54px tall, chunky, and lit from above: the one button on the page a thumb
+   aims at. The bottom lip is a hard shadow, not a border, so pressing it can
+   sink the face without the button changing size. */
 .fw-go {
-  min-height: 48px;
-  min-width: 220px;
-  font-size: 15px;
+  position: relative;
+  overflow: hidden;
+  min-height: 54px;
+  min-width: 244px;
+  padding: 0 var(--sp-6);
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: 0.015em;
+  border-width: 2px;
+  background:
+    radial-gradient(130% 90% at 50% -22%, rgba(255, 255, 255, 0.42), transparent 56%),
+    linear-gradient(175deg, var(--accent-bright) 0%, var(--accent) 46%, var(--accent-deep) 100%);
+  box-shadow:
+    var(--inner-hi-strong),
+    0 0 0 4px color-mix(in srgb, var(--accent) 13%, transparent),
+    0 14px 34px -12px var(--accent-glow),
+    0 4px 0 0 color-mix(in srgb, var(--accent-deep) 82%, #000);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.fw-go svg {
+  width: 19px;
+  height: 19px;
+}
+/* A band of light crosses the face every few seconds — the button looks powered
+   rather than printed, and it costs one composited layer. */
+.fw-go::after {
+  content: '';
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  left: -34%;
+  width: 44%;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: fw-go-sheen 4.2s var(--ease) infinite;
+  pointer-events: none;
+}
+.fw-go > * {
+  position: relative;
+  z-index: 1;
+}
+.fw-go.is-locked::after {
+  animation: none;
+  opacity: 0;
+}
+.fw-go:active:not(:disabled) {
+  transform: translateY(2px) scale(0.99);
+  box-shadow:
+    var(--inner-hi-strong),
+    0 0 0 4px color-mix(in srgb, var(--accent) 13%, transparent),
+    0 8px 22px -12px var(--accent-glow),
+    0 1px 0 0 color-mix(in srgb, var(--accent-deep) 82%, #000);
 }
 .fw-go:disabled {
   opacity: 0.5;
+}
+/* At the cap the button does not fade away: it turns into a dead, matte face
+   that still reads as "this is the thing you will press tomorrow". */
+.fw-go.is-locked {
+  opacity: 1;
+  border-color: var(--line);
+  background: linear-gradient(175deg, #2d3039, #1b1d24 58%, #131418);
+  color: var(--text-dim);
+  box-shadow:
+    var(--inner-hi),
+    0 0 0 4px rgba(255, 255, 255, 0.03),
+    0 10px 24px -16px #000;
+  text-shadow: none;
+}
+.fw-go.is-locked svg {
+  color: var(--warn);
+}
+/* The cap, spelled out once the pips are all spent. Warm rather than red: this
+   is a pause, not an error. */
+.fw-limit {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: min(100%, 430px);
+  margin-top: var(--sp-1);
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--warn) 38%, transparent);
+  border-radius: var(--r-md);
+  background: linear-gradient(140deg, color-mix(in srgb, var(--warn) 15%, transparent), rgba(255, 255, 255, 0.02) 70%);
+  box-shadow:
+    0 0 30px -16px color-mix(in srgb, var(--warn) 65%, transparent),
+    var(--inner-hi);
+  animation: fw-rise 320ms var(--ease) both;
+}
+/* `display: flex` would otherwise win over the attribute, and the card would
+   never go away. */
+.fw-limit[hidden] {
+  display: none;
+}
+.fw-limit-badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  color: var(--warn);
+}
+.fw-limit-badge svg {
+  width: 17px;
+  height: 17px;
+}
+.fw-limit-copy {
+  min-width: 0;
+}
+.fw-limit-copy b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--gold);
+}
+.fw-limit-body {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- what a prize looks like -------------------------------------------- */
@@ -256,7 +677,7 @@
    neighbour: the labels ride the rim, the prize sits under them. */
 .fw-tag-art {
   position: absolute;
-  top: 21%;
+  top: 24%;
   left: 50%;
   display: grid;
   place-items: center;
@@ -284,10 +705,14 @@
 }
 
 /* ---- the result --------------------------------------------------------- */
+/* The card is dealt, not popped: it arrives from behind the plane, overshoots
+   upright, and settles. One transform, 640ms, then it is still. */
 .fw-result:not(:empty) {
-  animation: fw-pop 420ms var(--ease) both;
+  animation: fw-deal 640ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
 }
 .fw-prize {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: var(--sp-3);
@@ -295,7 +720,31 @@
   border: 1px solid var(--accent-line);
   border-radius: var(--r-lg);
   background: linear-gradient(140deg, var(--accent-wash), var(--glass) 58%);
-  box-shadow: var(--sh-2);
+  box-shadow:
+    0 0 36px -20px var(--accent-glow),
+    var(--sh-2);
+  transform-style: preserve-3d;
+  transition:
+    transform var(--t-med) var(--ease),
+    box-shadow var(--t-med) var(--ease);
+}
+@media (hover: hover) {
+  .fw-prize:hover {
+    transform: perspective(900px) rotateX(4deg) rotateY(-4deg) translateY(-2px);
+    box-shadow:
+      0 0 52px -18px var(--accent-glow),
+      0 20px 40px -24px #000,
+      var(--sh-2);
+  }
+}
+/* One soft highlight across the top of the landing card, so a win catches the
+   same light as the arena that produced it. */
+.fw-prize::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(62% 120% at 14% 0%, rgba(255, 255, 255, 0.13), transparent 72%);
+  pointer-events: none;
 }
 /* The landing is the one place an art chip can breathe, and the only place a
    tier number is worth printing. */
@@ -303,6 +752,10 @@
   width: 36px;
   height: 50px;
   border-radius: 7px;
+  transform: perspective(360px) rotateY(-14deg) translateZ(8px);
+  box-shadow:
+    0 8px 18px -7px #000,
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 .fw-prize > .fw-tier b {
   font-size: 14px;
@@ -312,6 +765,8 @@
   height: 50px;
   border-radius: var(--r-md);
   border-width: 2px;
+  transform: perspective(460px) rotateY(-9deg) translateZ(6px);
+  box-shadow: 0 8px 18px -8px #000;
 }
 .fw-prize > .fw-pile .fw-band {
   width: 44px;
@@ -346,10 +801,95 @@
   font-size: 12.5px;
   line-height: 1.5;
 }
-@keyframes fw-pop {
+@keyframes fw-deal {
+  0% {
+    opacity: 0;
+    transform: perspective(900px) rotateX(-34deg) translateY(26px) scale(0.9);
+  }
+  58% {
+    opacity: 1;
+    transform: perspective(900px) rotateX(7deg) translateY(-3px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(900px) rotateX(0deg) translateY(0) scale(1);
+  }
+}
+/* The bezel light going round. */
+@keyframes fw-marquee {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* Motes rising through the arena light. */
+@keyframes fw-drift {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) rotate(45deg) scale(0.7);
+  }
+  18% {
+    opacity: 0.75;
+  }
+  72% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-64px) rotate(45deg) scale(1.15);
+  }
+}
+/* Paper thrown from the hub. */
+@keyframes fw-confetti {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1);
+  }
+}
+/* The ring the stop throws off, from the hub out past the rim. */
+@keyframes fw-shock {
+  from {
+    opacity: 0.85;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 0;
+    transform: scale(9);
+  }
+}
+/* A band of light crossing the spin face every few seconds. */
+@keyframes fw-go-sheen {
+  0%,
+  58% {
+    transform: translateX(-85%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(85%) skewX(-18deg);
+  }
+}
+/* The arena breathes while the disc is turning — the only ambient motion on the
+   page, and it stops with the wheel. */
+@keyframes fw-aura {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.985);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.015);
+  }
+}
+@keyframes fw-rise {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -394,6 +934,9 @@
 }
 .fw-odds-row:first-child {
   border-top: 0;
+}
+.fw-odds-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.018);
 }
 .fw-odds-name {
   display: flex;
@@ -546,7 +1089,25 @@
     width: 100%;
   }
   .fw-board {
-    width: min(300px, 84vw);
+    width: min(300px, 74vw);
+    transform: rotateX(8deg);
+  }
+  .fw-floor {
+    width: 82%;
+    height: 44px;
+  }
+  .fw-pointer {
+    top: -16px;
+    width: 38px;
+    height: 38px;
+    margin-left: -19px;
+  }
+  .fw-pointer svg {
+    width: 18px;
+    height: 18px;
+  }
+  .fw-pip {
+    width: 20px;
   }
 }
 
@@ -555,11 +1116,40 @@
     gap: var(--sp-3);
   }
   .fw-stage {
-    padding: var(--sp-4) var(--sp-3);
+    padding: var(--sp-5) var(--sp-3) var(--sp-4);
+  }
+  .fw-board {
+    width: min(268px, 72vw);
+    transform: rotateX(6deg);
+  }
+  .fw-sparks .fw-spark:nth-child(n + 7) {
+    display: none;
+  }
+  .fw-pointer {
+    top: -14px;
+  }
+  .fw-rim {
+    inset: 0;
+  }
+  .fw-ticks {
+    inset: -7px;
+  }
+  .fw-pip {
+    width: 17px;
+    height: 5px;
+  }
+  .fw-go {
+    min-width: 0;
+    min-height: 50px;
+    padding: 0 var(--sp-4);
+    font-size: 14.5px;
+  }
+  .fw-limit {
+    padding: 9px 12px;
   }
   .fw-tag-text {
     font-size: 10.5px;
-    top: 11%;
+    top: 15%;
   }
   .fw-faces {
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
@@ -572,10 +1162,36 @@
   .fw-wheel {
     transition: none !important;
   }
+  .fw-stage.is-spinning .fw-aura {
+    animation: none;
+  }
   .fw-result:not(:empty) {
     animation: none;
   }
+  .fw-limit {
+    animation: none;
+  }
   .fw-face-art {
+    transition: none;
+  }
+  .fw-pip {
+    transition: none;
+  }
+  .fw-stage.is-spinning .fw-rim::after {
+    animation: none;
+  }
+  .fw-spark {
+    animation: none;
+    opacity: 0;
+  }
+  .fw-go::after {
+    animation: none;
+    opacity: 0;
+  }
+  .fw-burst {
+    display: none;
+  }
+  .fw-prize {
     transition: none;
   }
 }

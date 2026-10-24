@@ -22,7 +22,7 @@ import { MAX_LEVEL, collectQuests, levelFromXp, levelReward, levelState, questRo
 import { BANNER_FREE, BANNER_THEMES, badgeById, bannerLevel } from '../lib/ranks.js';
 import { nextResetAt, quota } from '../lib/cards.js';
 import { todayTally } from '../lib/duels.js';
-import { fortuneState } from '../lib/fortune.js';
+import { spinsToday } from '../lib/fortune.js';
 import { viewLog } from '../lib/store.js';
 
 const DAY_MS = 86400000;
@@ -44,7 +44,7 @@ export function questFigures() {
   return {
     packs: Number(quota().used) || 0,
     watch: viewLog().filter((e) => Number(e.at) >= from).length,
-    spin: fortuneState().spun ? 1 : 0,
+    spin: spinsToday() > 0 ? 1 : 0,
     duel: tally.fought,
     win: tally.won,
   };

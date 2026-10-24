@@ -97,7 +97,7 @@ const SPIN_PRIZES = [
   { id: 'card-13', kind: 'card', amount: 13, weight: 250 },
   { id: 'card-15', kind: 'card', amount: 15, weight: 50 },
 ];
-const SPIN_HOUR = 4;
+const SPIN_LIMIT = 5;
 const SPIN_FACE_BANK = 5;
 
 /* Watch Together: a room moves the episode and the track, never a playhead. */
@@ -729,15 +729,13 @@ function duelDivisionOf(wins) {
 /* ---- the daily wheel --------------------------------------------------- */
 function spinDay(at = Date.now()) {
   const d = new Date(at);
-  d.setHours(SPIN_HOUR, 0, 0, 0);
-  if (at < d.getTime()) d.setDate(d.getDate() - 1);
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 function nextSpinAt(at = Date.now()) {
   const d = new Date(at);
-  d.setHours(SPIN_HOUR, 0, 0, 0);
-  if (at >= d.getTime()) d.setDate(d.getDate() + 1);
+  d.setHours(24, 0, 0, 0);
   return d.getTime();
 }
 
@@ -2051,13 +2049,16 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
   /* -- the daily wheel --------------------------------------------------- */
   if (seg[0] === 'fortune' && !seg[1] && method === 'GET') {
     const user = need(target, viewer, allowSession);
+    const day = spinDay();
+    const today = user.fortune?.day === day ? Math.min(SPIN_LIMIT, Number(user.fortune?.spinsToday) || 0) : 0;
     return {
       prizes: prizeTable(user),
       held: [...bannerHeldBy(user)],
       level: publicUser(user).stats.level,
-      day: spinDay(),
+      day,
       nextAt: nextSpinAt(),
-      spun: user.fortune?.day === spinDay(),
+      spinsToday: today,
+      daily: SPIN_LIMIT,
       prize: user.fortune?.prize || null,
       faces: faceBank(user),
       spins: Number(user.fortune?.spins) || 0,
@@ -2069,7 +2070,8 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     const user = need(target, viewer, allowSession);
     if (user.muted) fail(403, 'This account cannot spin right now.');
     const day = spinDay();
-    if (user.fortune?.day === day) fail(409, 'Your spin is used. Come back after 04:00.');
+    const used = user.fortune?.day === day ? Number(user.fortune.spinsToday) || 0 : 0;
+    if (used >= SPIN_LIMIT) fail(409, 'All five spins are used. Come back tomorrow.');
     const drawn = rollPrize();
     const won = { ...drawn.prize, index: drawn.at };
 
@@ -2084,12 +2086,13 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
       }
     }
 
-    const record = user.fortune || { day: null, at: 0, prize: null, faces: 0, spins: 0 };
+    const record = user.fortune || { day: null, at: 0, prize: null, faces: 0, spins: 0, spinsToday: 0 };
     const unlocks = user.unlocks || {};
     const banners = Array.isArray(unlocks.banners) ? unlocks.banners : [];
     const avatars = Array.isArray(unlocks.avatars) ? unlocks.avatars : [];
     if (won.kind === 'banner' && won.theme && !banners.includes(won.theme)) banners.push(won.theme);
     user.unlocks = { banners, avatars };
+    record.spinsToday = (record.day === day ? Number(record.spinsToday) || 0 : 0) + 1;
     record.day = day;
     record.at = Date.now();
     record.prize = won;
@@ -2102,6 +2105,8 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
       index: won.index,
       day,
       nextAt: nextSpinAt(),
+      spinsToday: record.spinsToday,
+      daily: SPIN_LIMIT,
       faces: faceBank(user),
       unlocks: publicUser(user).unlocks,
     };
