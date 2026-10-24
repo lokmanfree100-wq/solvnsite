@@ -119,6 +119,12 @@ function tally(kind) {
   return t;
 }
 
+/** A finished fight — replayed or played — counts for the daily quests here. */
+export function countToday(won) {
+  tally('fought');
+  if (won) tally('won');
+}
+
 /* ---- the engine ---------------------------------------------------------
    A card is four numbers, and every one of them has a job in a fight: Power is
    how hard it hits and how much it can take, Speed decides who strikes first in a

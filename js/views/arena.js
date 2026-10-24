@@ -1,22 +1,28 @@
 /**
  * The arena: two cards a side, and a fight both screens agree on.
  *
- * Nothing here decides a winner. `lib/duels.js` runs the arithmetic from the seed
- * the server handed the duel, and this page only *plays it back* — one strike at a
- * time, the clock the engine spent, what fell. That separation is what lets two
- * phones with no connection to each other watch the same match and report the same
- * score, which is the only way a win/loss row on a profile means anything.
+ * Two ways in. `Fight online` stands in a Supabase Realtime lobby until someone
+ * near your Power answers, then both clients open the same board from the seed the
+ * handshake agreed on; `Quick fight (CPU)` skips the lobby entirely, and is also
+ * where an unreachable lobby lands after twelve seconds. The turns, the clock and
+ * the damage live in `lib/battle.js`, and both ends hold the same cards and the
+ * same seed, so neither screen is the referee.
+ *
+ * A replay of a server-run duel still lands here too: `lib/duels.js` decides that
+ * one from the seed the server handed it, and this page plays it back one strike
+ * at a time. That separation is what lets two phones report the same score, which
+ * is the only way a win/loss row on a profile means anything.
  *
  * The match opens on a short exchange of taunts, which is set dressing rather than
  * a decision: the seed picks two lines, the same two lines on both screens, and
- * the first strike still belongs to the arithmetic. Then the turns land one at a
- * time, the clock runs down from ninety, and a line is printed for each.
+ * the first strike still belongs to the arithmetic.
  *
  * Matchmaking is deliberately narrow. The lobby pairs the closest peak Power it
  * can find and will not cross its band, so the honest outcome of an empty queue is
- * "still waiting", not a fight you were never going to win. An invite is the other
- * door: you choose the opponent, they choose their two, and neither line-up is
- * committed until both have picked.
+ * "still waiting", not a fight you were never going to win — and after a beat the
+ * CPU steps in rather than leaving a spinner. An invite is the other door: you
+ * choose the opponent, they choose their two, and neither line-up is committed
+ * until both have picked.
  *
  * The animation is transform and opacity only, and the whole thing collapses to a
  * single final frame under `prefers-reduced-motion`. A page that costs frames is
@@ -27,7 +33,7 @@ import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
 import { debounce, relativeTime } from '../lib/util.js';
-import { currentUser, isSignedIn, searchMembers, shownName } from '../lib/account.js';
+import { currentUser, filePractice, isSignedIn, refresh, searchMembers, shownName } from '../lib/account.js';
 import { TOP_LV, displayCard, ownedEntries, rarityOf } from '../lib/cards.js';
 import {
   LINEUP,
@@ -36,16 +42,19 @@ import {
   callOff,
   challenge,
   commit as commitLineup,
+  countToday,
   duelState,
   duelsAvailable,
   fight as runDuel,
-  leaveQueue,
   lineupOf,
   loadDuels,
-  queueUp,
   settle,
   subscribeDuels,
 } from '../lib/duels.js';
+import { cpuLineup, makeBattle, newSeed } from '../lib/battle.js';
+import { FALLBACK_MS, onlineArenaReady, searchOnline } from '../lib/live-arena.js';
+import { openBattle } from '../components/battle.js';
+import { awardXp } from '../lib/level.js';
 import { gachaCard } from '../components/gacha.js';
 import { avatar, authSheet, divisionChip, duelRecord, say, titleChip } from '../components/account.js';
 import { emptyState } from '../components/media.js';
@@ -55,8 +64,10 @@ import { sfx } from '../lib/sounds.js';
 const NOTE_MAX = 140;
 /** The most tiles a picker paints at once — a full binder runs into the hundreds. */
 const PICK_ROWS = 80;
-/** How often a member standing in the lobby asks the server whether anyone arrived. */
-const LOBBY_POLL_MS = 4000;
+
+/** What a playable fight pays, the same figures a replayed duel does. */
+const XP_WIN = 60;
+const XP_LOSS = 15;
 
 /* The pre-battle exchange. Four short lines, and the seed picks two of them, so
    two screens open on the same script. Each is a literal `t()` so the extractor
@@ -794,17 +805,10 @@ export function ArenaView({ onCleanup }) {
 
   const lineupRow = h('div.ar-lineup');
   const list = h('div.ar-list', { 'aria-live': 'polite' });
-  const status = h('p.ar-status', { hidden: true });
-  let poll = 0;
-  let kind = '';
+  /** The closer for a playable fight, so a route change cannot leave it running. */
+  let battleClose = null;
   /** Duel ids already on screen, so a lobby match can be announced once. */
   const seen = new Set();
-
-  const sayStatus = (text, iconName = 'bolt', live = false) => {
-    kind = text ? (live ? 'live' : iconName === 'alert' ? 'alert' : 'note') : '';
-    status.hidden = !text;
-    if (text) status.replaceChildren(live ? h('i.ar-spinner', { 'aria-hidden': 'true' }) : icon(iconName), h('span', {}, text));
-  };
 
   const paintLineup = () => {
     const keys = readLineup();
@@ -832,45 +836,206 @@ export function ArenaView({ onCleanup }) {
     );
   };
 
-  function stopPolling() {
-    if (!poll) return;
-    clearInterval(poll);
-    poll = 0;
+  /**
+   * File one finished fight on this member's record.
+   *
+   * Both modes land here: a CPU match writes one half, and a live match writes
+   * each player's own half on their own device. The streak returned by the server
+   * is what the result card prints, so the number under a win is the record the
+   * profile and the ranked board read, not a local counter that drifted.
+   */
+  async function settleBattle({ won }) {
+    countToday(won);
+    awardXp(won ? XP_WIN : XP_LOSS, won ? 'duel-win' : 'duel-loss');
+    let streak = null;
+    try {
+      const res = await filePractice(won);
+      if (res?.record) streak = Number(res.record.streak) || 0;
+      await refresh().catch(() => null);
+    } catch {
+      /* The fight already printed its answer; a record that failed to file does
+         not un-fight it. The badge simply has no new streak to show. */
+    }
+    paint();
+    return { streak };
   }
 
-  /* The lobby lives in the server's memory, so a member standing in it has to ask
-     whether anyone has walked up beside them. Once a match is made the queue flag
-     clears and the asking stops by itself. */
-  function startPolling() {
-    if (poll) return;
-    poll = setInterval(() => {
-      loadDuels().then(paint);
-    }, LOBBY_POLL_MS);
+  function mySide(cards) {
+    return {
+      name: shownName(currentUser()) || t('You'),
+      handle: currentUser()?.username ? `@${currentUser().username}` : '',
+      avatar: currentUser()?.avatar || null,
+      cards,
+    };
   }
 
-  async function findMatch() {
-    const keys = readLineup();
+  /** Fight the CPU from the cards already on the bench. */
+  function startCpu(keys = readLineup()) {
     if (keys.length !== LINEUP) {
-      lineupSheet(findMatch);
+      lineupSheet(() => startCpu());
       return;
     }
-    sayStatus(t('Looking for an opponent…'), '', true);
-    try {
-      const d = await queueUp(keys);
-      if (d?.duel) toast(t('An opponent just stepped into the lobby.'), { iconName: 'sparkles' });
-    } catch (err) {
-      sayStatus(say(err, t('The lobby is not answering right now.')), 'alert');
+    const mine = cardsOf(keys);
+    const rivalCards = cpuLineup(keys);
+    if (mine.length !== LINEUP || rivalCards.length !== LINEUP) {
+      toast(t('Pick two cards first.'), { tone: 'err', iconName: 'alert' });
+      return;
     }
+    const rival = { name: t('Arena CPU'), handle: t('Quick fight'), cpu: true };
+    const battle = makeBattle({
+      seed: newSeed(),
+      at: Date.now() + 2600,
+      mine: mySide(mine),
+      rival: { ...rival, cards: rivalCards },
+    });
+    if (!battle) {
+      toast(t('That fight could not start.'), { tone: 'err', iconName: 'alert' });
+      return;
+    }
+    sfx.pack();
+    battleClose = openBattle({
+      battle,
+      mode: 'cpu',
+      rival,
+      onSettle: settleBattle,
+      onRematch: () => startCpu(keys),
+    });
+  }
+
+  /** Open the board a live handshake produced. */
+  function openOnlineMatch(match, keys) {
+    const mine = cardsOf(keys);
+    const battle = makeBattle({
+      seed: match.seed,
+      at: match.at,
+      mine: mySide(mine),
+      rival: {
+        name: match.rival.name,
+        handle: match.rival.handle,
+        avatar: match.rival.avatar,
+        cards: match.rival.cards,
+      },
+      opener: match.role === 'initiator' ? 'mine' : 'rival',
+    });
+    if (!battle) {
+      toast(t('That match could not start.'), { tone: 'err', iconName: 'alert' });
+      return;
+    }
+    sfx.pack();
+    battleClose = openBattle({
+      battle,
+      mode: 'online',
+      rival: match.rival,
+      online: match,
+      onSettle: settleBattle,
+    });
     paint();
   }
 
-  async function leaveLobby() {
-    try {
-      await leaveQueue();
-    } catch (err) {
-      sayStatus(say(err, t('You are still in the lobby.')), 'alert');
+  /**
+   * The live search screen.
+   *
+   * It counts the lobby, counts down to the CPU, and leaves both exits visible:
+   * a person can take the CPU now or stop looking. When the handshake lands the
+   * sheet closes and the board opens on the seed both sides already hold.
+   */
+  function fightOnline(keys = readLineup()) {
+    if (keys.length !== LINEUP) {
+      lineupSheet(() => fightOnline());
+      return;
     }
-    paint();
+    if (!onlineArenaReady()) {
+      toast(t('This browser cannot carry a live match. The CPU will take the fight.'), { iconName: 'offline' });
+      startCpu(keys);
+      return;
+    }
+    const cards = cardsOf(keys);
+    if (cards.length !== LINEUP) return;
+
+    let search = null;
+    let done = false;
+    let left = Math.round(FALLBACK_MS / 1000);
+    const status = h('p.bt-search-status', { 'aria-live': 'polite' }, icon('globe'), h('span', {}, t('Connecting to the lobby…')));
+    const count = h('p.faint.bt-search-count', {}, t('Nobody in the lobby yet.'));
+    const countdown = h('p.faint.bt-search-count.tnum', {}, t('If nobody turns up, the CPU steps in in {n}s.', { n: left }));
+
+    const api = sheet({
+      heading: t('Fight online'),
+      sub: t('Two cards, one clock, and a real person on the other side when one is waiting near your Power.'),
+      width: 560,
+      render: () =>
+        h(
+          'div.bt-search',
+          {},
+          h('div.bt-search-mode', {}, icon('globe'), h('span', {}, t('Live matchmaking'))),
+          status,
+          count,
+          countdown,
+        ),
+      footer: [
+        h('button.btn', { type: 'button', onclick: () => cpuNow() }, icon('bolt'), h('span', {}, t('Fight the CPU now'))),
+        h('button.btn.btn--ghost', { type: 'button', onclick: () => api.close() }, icon('x'), h('span', {}, t('Stop searching'))),
+      ],
+    });
+
+    const ticker = setInterval(() => {
+      if (done) return;
+      left -= 1;
+      if (left <= 0) {
+        countdown.textContent = t('The CPU takes the fight.');
+        cpuNow();
+        return;
+      }
+      countdown.textContent = t('If nobody turns up, the CPU steps in in {n}s.', { n: left });
+    }, 1000);
+
+    function cpuNow() {
+      if (done) return;
+      done = true;
+      clearInterval(ticker);
+      search?.cancel();
+      api.close();
+      startCpu(keys);
+    }
+
+    api.onClose(() => {
+      clearInterval(ticker);
+      if (!done) {
+        done = true;
+        search?.cancel();
+      }
+    });
+
+    search = searchOnline({
+      cards,
+      onStatus: (state) => {
+        if (done) return;
+        if (state === 'open') status.replaceChildren(icon('globe'), h('span', {}, t('Lobby connected. Looking for a match near your Power…')));
+      },
+      onLobby: ({ peers, best }) => {
+        if (done) return;
+        count.textContent = peers ? t('{n} waiting in the lobby.', { n: peers }) : t('Nobody in the lobby yet.');
+        status.replaceChildren(
+          icon(best ? 'bolt' : 'globe'),
+          h('span', {}, best ? t('Found someone near your Power. Opening the match…') : t('Looking for an opponent near your Power…')),
+        );
+      },
+      onError: () => {
+        if (done) return;
+        done = true;
+        clearInterval(ticker);
+        api.close();
+        toast(t('The lobby is not answering. The CPU will take the fight.'), { tone: 'err', iconName: 'offline' });
+        startCpu(keys);
+      },
+      onMatch: (match) => {
+        if (done) return;
+        done = true;
+        clearInterval(ticker);
+        api.close();
+        openOnlineMatch(match, keys);
+      },
+    });
   }
 
   const actions = {
@@ -934,14 +1099,15 @@ export function ArenaView({ onCleanup }) {
       'div',
       {},
       h('h1.display', {}, t('Arena')),
-      h('p.muted', {}, t('Two cards a side, one strike at a time. The numbers on the cards decide it, and the record is kept by the server.')),
+      h('p.muted', {}, t('Two cards a side, one strike at a time. Fight a real opponent online, or take on the CPU in a quick match.')),
       h('div.ar-record-line', {}, divisionChip(currentUser()), duelRecord(currentUser())),
     ),
     h(
       'div.ar-modes',
       {},
-      h('button.btn.btn--primary', { type: 'button', onclick: () => findMatch() }, icon('shuffle'), h('span', {}, t('Find an opponent'))),
-      h('button.btn', { type: 'button', onclick: () => inviteSheet(paint) }, icon('users'), h('span', {}, t('Challenge a member'))),
+      h('button.btn.btn--primary', { type: 'button', onclick: () => fightOnline() }, icon('globe'), h('span', {}, t('Fight online'))),
+      h('button.btn', { type: 'button', onclick: () => startCpu() }, icon('cpu'), h('span', {}, t('Quick fight (CPU)'))),
+      h('button.btn.btn--ghost', { type: 'button', onclick: () => inviteSheet(paint) }, icon('users'), h('span', {}, t('Challenge a member'))),
       h('a.btn.btn--ghost', { href: '#/leaderboard' }, icon('trophy'), h('span', {}, t('Ranked board'))),
     ),
   );
@@ -949,30 +1115,21 @@ export function ArenaView({ onCleanup }) {
   function paint() {
     const s = duelState();
     paintLineup();
-    if (s.waiting) {
-      startPolling();
-      sayStatus(t('Waiting for a match near your Power. {n} in the lobby.', { n: s.rivals }), '', true);
-    } else {
-      stopPolling();
-      if (kind !== 'alert') sayStatus('');
-    }
 
     const openRows = s.duels.filter((d) => d.state === 'awaiting' || d.state === 'ready');
     const past = s.duels.filter((d) => d.state !== 'awaiting' && d.state !== 'ready');
-    const stop = h('button.btn.btn--sm', { type: 'button', onclick: () => leaveLobby() }, icon('x'), h('span', {}, t('Stop looking')));
     list.replaceChildren(
-      ...(s.waiting ? [h('div.ar-lobby', {}, stop)] : []),
       ...(openRows.length ? [h('h2.ar-h2', {}, t('Open duels')), ...openRows.map((d) => duelRow(d, actions))] : []),
       ...(past.length ? [h('h2.ar-h2', {}, t('Recent fights')), ...past.map((d) => duelRow(d, actions))] : []),
       ...(!s.loaded ? [h('p.faint', {}, t('Loading…'))] : []),
-      ...(!openRows.length && !past.length && s.loaded && !s.waiting
+      ...(!openRows.length && !past.length && s.loaded
         ? [
             emptyState({
               iconName: 'bolt',
               heading: t('No duels yet'),
               body: s.failed
                 ? t('The duel list is not answering right now.')
-                : t('Pick two cards and find an opponent, or challenge somebody by name.'),
+                : t('Pick two cards and either fight online or start a quick match against the CPU.'),
             }),
           ]
         : []),
@@ -996,7 +1153,7 @@ export function ArenaView({ onCleanup }) {
   const onAccount = () => paint();
   document.addEventListener('kitsune:account', onAccount);
   onCleanup(() => {
-    stopPolling();
+    battleClose?.();
     unsubscribe();
     closeStage();
     document.removeEventListener('kitsune:account', onAccount);

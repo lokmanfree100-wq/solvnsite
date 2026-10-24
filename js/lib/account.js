@@ -597,6 +597,8 @@ export const commitDuel = (id, cards) => api(`duels/${encodeURIComponent(id)}/si
 export const fileDuel = (id, { winner, score }) =>
   api(`duels/${encodeURIComponent(id)}/result`, { method: 'POST', body: { winner, score } });
 export const cancelDuel = (id) => api(`duels/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: {} });
+/** A CPU fight, or a live match this device settled: one side's record only. */
+export const filePractice = (won) => api('duels/practice', { method: 'POST', body: { won: Boolean(won) } });
 
 /* ---- the daily wheel ----------------------------------------------------
    The roll happens on the server, so the answer cannot be re-spun until the page

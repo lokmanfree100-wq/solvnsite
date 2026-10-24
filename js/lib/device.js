@@ -1899,6 +1899,29 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
   }
 
   /* -- duels ------------------------------------------------------------- */
+  if (seg[0] === 'duels' && seg[1] === 'practice' && method === 'POST') {
+    const user = need(target, viewer, allowSession);
+    if (user.muted) fail(403, 'This account cannot duel right now.');
+    const won = body?.won === true;
+    const rec = user.duel || { wins: 0, losses: 0, streak: 0, best: 0, fought: 0 };
+    rec.wins = Number(rec.wins) || 0;
+    rec.losses = Number(rec.losses) || 0;
+    rec.streak = Number(rec.streak) || 0;
+    rec.best = Number(rec.best) || 0;
+    rec.fought = (Number(rec.fought) || 0) + 1;
+    if (won) {
+      rec.wins += 1;
+      rec.streak += 1;
+      rec.best = Math.max(rec.best, rec.streak);
+    } else {
+      rec.losses += 1;
+      rec.streak = 0;
+    }
+    user.duel = rec;
+    persist();
+    return { record: { ...rec, division: duelDivisionOf(rec.wins).id } };
+  }
+
   if (seg[0] === 'duels' && !seg[1] && method === 'GET') {
     const user = need(target, viewer, allowSession);
     expireDuels(target);
