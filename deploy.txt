@@ -8,9 +8,17 @@ Solvn — static build
 What this copy does without a backend:
   - Search, browse, details pages, the player, watch history, favourites,
     settings and all 12 languages work as normal.
-  - Accounts, comments, playlists, the issue form and the Discord bridge are
-    absent. They need the Node server (server.js); a button that can only fail
-    is not a button, so they are not shown.
+  - Accounts, profiles, playlists, comments, friends, messages, card trades,
+    duels and the ranked board, the daily wheel, watch rooms and the notice
+    bell all keep their work in this browser's localStorage (lib/device.js),
+    with the same routes and shapes the Node server answers (server.js).
+  - Two limits follow from that: an account, a card, a message or a duel lives
+    on the browser that made it, so two people meet only when they sign in on
+    the same one. The bell is the exception — it asks AniList for air dates
+    directly and compares them against this device's saved list.
+  - A fresh browser starts empty: no accounts, no cards, no staff. There is no
+    seeded admin. A Supabase project added in Settings owns sign-in, and the
+    social pages carry on locally beside it.
 
 After uploading, open the site once and press Ctrl+F5 so the old copies held in
 your browser are replaced by these files.

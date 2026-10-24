@@ -541,23 +541,27 @@ export const postComment = ({ media, ep, text }) => api('comments', { method: 'P
 export const removeComment = (id) => api(`comments/${id}`, { method: 'DELETE' });
 
 /**
- * Is the feature in front of us written by this server?
+ * Every social page has somewhere to write, whichever host it lands on.
  *
- * Messages, deals, duels, the wheel, rooms and the notice bell all live in
- * `server.js`. They used to vanish the moment a member turned on Supabase, as if a
- * different sign-in meant a different website: the *account* moves to the cloud,
- * and the chat, the escrow and the win/loss tally stay on the origin the page was
- * loaded from. What really takes them away is a static deploy — htdocs has no
- * `/api` at all, and every one of these would 404 — so that is the only test.
+ * A served copy keeps deals, fights, the wheel, rooms and the bell in the
+ * server's file. A static copy answers the same routes from `lib/device.js`,
+ * which stores them in this browser — the same place messages and friends
+ * already live there. The two backends return the same shapes, so a page does
+ * not need to know which one answered, and nothing is hidden from the export.
+ *
+ * The honest limit is reach, not presence: a deal or a duel on a plain host is
+ * between accounts that signed in on the same browser, and a notice compares
+ * air dates from this device's own list rather than from a timer that runs
+ * while the tab is shut. The pages say so where it matters.
  */
-const serverBacked = () => !staticHost();
+export const socialUsable = () => true;
 
 /* ---- private messages -------------------------------------------------
    On a served copy a chat lives in the server's file; on a static copy it lives
    in this browser (see `lib/device.js`). Either way there is a real place to put
    a line, so the page and its links are offered. What is *not* offered is the
    server-only half of the community — deals, duels, the wheel, rooms and the
-   bell — which still asks `serverBacked()` below. */
+   bell — which all answer through the same switch below. */
 export const messagesUsable = () => true;
 export const inboxThreads = () => api('dms');
 export const messageThread = (withId) => api(`dms/thread?with=${encodeURIComponent(withId)}`);
@@ -570,7 +574,7 @@ export const removeMessage = (id) => api(`dms/${id}`, { method: 'DELETE' });
    offer and it completes when the two members in it have each signed. `lib/
    cards.js` is what moves the binder, so a trade page always reconciles the two
    together — see `lib/trades.js`. */
-export const tradesUsable = () => serverBacked();
+export const tradesUsable = () => socialUsable();
 export const tradeList = () => api('trades');
 export const offerTrade = ({ to, give, want, note }) => api('trades', { method: 'POST', body: { to, give, want, note } });
 export const signTrade = (id) => api(`trades/${encodeURIComponent(id)}/sign`, { method: 'POST', body: {} });
@@ -584,7 +588,7 @@ export const tellDiscord = ({ url, text }) => api('hooks/discord', { method: 'PO
    The server holds the record — both line-ups, who signed, and the win/loss
    tally — and the fight itself is run on each device from the one seed it hands
    back. `lib/duels.js` is where that engine lives; these are only the wires. */
-export const duelsUsable = () => serverBacked();
+export const duelsUsable = () => socialUsable();
 export const duelList = () => api('duels');
 export const offerDuel = ({ to, cards, note }) => api('duels', { method: 'POST', body: { to, cards, note } });
 export const queueDuel = (cards) => api('duels/queue', { method: 'POST', body: { cards } });
@@ -597,7 +601,7 @@ export const cancelDuel = (id) => api(`duels/${encodeURIComponent(id)}/cancel`, 
 /* ---- the daily wheel ----------------------------------------------------
    The roll happens on the server, so the answer cannot be re-spun until the page
    likes it, and the odds printed on the wheel are the weights that ran. */
-export const fortuneUsable = () => serverBacked();
+export const fortuneUsable = () => socialUsable();
 export const fortuneRead = () => api('fortune');
 export const fortuneSpin = () => api('fortune/spin', { method: 'POST', body: {} });
 export const fortuneFace = (face) => api('fortune/pick', { method: 'POST', body: { face } });
@@ -611,7 +615,7 @@ export const rankedBoard = () => api('community/ranked');
    countdown both ends reload their player on, and a chat. Nothing here claims to
    move a playhead, because nothing here can. Rooms live in this server's file like
    messages do, so the same flag decides whether the watch page offers one. */
-export const roomsUsable = () => serverBacked();
+export const roomsUsable = () => socialUsable();
 export const roomList = () => api('rooms');
 export const roomRead = (id) => api(`rooms/${encodeURIComponent(id)}`);
 export const roomStart = ({ media, title, ep, audio }) => api('rooms', { method: 'POST', body: { media, title, ep, audio } });
@@ -627,7 +631,7 @@ export const roomClose = (id) => api(`rooms/${encodeURIComponent(id)}/close`, { 
    last told about against what the catalogue says is out; the browser's only job
    is to hand up the titles it has saved. Those lists live on the device, not in
    the account, which is why the list travels as ids rather than being read here. */
-export const noticesUsable = () => serverBacked();
+export const noticesUsable = () => socialUsable();
 export const noticeList = () => api('notices');
 export const followWatch = (items) => api('notices/watch', { method: 'POST', body: { items } });
 export const readNotice = (id) => api('notices/read', { method: 'POST', body: id ? { id } : {} });
