@@ -18,7 +18,7 @@
 
 import { h } from './dom.js';
 
-export const LOGO_SRC = '/assets/solvn-cat.jpg';
+export const LOGO_SRC = 'assets/solvn-cat.jpg';
 
 /** `size` is the intrinsic box; the stylesheets decide how big it is drawn. */
 export function logoMark(size = 30) {
