@@ -548,6 +548,7 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
       house.salt = salt;
       house.hash = await digest(password, salt);
       target.byEmail[email] = house.id;
+      target.byName[nameKey] = house.id;
       target.session = house.id;
       persist();
       return { user: publicUser(house) };
