@@ -86,6 +86,13 @@
     padding: 0 17px;
     font-size: 13px;
   }
+  /* The track switcher keeps its compact marks on a phone: four languages, the
+     episode line and the server chip share one narrow row, and the 40px height
+     above already satisfies the touch minimum. */
+  .seg--tracks button {
+    padding: 0 10px;
+    font-size: 10.5px;
+  }
   /* Scaled up rather than re-plumbed: the pill is the button, so the knob
      keeps the same proportions at a thumb-friendly size. */
   .switch {
@@ -262,6 +269,17 @@
     width: 11px;
     height: 11px;
   }
+  /* Two glowing marks is what a 124px poster carries legibly; the letters stay
+     above 8px so they read as languages rather than as noise. */
+  .card-tracks {
+    gap: 3px;
+  }
+  .card-tracks .dub {
+    height: 15px;
+    padding: 0 5px;
+    font-size: 8.5px;
+    letter-spacing: 0.05em;
+  }
   /* The player bar wraps into two tidy lines instead of three ragged ones:
      controls first, then the episode title across the full width. */
   .player-bar {
@@ -299,6 +317,149 @@
 @media (pointer: coarse), (max-width: 760px) {
   .hero {
     min-height: clamp(400px, 62dvh, 520px);
+  }
+}
+
+/* ---- compact scale on a phone --------------------------------------------
+   The banner, the chrome and the headings are laid out for a desktop first, and
+   a phone pays for that in scroll distance. Everything here shrinks the
+   container and the type — never the tap target: 44px is the touch minimum, so
+   the spotlight arrows stay 44 and the space around them is what gives way. */
+@media (max-width: 768px) {
+  :root {
+    --topbar-h: 54px;
+    --tabbar-h: 62px;
+    /* 18px of gutter on each side is 10% of a 360px screen gone before the
+       first poster appears. */
+    --gutter: 14px;
+  }
+
+  /* No vertical over-stretch: the frame is bounded by the visible viewport and
+     the text block fits inside it at every phone width. */
+  .hero {
+    min-height: clamp(330px, 54dvh, 420px);
+    border-radius: var(--r-lg);
+  }
+  .hero-content {
+    padding: 16px 16px 56px;
+    gap: 8px;
+  }
+  .hero-eyebrow {
+    height: 22px;
+    padding: 0 9px;
+    font-size: 10px;
+  }
+  .hero-eyebrow svg {
+    width: 11px;
+    height: 11px;
+  }
+  .hero-title {
+    font-size: clamp(21px, 6.1vw, 30px);
+    line-height: 1.1;
+  }
+  .hero-alt {
+    font-size: 12.5px;
+  }
+  .hero-meta {
+    font-size: 11.5px;
+    gap: 6px;
+  }
+  .hero-genres {
+    gap: 5px;
+  }
+  .hero-chip {
+    height: 24px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+  .hero-actions {
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .hero-poster {
+    top: 24px;
+    width: 34%;
+    max-width: 124px;
+  }
+  /* One tidy line at the bottom: the dots read from the far side, the arrows
+     hold the other, and neither reaches over the other. */
+  .hero-foot {
+    position: absolute;
+    inset-inline-start: 16px;
+    bottom: 15px;
+    z-index: 4;
+  }
+  .hero-dots {
+    margin-top: 0;
+    gap: 8px;
+  }
+  .hero-controls {
+    inset-inline-end: 10px;
+    bottom: 10px;
+    gap: 6px;
+  }
+
+  .page-head h1 {
+    font-size: clamp(22px, 6vw, 28px);
+  }
+  .section-title,
+  .section-head h2 {
+    font-size: 17px;
+  }
+  .section-head {
+    margin-bottom: var(--sp-3);
+  }
+  .section-head .sub {
+    font-size: 12px;
+  }
+
+  /* The banner's paragraph is the one block of prose in the fold. Three lines is
+     enough to decide whether to tap, and the fourth was never read on a phone. */
+  .hero-desc {
+    font-size: 12.5px;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+  }
+  /* Two buttons that share a line and split it evenly read as a pair of
+     controls; two of different widths read as a layout that gave up. */
+  .hero-actions > .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .page-head {
+    margin-bottom: var(--sp-4);
+  }
+  .page-head p {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .grid {
+    gap: var(--sp-5) 12px;
+  }
+  .row {
+    --card-w: 132px;
+  }
+  .card-title {
+    font-size: 13.5px;
+  }
+
+  /* Settings rows: an icon, a label and a control cannot share 360px. The
+     control takes a line of its own at full width, which is also the bigger,
+     easier tap target — the label never gets squeezed into broken words. */
+  .set-row {
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+  .set-row > .select {
+    flex: 1 1 100%;
+    min-inline-size: 0;
   }
 }
 
@@ -352,6 +513,12 @@
     padding-inline: 9px;
   }
   .btn--lang .lang-caret {
+    display: none;
+  }
+  /* The sound handle gives its 44px to the search field rather than starving
+     it. `Sound effects` stays in Settings ▸ Playback on every screen, reached
+     from the profile page, so nothing is lost — only relocated. */
+  .btn--sound {
     display: none;
   }
 }

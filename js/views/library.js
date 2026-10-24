@@ -20,12 +20,24 @@ import { mediaCard, emptyState } from '../components/media.js';
 import { toast } from '../lib/ui.js';
 import { t } from '../lib/i18n.js';
 
+/* One row of pills, and every pill is a saved status: the three device views
+   (in progress, favourites, recently viewed) are reached from the stat tiles
+   above, because a filter row that mixes statuses with histories is the reason
+   this page used to read as four tabs saying "watching". */
 const TABS = [
-  ...LISTS.map((key) => [key, LIST_LABELS[key]]),
-  ['progress', 'Watching now'],
-  ['favourites', 'Favourites'],
-  ['history', 'Recently viewed'],
+  ['all', 'All Saved'],
+  ['watching', LIST_LABELS.watching],
+  ['completed', LIST_LABELS.completed],
+  ['planned', LIST_LABELS.planned],
+  ['onHold', LIST_LABELS.onHold],
+  ['dropped', LIST_LABELS.dropped],
 ];
+
+/** The views the pills do not carry, kept reachable by deep link and by tile. */
+const VIEWS = ['progress', 'favourites', 'history'];
+
+const tabOf = (raw) =>
+  TABS.some(([key]) => key === raw) || VIEWS.includes(raw) ? raw : 'all';
 
 const asMedia = (e) => ({
   id: e.id,
@@ -39,7 +51,7 @@ const asMedia = (e) => ({
 
 export async function LibraryView() {
   const { query } = parse();
-  let tab = query.tab || 'watching';
+  let tab = tabOf(query.tab);
   const wrap = h('div.page-library');
 
   const body = h('div');
@@ -49,7 +61,8 @@ export async function LibraryView() {
   const chips = new Map();
 
   const countFor = (key) =>
-    key === 'favourites' ? favouriteEntries().length
+    key === 'all' ? totalListCount()
+    : key === 'favourites' ? favouriteEntries().length
     : key === 'progress' ? continueWatching(99).length
     : key === 'history' ? history(99).length
     : listCount(key);
@@ -84,10 +97,10 @@ export async function LibraryView() {
       badge.hidden = !c;
     }
     stats.replaceChildren(
-      stat(totalListCount(), t('Saved titles')),
-      stat(continueWatching(99).length, t('In progress')),
-      stat(favouriteEntries().length, t('Favourites')),
-      stat(history(99).length, t('Recently viewed')),
+      stat(totalListCount(), t('Saved titles'), 'all', tab === 'all'),
+      stat(continueWatching(99).length, t('In progress'), 'progress', tab === 'progress'),
+      stat(favouriteEntries().length, t('Favourites'), 'favourites', tab === 'favourites'),
+      stat(history(99).length, t('Recently viewed'), 'history', tab === 'history'),
     );
   }
 
@@ -128,12 +141,17 @@ export async function LibraryView() {
   }
 
   function renderList(key) {
-    const entries = listEntries(key);
+    /* A title sits in exactly one list, so "All Saved" is a concatenation, not a
+       merge — newest first, whatever shelf it belongs to. */
+    const entries =
+      key === 'all'
+        ? LISTS.flatMap((k) => listEntries(k)).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
+        : listEntries(key);
     if (!entries.length) {
       body.replaceChildren(
         emptyState({
           iconName: 'library',
-          heading: t('Your {list} list is empty', { list: listLabel(key) }),
+          heading: key === 'all' ? t('Your library is empty') : t('Your {list} list is empty', { list: listLabel(key) }),
           body: t('Open any title and use “Add to list” to keep it here. Everything stays on this device.'),
           action: h('a.btn.btn--primary', { href: '#/discover' }, icon('compass'), t('Find something to watch')),
         }),
@@ -226,4 +244,11 @@ export async function LibraryView() {
   return wrap;
 }
 
-const stat = (k, l) => h('div.stat', {}, h('div.k.tnum', {}, String(k)), h('div.l', {}, l));
+/* A tile is a door, not a caption: each count already names a view, so it goes
+   there rather than leaving three of them under the pills as dead numbers. */
+const stat = (k, l, tab, active) =>
+  h(`a.stat${active ? '.is-on' : ''}`, {
+    href: `#/library?tab=${tab}`,
+    'aria-label': l,
+    title: l,
+  }, h('div.k.tnum', {}, String(k)), h('div.l', {}, l));

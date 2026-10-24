@@ -1,8 +1,10 @@
 /** Media card, carousel row, and the shared loading/error/empty states. */
 
 import { h, icon, qs, scrollMax, scrollPos, scrollInlineBy } from '../lib/dom.js';
-import { title, formatLabel, yearOf, episodeCount, scoreTone, scoreLabel, statusLabel, STATUS_TONE } from '../lib/util.js';
+import { title, formatLabel, yearOf, episodeCount, scoreTone, scoreLabel, statusLabel, STATUS_TONE, watched } from '../lib/util.js';
 import { getProgress } from '../lib/store.js';
+import { trackChip, tracksOffered } from '../lib/sources.js';
+import { retryNow } from '../lib/anilist.js';
 import { t } from '../lib/i18n.js';
 
 /* ---- image with fade-in and a fallback ladder ---------------------- */
@@ -74,20 +76,34 @@ function cardFlag(media) {
   return null;
 }
 
+/* The audio languages this copy of Solvn can put in the player, lit along the
+   bottom of the poster. AniList keeps no dub-availability field for a title, so
+   the honest promise a card can make is the one the configured servers declare:
+   the built-in source carries Japanese subtitles and the English dub, so those
+   are the chips; add an Arabic or French server in Settings and its chip joins
+   every poster, because the player will genuinely try it. */
+function trackBadges(flag) {
+  const offered = tracksOffered();
+  const marks = [flag, ...(offered.length > 1 ? offered.map(trackChip) : [])].filter(Boolean);
+  if (!marks.length) return null;
+  return h('div.card-tracks', {}, ...marks.map((text) => h('span.dub', {}, text)));
+}
+
 /* ---- poster card ---------------------------------------------------- */
-export function mediaCard(media, { to, eager = false, showTitle = true, meta = true, rank = null, progress = null, size = 'large' } = {}) {
+export function mediaCard(media, { to, eager = false, showTitle = true, meta = true, rank = null, progress = null, size = 'large', flag = null } = {}) {
   const href = to || `#/anime/${media.id}`;
   const score = media.averageScore;
   const prog = progress ?? (getProgress(media.id) && media.format !== 'MOVIE' ? getProgress(media.id) : null);
   const pct = prog?.total ? Math.min(100, (prog.episode / prog.total) * 100) : null;
 
-  const flag = cardFlag(media);
+  const tag = cardFlag(media);
   const art = h(
     'div.card-art',
     {},
     posterImage(media, { eager, size }),
-    flag ? h('div.card-flag', {}, flag) : null,
+    tag ? h('div.card-flag', {}, tag) : null,
     score ? h('span.card-score', { class: scoreTone(score) === 'low' ? 'is-low' : null }, icon('star'), scoreLabel(score)) : null,
+    trackBadges(flag),
     h('div.card-play', {}, h('span', {}, icon('play'))),
     pct != null ? h('div.card-progress', {}, h('i', { style: { width: `${pct}%` } })) : null,
   );
@@ -125,7 +141,7 @@ export function cardSkeleton(count = 7) {
 }
 
 /* ---- carousel row ---------------------------------------------------- */
-export function mediaRow({ id, heading, sub, items = [], viewAll, skeleton = false, rank = false, empty }) {
+export function mediaRow({ id, heading, sub, items = [], viewAll, skeleton = false, rank = false, empty, flag = null }) {
   const track = h(`div.row.no-scrollbar${skeleton ? '.is-skeleton' : ''}`, { id, role: 'list' });
   const fill = () => {
     track.replaceChildren();
@@ -139,7 +155,7 @@ export function mediaRow({ id, heading, sub, items = [], viewAll, skeleton = fal
     }
     items.forEach((m, i) => {
       const wrap = h('div', { role: 'listitem', style: { display: 'contents' } });
-      wrap.append(mediaCard(m, { rank: rank ? i + 1 : null, eager: i < 4 }));
+      wrap.append(mediaCard(m, { rank: rank ? i + 1 : null, eager: i < 4, flag }));
       track.append(wrap);
     });
   };
@@ -293,27 +309,47 @@ export function mediaSplit({ id, heading, sub, items = [], viewAll, skeleton = f
  * a skeleton that already has the final shape is painted first, then swapped
  * whole for the real block once the rail resolves. A block with no data takes
  * itself off the page; only a `required` one spends its frame on an error.
+ *
+ * Both shapes race a clock, so a request that hangs is an error with a retry
+ * button rather than a placeholder that outlives the visit.
  */
 function lazyBlock(opts, build) {
-  const section = build({ ...opts, items: [], skeleton: true });
-  const track = qs('.block-track', section);
-  opts
-    .load()
-    .then((items) => {
-      if (!items?.length) {
-        section.remove();
-        return;
-      }
-      section.replaceWith(build({ ...opts, items, skeleton: false }));
-    })
-    .catch(() => {
-      if (opts.required) {
-        track.replaceChildren(errorState(opts.heading));
+  let section = build({ ...opts, items: [], skeleton: true });
+  let track = qs('.block-track', section);
+
+  const retry = () => {
+    retryNow();
+    const again = build({ ...opts, items: [], skeleton: true });
+    section.replaceWith(again);
+    /* The rebuilt block owns the DOM now, so repoint both handles before the
+       next answer (or the next failure) looks for something to paint into. */
+    section = again;
+    track = qs('.block-track', again) || track;
+    fill();
+  };
+
+  function fill() {
+    watched(opts.load())
+      .then((items) => {
+        if (!items?.length) {
+          section.remove();
+          return;
+        }
+        const fresh = build({ ...opts, items, skeleton: false });
+        section.replaceWith(fresh);
+        section = fresh;
+        track = qs('.block-track', fresh) || track;
+      })
+      .catch(() => {
+        if (!opts.required) {
+          section.remove();
+          return;
+        }
         track.classList.add('is-static');
-      } else {
-        section.remove();
-      }
-    });
+        track.replaceChildren(errorState(opts.heading, retry));
+      });
+  }
+  fill();
   return section;
 }
 
@@ -324,24 +360,37 @@ export const lazySplit = (opts) => lazyBlock(opts, mediaSplit);
 export function lazyRow(opts) {
   const section = mediaRow({ ...opts, items: [], skeleton: true });
   const track = qs('.row', section);
-  opts
-    .load()
-    .then((items) => {
-      if (!items?.length) {
-        section.remove();
-        return;
-      }
-      const fresh = mediaRow({ ...opts, items, skeleton: false });
-      section.replaceWith(fresh);
-    })
-    .catch(() => {
-      if (opts.required) {
-        track.replaceChildren(errorState(opts.heading));
+
+  /* A rail that cannot fill is asked for again, in place. The catalogue answers
+     from a saved copy before it answers with an error, so reaching this branch
+     means the device is genuinely offline — and a row that stays removed forever
+     is a shelf nobody knows was missing. */
+  const fill = () => {
+    watched(opts.load())
+      .then((items) => {
+        if (!items?.length) {
+          section.remove();
+          return;
+        }
+        section.replaceWith(mediaRow({ ...opts, items, skeleton: false }));
+      })
+      .catch(() => {
+        if (!opts.required) {
+          section.remove();
+          return;
+        }
         track.classList.remove('no-scrollbar');
-      } else {
-        section.remove();
-      }
-    });
+        track.replaceChildren(
+          errorState(opts.heading, () => {
+            retryNow();
+            track.classList.add('no-scrollbar');
+            track.replaceChildren(...cardSkeleton(7));
+            fill();
+          }),
+        );
+      });
+  };
+  fill();
   return section;
 }
 

@@ -6,6 +6,8 @@ import { go, parse } from '../lib/router.js';
 import { recentSearches, pushQuery, clearQueries, settings } from '../lib/store.js';
 import { title, formatLabel, yearOf, compactNumber, debounce } from '../lib/util.js';
 import { mediaCard, loadingGrid, emptyState } from '../components/media.js';
+import { avatar, titleChip } from '../components/account.js';
+import { searchMembers, shownName, staticHost } from '../lib/account.js';
 import { toast } from '../lib/ui.js';
 import { t } from '../lib/i18n.js';
 
@@ -120,9 +122,55 @@ export async function SearchView() {
     input.value = '';
     clearBtn.classList.add('hide');
     hideSuggestions();
+    findMembers('');
     commit('');
     input.focus();
   });
+
+  /* ---------- members ----------------------------------------------------
+     The same words find people as well as shows. A rail of profiles appears
+     under the field as soon as a handle or a display name matches, and says
+     nothing at all when the account layer is not there: the anime search works
+     on its own either way, so a missing server never costs this page a button. */
+  const members = h('div.member-rail.hide');
+  let memberReq = 0;
+
+  async function findMembers(q) {
+    const token = ++memberReq;
+    members.classList.add('hide');
+    members.replaceChildren();
+    const term = (q || '').trim();
+    if (term.length < 2 || staticHost()) return;
+    let list;
+    try {
+      list = (await searchMembers(term)).users || [];
+    } catch {
+      return;
+    }
+    if (token !== memberReq) return;
+    members.replaceChildren(
+      h(
+        'div.section-head',
+        {},
+        h('h2', {}, t('Members')),
+        h('span.spacer'),
+        h('a.link-all', { href: '#/leaderboard' }, icon('trophy'), t('Leaderboard')),
+      ),
+      h(
+        'div.member-row',
+        {},
+        ...list.map((u) =>
+          h(
+            'a.member-chip',
+            { href: `#/profile/${encodeURIComponent(u.id)}`, 'aria-label': t('Open {name}', { name: shownName(u) }) },
+            avatar(u, { size: 'sm' }),
+            h('span.member-names', {}, h('b', {}, shownName(u), titleChip(u)), h('span.faint', {}, `@${u.username}`)),
+          ),
+        ),
+      ),
+    );
+    members.classList.remove('hide');
+  }
 
   /* ---------- results ---------- */
   const debouncedSearch = debounce(() => commit(input.value, true), 520);
@@ -132,6 +180,7 @@ export async function SearchView() {
     if (!fromTyping) hideSuggestions();
 
     if (q.length < 2) {
+      findMembers('');
       if (fromTyping) return; // wait until the query is worth a request
       clearBtn.classList.add('hide');
       go('/search', { replace: true, keepScroll: true });
@@ -139,6 +188,7 @@ export async function SearchView() {
       return;
     }
     pushQuery(q);
+    findMembers(q);
     go(`/search?q=${encodeURIComponent(q)}${sort !== 'SEARCH_MATCH' ? `&sort=${sort}` : ''}`, { replace: true, keepScroll: true });
     renderLoading();
     const mine = ++resultReq;
@@ -281,6 +331,7 @@ export async function SearchView() {
       summary,
     ),
     sortBar,
+    members,
     results,
     pager,
   );

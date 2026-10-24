@@ -19,8 +19,18 @@ let stamp = 0;
 async function ensure() {
   if (pool && pool.length) return pool;
   if (!loading) {
-    loading = fetch(SEED_URL)
-      .then((r) => (r.ok ? r.json() : null))
+    loading = fetch(SEED_URL, { headers: { Accept: 'application/json' } })
+      .then(async (r) => {
+        if (!r.ok) return null;
+        /* A host that cannot find the snapshot answers 200 with its own 404 or
+           index page — which is exactly what a folder of files behind an SPA
+           rewrite does — and `r.json()` on that HTML used to reject, empty the
+           pool and leave every fallback in the app returning nothing. Read the
+           text, and only parse a body that is shaped like JSON. */
+        const text = await r.text();
+        if (!/^\s*[[{]/.test(text)) return null;
+        return JSON.parse(text);
+      })
       .then((doc) => {
         pool = Array.isArray(doc?.media) ? doc.media : [];
         stamp = Number(doc?.savedAt) || 0;
@@ -66,11 +76,30 @@ function matches(m, vars) {
   if (Array.isArray(vars.status_in) && !vars.status_in.includes(m.status)) return false;
   if (vars.minimumScore && (m.averageScore || 0) < vars.minimumScore) return false;
   if (vars.genre && !(m.genres || []).includes(vars.genre)) return false;
+  /* The live windows send `isAdult: false` unless mature titles are enabled.
+     Absent means "asked for everything", so the snapshot stops only on false. */
+  if (vars.isAdult === false && m.isAdult) return false;
+
+  /* The live date-window rails bound on `startDate`, a FuzzyDateInt like
+     19630101. A snapshot keeps only the year, which is the part those rails
+     actually sort by, so the bound is read down to its year and compared
+     against `seasonYear`. */
+  const yearOf = (d) => Math.floor(Number(d) / 10000) || 0;
+  const from = yearOf(vars.startDateGreater);
+  const to = yearOf(vars.startDateLesser);
+  if ((from || to) && m.seasonYear) {
+    if (from && m.seasonYear < from) return false;
+    if (to && m.seasonYear > to) return false;
+  }
 
   const season = seasonParts(vars.season);
   if (season.season && m.season !== season.season) return false;
   const year = vars.seasonYear || vars.year || season.year;
-  if (year && m.seasonYear !== year) return false;
+  /* A title the snapshot never gave a year to stays in a year-filtered window.
+     Dropping it made the offline catalogue thinner than the live one for no
+     reason — the year is unknown, not different. The date-window test above has
+     always behaved this way; this bound now matches it. */
+  if (year && m.seasonYear && m.seasonYear !== year) return false;
 
   const q = String(vars.search || '').trim().toLowerCase();
   if (q) {
@@ -99,6 +128,21 @@ export async function browse(vars) {
   return { items, info: { total: items.length, hasNextPage: false, currentPage: 1, lastPage: 1, perPage: items.length } };
 }
 
+/** Mirrors Q_CLASSIC: a filtered, sorted window rather than a paged result. */
+export async function classic(vars = {}) {
+  const list = await ensure();
+  if (!list.length) return null;
+  return select(list, { sort: ['POPULARITY_DESC'], perPage: 0, ...vars });
+}
+
+/** Mirrors Q_IDS — the curated shelves of the retro hub. */
+export async function byIds(ids = []) {
+  const list = await ensure();
+  if (!list.length) return null;
+  const wanted = new Set(ids.map(Number));
+  return list.filter((m) => wanted.has(m.id)).sort(SORTERS.POPULARITY_DESC);
+}
+
 export async function search(query, vars = {}) {
   const list = await ensure();
   if (!list.length) return null;
@@ -120,6 +164,32 @@ export async function hiddenGems() {
         (m.popularity || 0) < 60000,
     )
     .sort(SORTERS.SCORE_DESC);
+}
+
+/**
+ * The air calendar, from whatever the snapshot last saw going.
+ *
+ * `Q_SCHEDULE` is the only rail in the app that has no equivalent browse
+ * filter, so the next-airing stamp each title carries is all there is to work
+ * with — one row per title, in the shape the live query hands over. It is a
+ * stale calendar on an API that is not answering, which beats an empty one.
+ */
+export async function schedule(from, to) {
+  const list = await ensure();
+  if (!list.length) return null;
+  return list
+    .filter((m) => {
+      const at = m.nextAiringEpisode?.airingAt || 0;
+      return at >= from && at <= to;
+    })
+    .map((m) => ({
+      id: m.id,
+      airingAt: m.nextAiringEpisode.airingAt,
+      episode: m.nextAiringEpisode.episode || 0,
+      timeUntilAiring: Math.max(0, m.nextAiringEpisode.airingAt - stamp / 1000),
+      media: m,
+    }))
+    .sort((a, b) => a.airingAt - b.airingAt);
 }
 
 /** The banner slate: the biggest titles the snapshot holds. */

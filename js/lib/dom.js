@@ -170,6 +170,9 @@ export const ICONS = {
   refresh: I(['M20 12a8 8 0 1 1-2.4-5.7', 'M20 4v4h-4']),
   info: I(['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z', 'M12 11v5.5M12 7.6h.01']),
   alert: I(['M12 3.5 21.5 20h-19L12 3.5Z', 'M12 10v4M12 17h.01']),
+  /* The bell: a handle with a clapper under it, so it reads as a notice rather than
+     as the warning triangle the admin tools already wear. */
+  bell: I(['M6.5 9a5.5 5.5 0 0 1 11 0c0 6.4 2.7 8.3 2.7 8.3H3.8S6.5 15.4 6.5 9Z', 'M10.3 20.4a1.9 1.9 0 0 0 3.4 0']),
   trash: I(['M4.5 7h15', 'M9.5 7V4.5h5V7', 'M6.5 7l1 13h9l1-13', 'M10 11v5M14 11v5']),
   eye: I(['M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z', 'M12 14.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2Z']),
   calendarStar: I(['M4.5 6.5h15v13h-15z', 'M8 3.5v5M16 3.5v5M4.5 11h15', 'M12 13.4l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L9.1 15.5l2-.3.9-1.8Z']),
@@ -183,6 +186,7 @@ export const ICONS = {
   shuffle: I(['M17 4.5 20.5 8 17 11.5', 'M17 12.5 20.5 16 17 19.5', 'M3.5 8h4.2c1.5 0 2.7.7 3.6 1.9l4.4 6c.9 1.2 2.1 1.9 3.6 1.9h1.2', 'M3.5 16h4.2c1.4 0 2.5-.6 3.3-1.6', 'M14.2 9.5c1-.9 1.9-1.5 3.2-1.5h3.1']),
   history: I(['M3.5 12a8.5 8.5 0 1 0 2.6-6.1', 'M3.5 4.5V10H9', 'M12 8v4.4l3 1.8']),
   volume: I(['M4 9.5h3l4.5-4v13L7 14.5H4z', 'M15.5 9.5a3.6 3.6 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10']),
+  volumeOff: I(['M4 9.5h3l4.5-4v13L7 14.5H4z', 'M15.5 10l4.5 4M20 10l-4.5 4']),
   mic: I(['M12 15a3.2 3.2 0 0 0 3.2-3.2V6a3.2 3.2 0 1 0-6.4 0v5.8A3.2 3.2 0 0 0 12 15Z', 'M5.5 11a6.5 6.5 0 0 0 13 0M12 18.2V21']),
   caption: I(['M3.5 5.5h17v13h-17z', 'M10 10.2a2.4 2.4 0 1 0 0 3.6M16.5 10.2a2.4 2.4 0 1 0 0 3.6']),
   palette: I(['M12 21a9 9 0 1 1 0-18c4.9 0 9 3.4 9 7.5 0 2.5-2 4-4.2 4H15a1.8 1.8 0 0 0-1.3 3.1c.5.5.3 1.4-.5 1.4Z', 'M7.5 12h.01M9.5 8.5h.01M13.5 7.5h.01'], true),
@@ -195,6 +199,9 @@ export const ICONS = {
   /* account + community */
   user: I(['M12 11.2a3.7 3.7 0 1 0 0-7.4 3.7 3.7 0 0 0 0 7.4Z', 'M4.8 20.4a7.2 7.2 0 0 1 14.4 0']),
   users: I(['M9.4 11.4a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z', 'M2.8 20.2a6.6 6.6 0 0 1 13.2 0', 'M16.2 4.9a3.5 3.5 0 0 1 0 6.9', 'M17.8 13.6a6.6 6.6 0 0 1 3.4 5.8']),
+  /* A bubble with three dots in it: a chat, not a comment. The episode thread
+     already owns `list`, and Messages needed a shape nobody else was wearing. */
+  chat: I(['M7.9 20A9 9 0 1 0 4 16.1L2 22Z', 'M8.4 12h.01', 'M12 12h.01', 'M15.6 12h.01']),
   lock: I(['M6.6 10.6h10.8V21H6.6z', 'M9.2 10.6V7.4a2.8 2.8 0 0 1 5.6 0v3.2']),
   edit: I(['M4 20h4.4L20 8.4 15.6 4 4 15.6V20Z', 'M13.6 6 18 10.4']),
   trophy: I(['M7.4 4.6h9.2v4.8a4.6 4.6 0 0 1-9.2 0V4.6Z', 'M7.4 6.2H4.6v1.2a3.4 3.4 0 0 0 3.4 3.4', 'M16.6 6.2h2.8v1.2a3.4 3.4 0 0 1-3.4 3.4', 'M12 14v3.6', 'M8.4 20.6h7.2']),
@@ -204,4 +211,7 @@ export const ICONS = {
   moon: I('M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z'),
   popcorn: I(['M7 10h10l-1.2 10.4H8.2L7 10Z', 'M9.6 10a2 2 0 1 1 .3-4 2.4 2.4 0 0 1 4.2 0 2 2 0 1 1 .3 4', 'M10.4 13.4 11 20M13.6 13.4 13 20']),
   bolt: I('M13.2 2.8 5.6 13.4h5l-1.8 7.8 7.8-11h-5l1.6-7.4Z'),
+  /* Two arrows going opposite ways: one list for the other, and one coming back.
+     `share` already means "send this out", which is the wrong shape for a trade. */
+  swap: I(['M4 8.5h13.4', 'M14.4 5.3l3 3.2-3 3.2', 'M20 15.5H6.6', 'M9.6 12.3l-3 3.2 3 3.2']),
 };

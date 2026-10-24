@@ -28,15 +28,41 @@ export const LIST_LABELS = {
 };
 
 export const DEFAULT_ACCENT = 'violet';
-/** Highlight shades, id -> hex the framed player also accepts. Keep in sync with
-   the --accent fill in tokens.css; violet is :root itself. */
+/** Highlight shades, id -> hex without the '#'. Each id has a generated block in
+   tokens.css (both come from the same ramp in lib/color.js); violet is :root
+   itself. A colour picked by hand is not an id in this table — it is stored in
+   `accentCustom` and painted as inline custom properties by lib/accent.js. */
 export const ACCENTS = {
   violet: '8b6cff',
   iris: '6d7bff',
   orchid: 'c06bff',
   lilac: 'd5c7ff',
+  electric: '3d8bff',
+  crimson: 'ff3b5c',
+  cyber: 'a85cff',
+  emerald: '2ee6a6',
+  gold: 'ffc247',
+  pink: 'ff4fa3',
+  cyan: '22e0f5',
 };
-export const accentHex = (id) => ACCENTS[id] || ACCENTS[DEFAULT_ACCENT];
+/** Names shown in Settings and read out by a screen reader. They reach t()
+   through this table, so they are listed in the key extractor's INDIRECT set. */
+export const ACCENT_LABELS = {
+  violet: 'Violet',
+  iris: 'Iris',
+  orchid: 'Orchid',
+  lilac: 'Lilac',
+  electric: 'Electric Blue',
+  crimson: 'Crimson',
+  cyber: 'Cyber Purple',
+  emerald: 'Emerald',
+  gold: 'Golden Yellow',
+  pink: 'Hot Pink',
+  cyan: 'Cyan',
+};
+/** The id a hand-picked colour is filed under, and the id `accent` holds while
+   one is in force. lib/accent.js resolves either into a ramp or a hex. */
+export const CUSTOM_ACCENT = 'custom';
 
 /* ---- quality --------------------------------------------------------
    The framed player owns the stream, so this is a request, not a promise: the
@@ -57,9 +83,11 @@ export const qualityLabel = (id) => (QUALITIES.find((q) => q.id === id) || QUALI
 const DEFAULT_SETTINGS = {
   lang: 'en',
   accent: DEFAULT_ACCENT,
+  accentCustom: '', // six hex digits when a hand-picked colour is in force
   autoplay: true, // embed advances to next episode on its own
-  defaultAudio: 'sub', // sub | dub
+  defaultAudio: 'sub', // the track a new episode opens on: sub | dub | ar | fr (see lib/sources.js)
   quality: 'auto', // target bitrate class, see QUALITIES
+  uiSound: true, // short synthesized clicks on controls, sheets and the spotlight
   theater: false, // watch page dims the rest of the interface
   scheduleView: 'list', // list | calendar on the airing schedule
   showNsfw: false,
@@ -106,6 +134,16 @@ export const isGuest = () => read('guest', false) === true;
 
 export function setGuest(on) {
   write('guest', Boolean(on));
+}
+
+/* ---- the automatic ask ------------------------------------------------
+   One ask per device, and the answer that closes it for good is "Continue as
+   Guest". Simply dismissing the sheet counts as an answer too — being asked
+   again on the next visit would be the same interruption with worse manners. */
+export const wasAsked = () => read('asked', false) === true;
+
+export function markAsked() {
+  write('asked', true);
 }
 
 /* ---- admin: hold the local numbers back ----------------------------- */
@@ -364,6 +402,15 @@ export function clearAll() {
     .filter((k) => k.startsWith(NS) && !k.startsWith('kitsune:anilist:'))
     .forEach((k) => localStorage.removeItem(k));
 }
+
+/* ---- shared keys --------------------------------------------------- */
+/**
+ * The namespaced read/write, for a collection this file does not own. The card
+ * binder (see lib/cards.js) keeps its figures through here so one `Clear
+ * everything` in Settings wipes them along with the library, and every key stays
+ * under the same namespace.
+ */
+export const storage = { read, write };
 
 /* ---- shared -------------------------------------------------------- */
 export function pickTitle(media) {

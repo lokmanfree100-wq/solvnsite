@@ -19,9 +19,9 @@ import { clamp } from '../lib/util.js';
 import { t } from '../lib/i18n.js';
 import { toast } from '../lib/ui.js';
 
-/** Straight back to the player: the saved episode, and the dub only if that is where the show left off. */
+/** Straight back to the player: the saved episode, and the saved track if it was not the original. */
 const resumeUrl = (e) =>
-  `#/watch/${e.id}/${Math.max(1, Number(e.episode) || 1)}${e.audio === 'dub' ? '?audio=dub' : ''}`;
+  `#/watch/${e.id}/${Math.max(1, Number(e.episode) || 1)}${!e.audio || e.audio === 'sub' ? '' : `?audio=${e.audio}`}`;
 
 /**
  * How far along this is, in per cent. The player has never reported a position

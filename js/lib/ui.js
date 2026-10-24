@@ -2,6 +2,7 @@
 
 import { h, icon, qs } from './dom.js';
 import { t } from './i18n.js';
+import { sfx } from './sounds.js';
 
 const stack = () => qs('#toasts');
 const modalRoot = () => qs('#modal-root');
@@ -34,10 +35,19 @@ let active = null;
  */
 export function sheet({ heading, sub, render, footer, width }) {
   active?.close();
+  /* The arrival and the exit each get their own cue. They share one slot in the
+     sound layer, so a sheet replacing another is one gesture, not two. */
+  sfx.open();
 
   let node;
+  /* One close, however many ways reach it: the X, the backdrop, Escape, the
+     next sheet, and the view that called `api.close()` itself. */
+  let closed = false;
   const close = () => {
+    if (closed) return;
+    closed = true;
     node?.remove();
+    sfx.close();
     document.removeEventListener('keydown', onKey);
     if (active === api) active = null;
     if (!active) document.body.style.removeProperty('overflow');

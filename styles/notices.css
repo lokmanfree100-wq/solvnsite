@@ -1,0 +1,227 @@
+/* ==========================================================================
+   Notices — the bell in the header and the list behind it.
+   A bell is the smallest possible surface for the loudest possible news, so the
+   handle stays the same 34px round button the sound toggle already wears and the
+   only new shape is the count sitting on its shoulder. The list under it is a
+   menu, not a page: it borrows the language picker's anchoring, the chat rows'
+   two-line rhythm and the site's own buttons, and it adds nothing that has to be
+   learned.
+   ========================================================================== */
+
+.bell-wrap {
+  position: relative;
+  flex: none;
+  display: flex;
+}
+
+/* A header control that is not wanted — no server to store a notice, nobody
+   signed in to have one — leaves no gap behind it. */
+.btn--bell[hidden],
+.note-dot[hidden] {
+  display: none;
+}
+
+.btn--bell {
+  position: relative;
+}
+
+/* The count rides the shoulder of the bell, the way a badge does on a launcher
+   icon: it is the reason to open the thing, so it never waits for a click. */
+.note-dot {
+  position: absolute;
+  inset-block-start: -3px;
+  inset-inline-end: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0 0 2px var(--void);
+}
+
+/* Unread is the only state the handle has, so it is the only one it wears. */
+.btn--bell.is-new {
+  color: var(--accent-text);
+  background: var(--accent-wash);
+}
+
+/* ---- the list ------------------------------------------------------------- */
+.bell-menu {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + 10px);
+  z-index: 62;
+  width: min(340px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  background: var(--glass-strong);
+  backdrop-filter: blur(var(--blur-md)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(180%);
+  box-shadow: var(--sh-pop);
+  animation: pop-in 170ms var(--ease-out-back);
+  overflow: hidden;
+}
+
+.note-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.note-title-site {
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.note-count {
+  margin-inline-start: auto;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 800;
+}
+.note-count[hidden] {
+  display: none;
+}
+
+/* The list scrolls inside itself: forty notices is the ceiling, and a menu that
+   grew past the viewport would hide half of them anyway. */
+.note-list {
+  max-height: min(420px, 58vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.note-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--r-sm);
+  border-inline-start: 2px solid transparent;
+  color: var(--text-dim);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.note-row:hover,
+.note-row:focus-visible {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.note-row.is-new {
+  border-inline-start-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+.note-row.is-new .note-title {
+  color: var(--text);
+}
+
+.note-mark {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--accent-text);
+}
+.note-row.is-new .note-mark {
+  color: var(--accent);
+}
+
+.note-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.note-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note-line {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+
+.note-when {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.note-hint,
+.note-sub {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+.note-sub {
+  padding-top: 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.note-foot {
+  display: flex;
+  gap: var(--sp-2);
+  padding: 8px;
+  border-top: 1px solid var(--line);
+}
+.note-foot > .btn {
+  flex: 1;
+  min-height: 44px;
+  justify-content: center;
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  /* The header is the whole navigation on a phone, so the menu hangs from the
+     bar rather than from a 34px button near its edge. */
+  .bell-menu {
+    inset-inline: 8px;
+    width: auto;
+  }
+  .note-list {
+    max-height: min(340px, 46vh);
+  }
+}
+
+@media (pointer: coarse) {
+  .btn--bell {
+    width: 44px;
+    height: 44px;
+  }
+  .btn--bell svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note-row {
+    transition: none;
+  }
+}

@@ -88,3 +88,20 @@ export function resolveEpisodeCount(media) {
   if (total) return total;
   return 12;
 }
+
+/**
+ * Whether `resolveEpisodeCount()` actually learned the number or only guessed a
+ * floor. The retro shelves are full of long runners that AniList lists without
+ * a count at all — Detective Conan, Crayon Shin-chan, the 2005 Doraemon — and
+ * twelve is where their rail starts, not where the show ends. A caller that
+ * would grey out "next" at the bottom of that guess uses this to stop treating
+ * the floor as a fact.
+ */
+export function episodeCountIsGuess(media) {
+  if (!media || media.format === 'MOVIE' || media.status === 'NOT_YET_RELEASED') return false;
+  const signals =
+    (Number(media.episodes) || 0) +
+    (Number(media.nextAiringEpisode?.episode) || 0) +
+    (Number(media.streamingEpisodes?.length) || 0);
+  return signals === 0;
+}

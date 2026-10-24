@@ -14,6 +14,7 @@
 import { h, icon, qs } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { settings } from '../lib/store.js';
+import { logoMark } from '../lib/brand.js';
 import { cloudActive } from '../lib/cloud.js';
 import { staticHost } from '../lib/account.js';
 import { reportSheet } from './report-issue.js';
@@ -70,10 +71,10 @@ function brand() {
     h(
       'a.foot-logo',
       { href: '#/', 'aria-label': t('Solvn home') },
-      h('span.foot-mark', {}, icon('cat', { weight: 1.6 })),
+      h('span.foot-mark', {}, logoMark(44)),
       h('span.foot-word', {}, 'SOLVN'),
     ),
-    h('p.foot-tagline', {}, t('Free HD anime streaming — browse, search and watch in one quiet place.')),
+    h('p.foot-tagline', {}, t('Solvn — Your ultimate destination for ultra-high-definition anime streaming. Experience next-gen player technology with zero limits.')),
     actions(),
   );
 }
@@ -119,8 +120,7 @@ export function renderFooter() {
       h(
         'div.foot-bottom',
         {},
-        h('p', {}, t('© {year} Solvn. All rights reserved.', { year })),
-        h('p.foot-note', {}, t('A fan-made project. Not affiliated with any studio, publisher or rights holder.')),
+        h('p', {}, t('© {year} Solvn. All rights reserved. The premier cinematic anime platform.', { year })),
       ),
     ),
   );

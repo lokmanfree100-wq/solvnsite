@@ -9,7 +9,7 @@
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
-import { account, adminUsers, adminPatchUser, adminReports, adminPatchReport, adminComments, removeComment } from '../lib/account.js';
+import { account, isStaff, adminUsers, adminPatchUser, adminReports, adminPatchReport, adminComments, removeComment } from '../lib/account.js';
 import { BADGES, rankOf } from '../lib/ranks.js';
 import { statsLocked, setStatsLock } from '../lib/store.js';
 import { avatar, say, statTile } from '../components/account.js';
@@ -281,7 +281,10 @@ export async function AdminView() {
   const wrap = h('div.page-admin');
   const me = account().user;
 
-  if (!me?.isAdmin) {
+  /* The same key the binder's toolbar turns on, read from the account record.
+     A backend that does not ship an `isAdmin` field still gets in on the handle
+     alone — and still gets a 403 from every route here if it is not staff. */
+  if (!isStaff(me)) {
     wrap.append(
       emptyState({
         iconName: 'lock',

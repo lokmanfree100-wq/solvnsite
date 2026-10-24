@@ -2,7 +2,7 @@
 
 import { qs, h, icon } from './lib/dom.js';
 import { parse, start as startRouter, onChange, go, rememberScroll } from './lib/router.js';
-import { settings, ACCENTS, DEFAULT_ACCENT } from './lib/store.js';
+import { paintAccent } from './lib/accent.js';
 import { apiDown, retryNow } from './lib/anilist.js';
 import { t } from './lib/i18n.js';
 import { renderNav, setTopbarStuck, focusSearch } from './components/nav.js';
@@ -10,9 +10,11 @@ import { renderFooter, footerVisible } from './components/footer.js';
 import { errorState } from './components/media.js';
 import { closeSheets } from './lib/ui.js';
 import { initTilt } from './lib/tilt.js';
+import { installInterfaceSounds } from './lib/sounds.js';
 
 import { HomeView } from './views/home.js';
 import { DiscoverView } from './views/discover.js';
+import { ToonsView } from './views/toons.js';
 import { SearchView } from './views/search.js';
 import { DetailView } from './views/detail.js';
 import { WatchView } from './views/watch.js';
@@ -20,19 +22,33 @@ import { LibraryView } from './views/library.js';
 import { UpdatesView } from './views/updates.js';
 import { SettingsView } from './views/settings.js';
 import { ProfileView } from './views/profile.js';
+import { CollectionView } from './views/collection.js';
+import { LeaderboardView } from './views/leaderboard.js';
+import { MessagesView } from './views/messages.js';
+import { TradesView } from './views/trades.js';
+import { ArenaView } from './views/arena.js';
+import { SpinView } from './views/spin.js';
 import { TopView } from './views/top.js';
 import { AdminView } from './views/admin.js';
-import { restore, pushStats, staticHost } from './lib/account.js';
+import { restore, pushStats, staticHost, takeRecovery } from './lib/account.js';
+import { askAboutAccount, resetSheet } from './components/account.js';
 
 const ROUTES = [
   { match: /^\/$/, view: HomeView, nav: true },
   { match: /^\/discover$/, view: DiscoverView, nav: true },
+  { match: /^\/toons$/, view: ToonsView, nav: true },
   { match: /^\/search$/, view: SearchView, nav: true },
   { match: /^\/library$/, view: LibraryView, nav: true },
   { match: /^\/updates$/, view: UpdatesView, nav: true },
   { match: /^\/top$/, view: TopView, nav: true },
   { match: /^\/profile$/, view: ProfileView, nav: true },
   { match: /^\/profile\/[\w-]+$/, view: ProfileView, nav: true },
+  { match: /^\/packs$/, view: CollectionView, nav: true },
+  { match: /^\/leaderboard$/, view: LeaderboardView, nav: true },
+  { match: /^\/messages$/, view: MessagesView, nav: true },
+  { match: /^\/trades$/, view: TradesView, nav: true },
+  { match: /^\/arena$/, view: ArenaView, nav: true },
+  { match: /^\/spin$/, view: SpinView, nav: true },
   { match: /^\/settings$/, view: SettingsView, nav: true },
   { match: /^\/admin$/, view: AdminView, nav: true },
   { match: /^\/anime\/(\d+)/, view: DetailView, nav: true },
@@ -41,9 +57,16 @@ const ROUTES = [
 
 const root = () => qs('#view');
 
+/* Netlify puts its watermark in the bottom-right corner — the same corner the
+   mobile dock lives in. base.css hides the mark, and this flag raises the dock
+   above that corner as well, so the navigation stays reachable even on a plan
+   that will not let the badge go. A plain host never matches, so nothing moves. */
+if (/\.netlify\.(app|site|com)$/i.test(location.hostname)) {
+  document.documentElement.dataset.hostBadge = 'netlify';
+}
+
 function applyTheme() {
-  const accent = settings.get('accent');
-  document.documentElement.dataset.accent = ACCENTS[accent] ? accent : DEFAULT_ACCENT;
+  paintAccent();
   const meta = qs('meta[name="theme-color"]');
   if (meta) {
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
@@ -149,11 +172,18 @@ function toTop() {
 const PAGE_TITLES = {
   '': 'Solvn — Watch Anime',
   discover: 'Discover — Solvn',
+  toons: 'Classic & Toons — Solvn',
   search: 'Search — Solvn',
   library: 'Your Library — Solvn',
   updates: 'Airing Schedule — Solvn',
   top: 'Top 100 — Solvn',
   profile: 'Profile — Solvn',
+  packs: 'Card Binder — Solvn',
+  leaderboard: 'Leaderboard — Solvn',
+  messages: 'Messages — Solvn',
+  trades: 'Trades — Solvn',
+  arena: 'Arena — Solvn',
+  spin: 'Fortune Wheel — Solvn',
   settings: 'Settings — Solvn',
   admin: 'Admin — Solvn',
   anime: 'Details — Solvn',
@@ -201,15 +231,20 @@ function syncChrome() {
 applyTheme();
 syncChrome();
 installShortcuts();
+installInterfaceSounds();
 initTilt();
 
 /* The intro animates itself in CSS over 3.5s; JS only lifts the dead node out
    once the veil has finished fading. Under reduced motion the whole thing is a
-   short fade, so the node goes early rather than holding a still frame. */
+   short fade, so the node goes early rather than holding a still frame.
+   `introMs` is also when the interface is worth talking to: the veil sits at
+   full opacity until ~78% of the animation and is layered above every sheet, so
+   anything opened before it lifts is spent behind a black screen. */
 const splash = qs('#splash');
+const introMs = splash ? (matchMedia('(prefers-reduced-motion: reduce)').matches ? 900 : 3600) : 0;
+const introEnds = Date.now() + introMs;
 if (splash) {
-  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  setTimeout(() => splash.remove(), calm ? 900 : 3600);
+  setTimeout(() => splash.remove(), introMs);
 }
 
 let lastY = 0;
@@ -260,4 +295,18 @@ startRouter();
 restore().then(() => {
   const { path } = parse();
   if (staticHost() || path === '/profile' || path.startsWith('/profile/')) mount(parse());
+  /* An email link that came here to reset a password carries a session that
+     exists for no other purpose, so the first thing on screen is the sheet that
+     spends it. Nothing else about the page changes. */
+  if (takeRecovery()) {
+    resetSheet();
+    return;
+  }
+  /* A first visitor is asked about an account once, and only after the answer
+     about the session is known — otherwise a returning member would be offered
+     a signup form over their own profile. It waits for the intro as well, since
+     a sheet under the veil is a sheet nobody sees. A deep link straight into the
+     player is the one screen it must not land on: the episode owns that moment. */
+  if (path.startsWith('/watch/')) return;
+  setTimeout(askAboutAccount, Math.max(0, introEnds - Date.now()));
 });

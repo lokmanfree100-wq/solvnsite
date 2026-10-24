@@ -50,10 +50,18 @@
   display: flex;
   align-items: flex-end;
   opacity: 0;
-  transition: opacity var(--t-slow) var(--ease);
+  /* Crossfade plus a short push: the incoming frame slides into place from the
+     reading side while the outgoing one slides the same way and fades. Only
+     `transform` and `opacity` move, so the stage never reflows. */
+  transform: translateX(2.2%);
+  transition: opacity var(--t-slow) var(--ease), transform var(--t-slow) var(--ease);
+}
+[dir='rtl'] .hero-slide {
+  transform: translateX(-2.2%);
 }
 .hero-slide.is-in {
   opacity: 1;
+  transform: none;
 }
 .hero-slide.is-instant {
   transition: none;
@@ -1163,6 +1171,13 @@
   place-items: center;
   gap: var(--sp-3);
 }
+/* The air date under "has not aired yet" — a fact, not a button, so it stays
+   quieter than the message above it and does not line up as a control. */
+.player-boot-when {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
 
 .player-bar {
   display: flex;
@@ -1352,6 +1367,43 @@
   margin-top: 2px;
 }
 
+/* On the library page the tiles are doors, not captions: each one opens the view
+   its number counts, so it needs a hover, a press and an on-state — without the
+   underline that would make a statistic look like prose. */
+a.stat {
+  display: block;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease),
+    box-shadow var(--t-fast) var(--ease);
+}
+
+a.stat:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+}
+
+a.stat:active {
+  transform: scale(0.99);
+}
+
+a.stat:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 3px;
+}
+
+a.stat.is-on {
+  border-color: var(--accent-line);
+  box-shadow: var(--inner-hi), 0 0 0 1px var(--accent-wash);
+}
+
+a.stat.is-on .l {
+  color: var(--accent-text);
+}
+
 .set-group {
   margin-top: var(--sp-6);
 }
@@ -1407,12 +1459,35 @@
   color: var(--text-faint);
   margin-top: 1px;
 }
+/* The select is the one control in these rows that is sized to the whole line by
+   default, and a flex item whose base size is the full row absorbs every pixel of
+   shrinkage — which left the label beside it as a column of broken words. Pinned
+   to its own content, it sits on the line like the segment control above it. */
+.set-row > .select {
+  flex: none;
+  width: auto;
+  min-inline-size: 172px;
+}
 
+/* Eleven presets, a colour wheel and a hex field is a wide control. The row
+   takes what it can and lets the palette drop to a line of its own rather than
+   squeezing the label into broken words again. */
+.set-row:has(.swatches) {
+  flex-wrap: wrap;
+}
+.set-row:has(.swatches) .txt {
+  flex: 1 1 260px;
+}
 .swatches {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  max-inline-size: 100%;
 }
 .swatch {
+  position: relative;
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -1432,6 +1507,50 @@
      colour, so the selected state clears 3:1 against what surrounds it. */
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 0 0 2px var(--bg),
     0 0 18px -4px var(--accent-glow);
+}
+/* The picker wears a colour wheel, because the control underneath it can be
+   any colour there is. The native input is transparent over the face, so the
+   circle opens the OS panel; once a custom colour is in force the face shows
+   that instead, so the ring marks the swatch you are actually looking at. */
+.swatch--pick {
+  display: inline-block;
+  overflow: hidden;
+  background: conic-gradient(from -90deg, #ff3b5c, #ffc247, #2ee6a6, #22e0f5, #3d8bff,
+    #a85cff, #ff4fa3, #ff3b5c);
+}
+[data-accent='custom'] .swatch--pick {
+  background: var(--accent);
+}
+.swatch-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+/* The input itself is invisible, so the focus has to be drawn on its face. */
+.swatch--pick:has(.swatch-input:focus-visible) {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 3px;
+}
+/* Readout and keyboard route in one: the hex in force, and a place to type one
+   on the browsers whose colour panel never appeared (mobile Safari among them). */
+.accent-hex {
+  inline-size: 7.5ch;
+  min-block-size: 0;
+  height: 30px;
+  padding: 0 8px;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: var(--surface-2);
+  border-color: var(--line);
 }
 
 /* Updates / schedule */
@@ -1533,93 +1652,9 @@
   letter-spacing: -0.025em;
 }
 
-.profile-card {
-  display: grid;
-  gap: var(--sp-6);
-  padding: clamp(18px, 3vw, 28px);
-  margin-top: var(--sp-5);
-  position: relative;
-  overflow: hidden;
-}
-@media (min-width: 900px) {
-  .profile-card {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
-    align-items: center;
-  }
-}
-.profile-id,
-.profile-side {
-  position: relative;
-  z-index: 1;
-}
-.profile-id {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
-  min-width: 0;
-}
-.profile-names {
-  min-width: 0;
-}
-.profile-name {
-  font-size: clamp(21px, 4.4vw, 30px);
-  letter-spacing: -0.035em;
-  overflow-wrap: anywhere;
-}
-.profile-side {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.profile-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-3);
-}
-@media (min-width: 900px) {
-  .profile-actions {
-    justify-content: flex-end;
-  }
-}
+/* The profile hero, its avatar ring and its figures are all in profile.css,
+   next to the component that draws them. */
 
-.join-card {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-4);
-  padding: clamp(18px, 3vw, 26px);
-  margin-top: var(--sp-5);
-}
-.join-art {
-  width: 58px;
-  height: 58px;
-  display: grid;
-  place-items: center;
-  flex: none;
-  border-radius: var(--r-md);
-  border: 1px solid var(--accent-line);
-  background: var(--surface-2);
-  color: var(--accent-text);
-  box-shadow: var(--inner-hi), 0 12px 26px -18px rgba(0, 0, 0, 0.9);
-}
-.join-art svg {
-  width: 28px;
-  height: 28px;
-}
-.join-copy {
-  flex: 1;
-  min-width: 220px;
-}
-.join-copy h2 {
-  font-size: 19px;
-  letter-spacing: -0.025em;
-}
-.join-copy p {
-  margin-top: 6px;
-  font-size: 13.5px;
-  color: var(--text-dim);
-  max-width: 58ch;
-}
 .join-note {
   font-size: 12px;
 }
@@ -1698,6 +1733,24 @@
   width: 16px;
   height: 16px;
   color: var(--accent-text);
+}
+
+/* ---- classic & toons hub ------------------------------------------------ */
+/* Rows and cards are the shared components; only the closing note needs a
+   home of its own, and it inherits the panel glass used on the detail page. */
+.page-toons {
+  padding-bottom: var(--sp-7);
+}
+.toons-note {
+  margin-top: var(--sp-5);
+}
+.toons-note .panel-body p {
+  margin: 0;
+  line-height: 1.65;
+}
+.toons-note .link-all {
+  display: inline-flex;
+  margin-top: var(--sp-3);
 }
 
 /* ---- top 100 ------------------------------------------------------------ */

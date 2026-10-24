@@ -19,7 +19,7 @@ import { mediaCard, mediaRow, emptyState, errorState, stillImage, episodeArt } f
 import { titleDiscussion } from '../components/discussion.js';
 import { addToPlaylistButton } from '../components/playlists.js';
 import { sheet, toast } from '../lib/ui.js';
-import { buildEpisodes, resolveEpisodeCount } from '../lib/embed.js';
+import { buildEpisodes, episodeCountIsGuess, resolveEpisodeCount } from '../lib/embed.js';
 import { t, genre } from '../lib/i18n.js';
 
 const CHUNK = 60;
@@ -95,7 +95,7 @@ export async function DetailView({ params, onCleanup }) {
   const facts = [
     ['Format', formatLabel(media.format)],
     ['Status', statusLabel(media.status)],
-    ['Episodes', media.format === 'MOVIE' ? t('Film') : String(media.episodes || total)],
+    ['Episodes', media.format === 'MOVIE' ? t('Film') : episodeCountIsGuess(media) ? t('Not listed') : String(media.episodes || total)],
     ['Runtime', runtime(media) || '—'],
     ['Season', seasonLabel(media) || '—'],
     ['Studio', media.studios?.nodes?.[0]?.name || '—'],

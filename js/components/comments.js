@@ -14,9 +14,9 @@
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { toast } from '../lib/ui.js';
-import { account, isSignedIn, commentsFor, postComment, removeComment, followComments, staticHost } from '../lib/account.js';
+import { account, isSignedIn, shownName, commentsFor, postComment, removeComment, followComments, staticHost } from '../lib/account.js';
 import { cloudActive } from '../lib/cloud.js';
-import { avatar, authSheet, say } from './account.js';
+import { avatar, authSheet, say, titleChip } from './account.js';
 import { relativeTime } from '../lib/util.js';
 
 const MAX = 300;
@@ -80,8 +80,9 @@ export function commentPanel(
         {},
         avatar(c.author || {}, { size: 'sm' }),
         c.author?.id
-          ? h('a.chat-name', { href: `#/profile/${encodeURIComponent(c.author.id)}` }, c.author.username)
-          : h('span.chat-name', {}, c.author?.username || t('Guest')),
+          ? h('a.chat-name', { href: `#/profile/${encodeURIComponent(c.author.id)}` }, shownName(c.author))
+          : h('span.chat-name', {}, shownName(c.author) || t('Guest')),
+        titleChip(c.author),
         h('span.chat-when.faint.tnum', {}, relativeTime(c.at)),
         c.canDelete
           ? h(

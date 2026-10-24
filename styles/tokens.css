@@ -98,6 +98,16 @@
   --page-max: 1560px;
   --card-w: 148px;
 
+  /* ---- the dock and what has to stay clear of it ----------------------
+     The tab bar floats above the bottom edge, so every page pays for its height
+     and nobody's content ends underneath it. `--dock-lift` is the one part of
+     that budget a deploy host can force: on the addresses that staple their own
+     watermark into the bottom-right corner, the whole dock is raised above the
+     corner it claims and the pages pay the difference. It stays 0 on a plain
+     static copy and on the local server. */
+  --dock-lift: 0px;
+  --dock-clear: calc(var(--tabbar-h) + var(--dock-lift) + var(--sp-3) + env(safe-area-inset-bottom));
+
   /* ---- elevation -----------------------------------------------------
      Separation comes from the lit top edge and a neutral drop, never from a
      coloured shadow. */
@@ -125,38 +135,163 @@
   color-scheme: dark;
 }
 
-/* Accent themes, selectable in Settings. Each one only moves the interactive
-   violet: surfaces, text and hairlines stay mono, so switching accent never
-   turns the site back into a coloured theme. Bright fills take the dark ink,
-   deep fills take the light one, so a label always clears 4.5:1. "Violet" is
-   the default and deliberately has no block here — :root already is violet. */
+/* Accent themes, selectable in Settings. Each one only moves the accent:
+   surfaces, text and hairlines stay mono, so switching accent never turns the
+   site back into a coloured theme. Every block is generated from the same
+   derivation the custom picker uses (lib/color.js): a bright fill takes the
+   dark ink and a deep fill the light one, so a label always clears 4.5:1, and
+   --accent-text is walked lighter until it clears 4.5:1 against the page.
+   "Violet" is the default and deliberately has no block here — :root already
+   is violet. A colour chosen in the picker is not one of these ids; it is
+   painted as inline custom properties by lib/accent.js under data-accent=
+   'custom', so a preset switch and a custom choice never fight. */
 [data-accent='iris'] {
   --accent: #6d7bff;
-  --accent-bright: #92a0ff;
-  --accent-deep: #5460d8;
-  --accent-text: #b6bdff;
-  --accent-ink: #06070f;
+  --accent-bright: #8a95ff;
+  --accent-deep: #5560c7;
+  --accent-text: #9fa8ff;
+  --accent-ink: #0a0713;
   --accent-glow: rgba(109, 123, 255, 0.3);
   --accent-wash: rgba(109, 123, 255, 0.13);
-  --accent-line: rgba(146, 160, 255, 0.34);
+  --accent-line: rgba(138, 149, 255, 0.36);
+  --ambient: rgba(109, 123, 255, 0.17);
+  --ambient-soft: rgba(109, 123, 255, 0.09);
+  --glow-cyan: #dbdeff;
+  --glow-violet: #bdc4ff;
+  --glow-blue: #5d69d9;
 }
 [data-accent='orchid'] {
   --accent: #c06bff;
-  --accent-bright: #d59bff;
-  --accent-deep: #a151dd;
-  --accent-text: #e0b8ff;
-  --accent-ink: #120619;
+  --accent-bright: #cd89ff;
+  --accent-deep: #9653c7;
+  --accent-text: #d59dff;
+  --accent-ink: #0a0713;
   --accent-glow: rgba(192, 107, 255, 0.3);
   --accent-wash: rgba(192, 107, 255, 0.13);
-  --accent-line: rgba(213, 155, 255, 0.34);
+  --accent-line: rgba(205, 137, 255, 0.36);
+  --ambient: rgba(192, 107, 255, 0.17);
+  --ambient-soft: rgba(192, 107, 255, 0.09);
+  --glow-cyan: #efdaff;
+  --glow-violet: #e3bcff;
+  --glow-blue: #a35bd9;
 }
 [data-accent='lilac'] {
   --accent: #d5c7ff;
-  --accent-bright: #e8e0ff;
-  --accent-deep: #b3a1e0;
-  --accent-text: #ded4ff;
-  --accent-ink: #0b0910;
-  --accent-glow: rgba(213, 199, 255, 0.26);
-  --accent-wash: rgba(213, 199, 255, 0.12);
-  --accent-line: rgba(222, 212, 255, 0.3);
+  --accent-bright: #ddd2ff;
+  --accent-deep: #a69bc7;
+  --accent-text: #e3daff;
+  --accent-ink: #0a0713;
+  --accent-glow: rgba(213, 199, 255, 0.3);
+  --accent-wash: rgba(213, 199, 255, 0.13);
+  --accent-line: rgba(221, 210, 255, 0.36);
+  --ambient: rgba(213, 199, 255, 0.17);
+  --ambient-soft: rgba(213, 199, 255, 0.09);
+  --glow-cyan: #f5f1ff;
+  --glow-violet: #ece6ff;
+  --glow-blue: #b5a9d9;
+}
+[data-accent='electric'] {
+  --accent: #3d8bff;
+  --accent-bright: #64a2ff;
+  --accent-deep: #306cc7;
+  --accent-text: #7fb2ff;
+  --accent-ink: #0a0713;
+  --accent-glow: rgba(61, 139, 255, 0.3);
+  --accent-wash: rgba(61, 139, 255, 0.13);
+  --accent-line: rgba(100, 162, 255, 0.36);
+  --ambient: rgba(61, 139, 255, 0.17);
+  --ambient-soft: rgba(61, 139, 255, 0.09);
+  --glow-cyan: #cfe2ff;
+  --glow-violet: #a8cbff;
+  --glow-blue: #3476d9;
+}
+[data-accent='crimson'] {
+  --accent: #ff3b5c;
+  --accent-bright: #ff627d;
+  --accent-deep: #c72e48;
+  --accent-text: #ff7e93;
+  --accent-ink: #0a0713;
+  --accent-glow: rgba(255, 59, 92, 0.3);
+  --accent-wash: rgba(255, 59, 92, 0.13);
+  --accent-line: rgba(255, 98, 125, 0.36);
+  --ambient: rgba(255, 59, 92, 0.17);
+  --ambient-soft: rgba(255, 59, 92, 0.09);
+  --glow-cyan: #ffced6;
+  --glow-violet: #ffa7b6;
+  --glow-blue: #d9324e;
+}
+[data-accent='cyber'] {
+  --accent: #a85cff;
+  --accent-bright: #b97dff;
+  --accent-deep: #8348c7;
+  --accent-text: #c693ff;
+  --accent-ink: #0a0713;
+  --accent-glow: rgba(168, 92, 255, 0.3);
+  --accent-wash: rgba(168, 92, 255, 0.13);
+  --accent-line: rgba(185, 125, 255, 0.36);
+  --ambient: rgba(168, 92, 255, 0.17);
+  --ambient-soft: rgba(168, 92, 255, 0.09);
+  --glow-cyan: #e9d6ff;
+  --glow-violet: #d8b6ff;
+  --glow-blue: #8f4ed9;
+}
+[data-accent='emerald'] {
+  --accent: #2ee6a6;
+  --accent-bright: #58ebb8;
+  --accent-deep: #24b381;
+  --accent-text: #75efc4;
+  --accent-ink: #0a0713;
+  --accent-glow: rgba(46, 230, 166, 0.3);
+  --accent-wash: rgba(46, 230, 166, 0.13);
+  --accent-line: rgba(88, 235, 184, 0.36);
+  --ambient: rgba(46, 230, 166, 0.17);
+  --ambient-soft: rgba(46, 230, 166, 0.09);
+  --glow-cyan: #cbf9e9;
+  --glow-violet: #a1f4d7;
+  --glow-blue: #27c48d;
+}
+[data-accent='gold'] {
+  --accent: #ffc247;
+  --accent-bright: #ffce6c;
+  --accent-deep: #c79737;
+  --accent-text: #ffd786;
+  --accent-ink: #0a0713;
+  --accent-glow: rgba(255, 194, 71, 0.3);
+  --accent-wash: rgba(255, 194, 71, 0.13);
+  --accent-line: rgba(255, 206, 108, 0.36);
+  --ambient: rgba(255, 194, 71, 0.17);
+  --ambient-soft: rgba(255, 194, 71, 0.09);
+  --glow-cyan: #fff0d1;
+  --glow-violet: #ffe4ac;
+  --glow-blue: #d9a53c;
+}
+[data-accent='pink'] {
+  --accent: #ff4fa3;
+  --accent-bright: #ff72b5;
+  --accent-deep: #c73e7f;
+  --accent-text: #ff8bc2;
+  --accent-ink: #0a0713;
+  --accent-glow: rgba(255, 79, 163, 0.3);
+  --accent-wash: rgba(255, 79, 163, 0.13);
+  --accent-line: rgba(255, 114, 181, 0.36);
+  --ambient: rgba(255, 79, 163, 0.17);
+  --ambient-soft: rgba(255, 79, 163, 0.09);
+  --glow-cyan: #ffd3e8;
+  --glow-violet: #ffb0d6;
+  --glow-blue: #d9438b;
+}
+[data-accent='cyan'] {
+  --accent: #22e0f5;
+  --accent-bright: #4ee6f7;
+  --accent-deep: #1bafbf;
+  --accent-text: #6debf8;
+  --accent-ink: #0a0713;
+  --accent-glow: rgba(34, 224, 245, 0.3);
+  --accent-wash: rgba(34, 224, 245, 0.13);
+  --accent-line: rgba(78, 230, 247, 0.36);
+  --ambient: rgba(34, 224, 245, 0.17);
+  --ambient-soft: rgba(34, 224, 245, 0.09);
+  --glow-cyan: #c8f7fd;
+  --glow-violet: #9cf1fb;
+  --glow-blue: #1dbed0;
 }

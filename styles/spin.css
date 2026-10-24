@@ -1,0 +1,581 @@
+/* ==========================================================================
+   Fortune wheel — one spin a day, and the odds printed as the truth.
+   The wheel is the only decorative object on this site, so it gets the room: a
+   disc that turns, a pointer that never moves, and underneath it the exact table
+   the draw ran on. Everything that animates here is a transform or an opacity, and
+   the whole page stops moving when the system asks it to.
+   ========================================================================== */
+
+.spin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  max-width: 900px;
+}
+
+/* ---- the header --------------------------------------------------------- */
+.fw-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.fw-head .display {
+  margin: 0;
+  font-size: clamp(22px, 3.6vw, 30px);
+}
+.fw-sub {
+  margin: 6px 0 0;
+  max-width: 60ch;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.fw-tally {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* A face bank is a thing you spend, so it is a button and not a caption. */
+.fw-bank:not(:empty) {
+  flex: none;
+}
+.fw-bank .btn {
+  min-height: 44px;
+}
+
+/* ---- the wheel ---------------------------------------------------------- */
+.fw-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(58% 46% at 50% 0%, var(--accent-wash), transparent 70%),
+    var(--glass);
+  box-shadow: var(--sh-2);
+}
+
+.fw-board {
+  position: relative;
+  width: min(340px, 78vw);
+  aspect-ratio: 1;
+}
+/* The disc itself: the conic gradient is painted in JS from the server's weights,
+   so a slice's width on screen is its width in the draw. */
+.fw-wheel {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 3px solid var(--line-strong);
+  box-shadow:
+    0 0 0 6px rgba(0, 0, 0, 0.42),
+    0 18px 44px -18px rgba(0, 0, 0, 0.9),
+    var(--inner-hi);
+  transform: rotate(0deg);
+}
+/* Every tag is a full-size layer turned about the hub; its label rides near the
+   rim, which is where a stopped wheel puts the prize it means. */
+.fw-tag {
+  position: absolute;
+  inset: 0;
+}
+.fw-tag-text {
+  position: absolute;
+  top: 9%;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #f2f5fa;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}
+/* The pointer is the only thing that says *here is what came up*, so it is the
+   one element that is bright, and it never moves while the disc does. */
+.fw-pointer {
+  position: absolute;
+  z-index: 3;
+  top: -14px;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--accent-line);
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 6px 18px -6px var(--accent-glow);
+  pointer-events: none;
+}
+.fw-pointer svg {
+  width: 16px;
+  height: 16px;
+}
+.fw-hub {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--glass-strong);
+  color: var(--accent-text);
+  box-shadow: var(--sh-1);
+  pointer-events: none;
+}
+.fw-hub svg {
+  width: 22px;
+  height: 22px;
+}
+
+.fw-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.fw-clock {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+/* 48px tall and full-width-capped: the one button on the page a thumb aims at. */
+.fw-go {
+  min-height: 48px;
+  min-width: 220px;
+  font-size: 15px;
+}
+.fw-go:disabled {
+  opacity: 0.5;
+}
+
+/* ---- what a prize looks like -------------------------------------------- */
+/* Three shapes, all borrowed from somewhere that already draws the real thing:
+   a tier plate in the binder's own two hues, an animated band from the profile
+   shelf, portraits from the face library. They carry no text of their own except
+   the tier number, and that only prints on an upright chip — a slice turns. */
+.fw-tier {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 30px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  box-shadow:
+    0 2px 8px -3px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.fw-tier b {
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+/* A band is `.bk`, which paints itself absolutely into whatever box holds it. */
+.fw-band {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 24px;
+  overflow: hidden;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 2px 8px -3px rgba(0, 0, 0, 0.85);
+}
+.fw-pile {
+  display: inline-flex;
+  flex: none;
+  gap: 3px;
+  align-items: center;
+}
+.fw-portraits {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+.fw-portrait {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-inline-start: -7px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  object-fit: cover;
+}
+.fw-portrait:first-child {
+  margin-inline-start: 0;
+}
+/* Before the library answers, the pile still has to look like a pile. */
+.fw-portrait.is-empty {
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+}
+.fw-portrait.is-empty svg {
+  width: 13px;
+  height: 13px;
+}
+/* XP and packs are numbers, not pictures, so they keep a plain glyph. */
+.fw-glyph {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--accent-text);
+}
+.fw-glyph svg {
+  width: 14px;
+  height: 14px;
+}
+/* On the disc, one chip per slice and nothing that can collide with its
+   neighbour: the labels ride the rim, the prize sits under them. */
+.fw-tag-art {
+  position: absolute;
+  top: 21%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  transform: translateX(-50%);
+}
+.fw-tag-art .fw-tier {
+  width: 16px;
+  height: 22px;
+}
+.fw-tag-art .fw-band {
+  width: 26px;
+  height: 15px;
+}
+.fw-tag-art .fw-portrait {
+  width: 20px;
+  height: 20px;
+}
+.fw-tag-art .fw-glyph {
+  width: 22px;
+  height: 22px;
+}
+.fw-tag-art .fw-glyph svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---- the result --------------------------------------------------------- */
+.fw-result:not(:empty) {
+  animation: fw-pop 420ms var(--ease) both;
+}
+.fw-prize {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-lg);
+  background: linear-gradient(140deg, var(--accent-wash), var(--glass) 58%);
+  box-shadow: var(--sh-2);
+}
+/* The landing is the one place an art chip can breathe, and the only place a
+   tier number is worth printing. */
+.fw-prize > .fw-tier {
+  width: 36px;
+  height: 50px;
+  border-radius: 7px;
+}
+.fw-prize > .fw-tier b {
+  font-size: 14px;
+}
+.fw-prize > .fw-band {
+  width: 108px;
+  height: 50px;
+  border-radius: var(--r-md);
+  border-width: 2px;
+}
+.fw-prize > .fw-pile .fw-band {
+  width: 44px;
+  height: 50px;
+  border-radius: var(--r-md);
+}
+.fw-prize > .fw-portraits .fw-portrait {
+  width: 44px;
+  height: 44px;
+  margin-inline-start: -12px;
+  border-width: 2px;
+}
+.fw-prize > .fw-glyph {
+  width: 44px;
+  height: 44px;
+}
+.fw-prize > .fw-glyph svg {
+  width: 20px;
+  height: 20px;
+}
+.fw-prize-copy {
+  min-width: 0;
+}
+.fw-prize-copy h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+}
+.fw-prize-copy p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+@keyframes fw-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- the odds table ----------------------------------------------------- */
+.fw-odds {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.fw-h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.fw-odds-rows {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  overflow: hidden;
+}
+/* Three columns — what, where it goes, how likely. The middle one is the first
+   thing to go on a narrow screen, because a phone already knows where a prize
+   lands: the result card above says so. */
+.fw-odds-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) auto;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--hairline);
+  font-size: 13px;
+}
+.fw-odds-row:first-child {
+  border-top: 0;
+}
+.fw-odds-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.fw-odds-name b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+}
+/* A row is read, not admired: the chips keep to one line of height, and a pile of
+   bands stays narrow enough that the prize name never becomes the thing that
+   gets ellipsised. */
+.fw-odds-name .fw-tier {
+  width: 20px;
+  height: 26px;
+}
+.fw-odds-name .fw-band {
+  width: 22px;
+  height: 16px;
+}
+.fw-odds-name .fw-pile {
+  gap: 2px;
+}
+/* The swatch is the slice's own colour, so a row can be matched to the wheel by
+   eye rather than by order. */
+.fw-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+}
+.fw-odds-where {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.fw-odds-rate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex: none;
+}
+.fw-odds-rate b {
+  font-size: 13px;
+  font-weight: 700;
+}
+.fw-odds-rate span {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.fw-faint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* ---- spending a won face ------------------------------------------------ */
+.fw-face-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.fw-face-note {
+  margin: 0;
+  font-size: 12px;
+}
+.fw-faces {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: var(--sp-2);
+  max-height: 52vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
+}
+.fw-face {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--text);
+  text-align: center;
+}
+.fw-face-art {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  transition:
+    border-color var(--t-fast) var(--ease),
+    transform var(--t-fast) var(--ease);
+}
+.fw-face-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+.fw-face:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--r-md);
+}
+.fw-face:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+@media (hover: hover) {
+  .fw-face:hover .fw-face-art {
+    border-color: var(--accent-line);
+    transform: translateY(-2px);
+  }
+  .fw-face:hover .fw-face-name {
+    color: var(--accent-text);
+  }
+}
+
+/* ---- shapes ------------------------------------------------------------- */
+@media (max-width: 620px) {
+  .fw-odds-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .fw-odds-where {
+    display: none;
+  }
+  .fw-go {
+    width: 100%;
+  }
+  .fw-board {
+    width: min(300px, 84vw);
+  }
+}
+
+@media (max-width: 460px) {
+  .fw-head {
+    gap: var(--sp-3);
+  }
+  .fw-stage {
+    padding: var(--sp-4) var(--sp-3);
+  }
+  .fw-tag-text {
+    font-size: 10.5px;
+    top: 11%;
+  }
+  .fw-faces {
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  }
+}
+
+/* A wheel that will not turn is still a wheel: the disc stops, the labels stay,
+   and the prize simply appears instead of arriving. */
+@media (prefers-reduced-motion: reduce) {
+  .fw-wheel {
+    transition: none !important;
+  }
+  .fw-result:not(:empty) {
+    animation: none;
+  }
+  .fw-face-art {
+    transition: none;
+  }
+}

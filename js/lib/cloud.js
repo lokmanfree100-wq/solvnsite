@@ -4,11 +4,20 @@
  * configuration nothing here runs and Solvn stays on server.js.
  *
  * Only the public anon key is ever kept here, and only in this browser. The
- * session token lives in sessionStorage so it dies with the tab.
+ * session is kept in localStorage with its refresh token, because a phone
+ * browser does not have tabs: a session that dies with the tab means every
+ * return visit is signed out, and the profile page falls back to this device's
+ * local history. Supabase's own client persists sessions the same way. The
+ * trade is that a script injected into this page could read the token — which
+ * is why nothing here ever stores the project's secret key.
  */
 
 const KEY = 'kitsune:cloud';
-const TOKEN = 'kitsune:cloud:token';
+const TOKEN = 'kitsune:cloud:token'; // legacy: the sessionStorage copy this file used before
+const SESSION = 'kitsune:cloud:session';
+/* Refresh a little early so a request never travels on a token that expires
+   between here and the project. */
+const EXPIRY_LEEWAY_MS = 60 * 1000;
 
 export function cloudConfig() {
   let raw = null;
@@ -32,13 +41,146 @@ export function saveCloudConfig({ url, key }) {
   if (!base) throw badRequest('That project URL does not look right.', 'bad-url');
   if (!/^[A-Za-z0-9_-]{16,}$/.test((key || '').trim())) throw badRequest('That key does not look right.', 'bad-key');
   localStorage.setItem(KEY, JSON.stringify({ url: base, key: key.trim(), verified: false }));
-  sessionStorage.removeItem(TOKEN);
+  setToken(null);
   return cloudConfig();
 }
 
 export function clearCloudConfig() {
   localStorage.removeItem(KEY);
-  sessionStorage.removeItem(TOKEN);
+  setToken(null);
+  localStorage.removeItem(FLOW);
+  sessionStorage.removeItem(AWAITING);
+}
+
+/**
+ * Is a Supabase project configured *and* proven?
+ *
+ * This is the one that decides whether the sign-in sheet may offer email
+ * sign-up, "Forgot password?" and Google at all. `cloudActive()` below is the
+ * stricter question — "is there a session to spend" — and an adapter that only
+ * answered that one could never open a session in the first place.
+ */
+export const authReady = () => Boolean(cloudConfig()?.verified);
+
+/* ---- the link the browser comes back with ----------------------------
+   A reset email hands the browser either a fragment (`#access_token=…&type=recovery`,
+   the implicit flow) or a one-time `?code=` that has to be exchanged with the PKCE
+   verifier we generated when we asked. A Google sign-in arrives the same way as the
+   fragment. All three are read here, and the address is cleaned afterwards so a
+   refresh cannot spend the same code twice. */
+const FLOW = 'kitsune:cloud:pkce';
+const AWAITING = 'kitsune:cloud:awaiting-reset';
+
+const b64url = (bytes) => {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+/**
+ * A PKCE pair for this reset request, or null.
+ *
+ * `crypto.subtle` only exists in a secure context, so a preview on
+ * http://192.168.1.153 cannot ask for a code link — it gets the implicit one
+ * instead, which needs no verifier. On the https deployment both work.
+ */
+async function pkcePair() {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle || !globalThis.crypto?.getRandomValues) return null;
+  try {
+    const verifier = b64url(globalThis.crypto.getRandomValues(new Uint8Array(48)));
+    const digest = await subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+    return { verifier, challenge: b64url(new Uint8Array(digest)) };
+  } catch {
+    return null;
+  }
+}
+
+/** Ask Supabase to email a reset link. It answers the same either way. */
+export async function requestPasswordReset(email) {
+  const cfg = cloudConfig();
+  if (!cfg) throw badRequest('No Supabase project is connected.', 'no-cloud');
+  const pair = await pkcePair();
+  if (pair) localStorage.setItem(FLOW, pair.verifier);
+  else localStorage.removeItem(FLOW);
+  sessionStorage.setItem(AWAITING, '1');
+  const q = new URLSearchParams({ redirect_to: `${location.origin}${location.pathname}` });
+  if (pair) {
+    q.set('code_challenge', pair.challenge);
+    q.set('code_challenge_method', 'S256');
+  }
+  await req(cfg, `/auth/v1/recover?${q}`, { method: 'POST', auth: false, body: { email } });
+  return { link: pair ? 'code' : 'token' };
+}
+
+/** Drop the credentials out of the address bar once they are spent. */
+function cleanUrl() {
+  const params = new URLSearchParams(location.search);
+  ['code', 'access_token', 'refresh_token', 'id_token', 'type', 'expires_in'].forEach((k) => params.delete(k));
+  const query = params.toString();
+  const hashParams = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+  ['access_token', 'refresh_token', 'id_token', 'type', 'expires_in', 'code'].forEach((k) => hashParams.delete(k));
+  const rest = hashParams.toString();
+  history.replaceState(null, '', `${location.pathname}${query ? `?${query}` : ''}${rest ? `#${rest}` : ''}`);
+}
+
+/**
+ * Spend whatever the email link left behind.
+ * Returns 'recovery' when the viewer is here to choose a new password,
+ * 'session' when they simply came back signed in, '' for neither.
+ */
+export async function captureFromRedirect() {
+  const cfg = cloudConfig();
+  if (!cfg) return '';
+  const hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+  const query = new URLSearchParams(location.search);
+  const code = query.get('code') || hash.get('code');
+
+  if (code) {
+    const verifier = localStorage.getItem(FLOW);
+    localStorage.removeItem(FLOW);
+    if (!verifier) return ''; // the link was opened in a different browser
+    try {
+      const data = await req(cfg, '/auth/v1/token?grant_type=pkce', {
+        method: 'POST',
+        auth: false,
+        body: { auth_code: code, code_verifier: verifier },
+      });
+      setToken(data);
+      cleanUrl();
+      return waitingForReset() ? 'recovery' : 'session';
+    } catch {
+      cleanUrl(); // a spent code must not be offered again on refresh
+      return '';
+    }
+  }
+
+  const access = hash.get('access_token');
+  if (!access) return '';
+  setToken({ access_token: access });
+  const wasRecovery = hash.get('type') === 'recovery' || waitingForReset();
+  cleanUrl();
+  return wasRecovery ? 'recovery' : 'session';
+}
+
+function waitingForReset() {
+  const waiting = sessionStorage.getItem(AWAITING) === '1';
+  sessionStorage.removeItem(AWAITING);
+  return waiting;
+}
+
+/**
+ * Set the password of the session in hand — the last step of a recovery, and
+ * the same call an account makes to change it from the profile.
+ */
+export async function updatePassword(password) {
+  const cfg = cloudConfig();
+  if (!cfg) throw badRequest('No Supabase project is connected.', 'no-cloud');
+  if (!token()) {
+    throw badRequest('Please open the reset link again — this one has expired.', 'no-session');
+  }
+  await req(cfg, '/auth/v1/user', { method: 'PATCH', body: { password } });
+  return true;
 }
 
 export function googleReady() {
@@ -51,17 +193,67 @@ function baseUrl(value) {
   return /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(v) ? v : '';
 }
 
+function session() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SESSION) || 'null');
+    if (raw && typeof raw.access_token === 'string') return raw;
+  } catch { /* junk in storage counts as signed out */ }
+  return null;
+}
+
 function token() {
   try {
-    return sessionStorage.getItem(TOKEN) || '';
+    /* One last look at the old per-tab copy, so a visitor who was signed in
+       before this change is not silently asked for their password. */
+    return session()?.access_token || sessionStorage.getItem(TOKEN) || '';
   } catch {
     return '';
   }
 }
 
-function setToken(session) {
-  if (session?.access_token) sessionStorage.setItem(TOKEN, session.access_token);
-  else sessionStorage.removeItem(TOKEN);
+function setToken(next) {
+  try {
+    sessionStorage.removeItem(TOKEN);
+    if (!next?.access_token) {
+      localStorage.removeItem(SESSION);
+      return;
+    }
+    const expiresIn = Number(next.expires_in);
+    localStorage.setItem(
+      SESSION,
+      JSON.stringify({
+        access_token: next.access_token,
+        refresh_token: typeof next.refresh_token === 'string' ? next.refresh_token : '',
+        /* No lifetime in the reply means no proactive refresh; the request that
+           fails on it will say so, which is honest. */
+        expires_at: Number.isFinite(expiresIn) && expiresIn > 0 ? Date.now() + expiresIn * 1000 : 0,
+      }),
+    );
+  } catch { /* a private window that refuses storage stays signed out */ }
+}
+
+/**
+ * Trade the refresh token for a live access token when the old one is nearly
+ * done. Called before every request, so a session opened this morning is still
+ * working tonight without the viewer ever typing a password again.
+ */
+async function ensureFresh(cfg) {
+  const now = session();
+  if (!now?.refresh_token) return;
+  if (now.expires_at && now.expires_at - Date.now() > EXPIRY_LEEWAY_MS) return;
+  try {
+    const data = await req(cfg, '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      auth: false,
+      body: { refresh_token: now.refresh_token },
+    });
+    setToken(data);
+  } catch {
+    /* A refresh the project refuses — the token was revoked, or the project
+       does not rotate them. Leave the session as it is: the call that follows
+       will report the real failure, and a wrong password is not something this
+       function gets to decide. */
+  }
 }
 
 function badRequest(message, code) {
@@ -102,12 +294,12 @@ function headers(cfg, auth) {
   return h;
 }
 
-async function req(cfg, path, { method = 'GET', body, auth = true } = {}) {
+async function req(cfg, path, { method = 'GET', body, auth = true, prefer } = {}) {
   let res;
   try {
     res = await fetch(`${cfg.url}${path}`, {
       method,
-      headers: headers(cfg, auth),
+      headers: { ...headers(cfg, auth), ...(prefer ? { Prefer: prefer } : {}) },
       body: method === 'GET' || body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
@@ -141,10 +333,16 @@ function toUser(row) {
   return {
     id: String(row.id),
     username: row.username,
+    /* The handle is chosen once at registration and never changes; the name
+       people see is separate. An account that has not set one shows its handle. */
+    displayName: row.display_name || row.username,
     bio: row.bio || '',
     avatar: row.avatar || null,
     banner: row.banner || null,
+    favourite: row.favourite || null,
     badges: Array.isArray(row.badges) ? row.badges : [],
+    cards: row.cards || null,
+    title: row.title || null,
     createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
     stats: {
       hours: Number(row.hours) || 0,
@@ -164,17 +362,36 @@ function toPlaylist(row, likeIds) {
     ownerId: String(row.owner),
     likeCount: Number(row.like_count) || 0,
     likedByMe: likeIds ? likeIds.has(String(row.id)) : false,
-    owner: row.kitsune_profiles?.username || null,
+    owner: row.kitsune_profiles?.display_name || row.kitsune_profiles?.username || null,
     createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
   };
 }
 
 const likeIdsOf = (rows) => new Set((rows || []).map((r) => String(r.playlist)));
 
+/** The account behind this browser's token, or nothing. */
+async function myUid(cfg) {
+  const me = await req(cfg, '/auth/v1/user');
+  const uid = me?.id || me?.user?.id;
+  if (!uid) throw badRequest('Please sign in first.', 'no-user');
+  return String(uid);
+}
+
+/** One column at a time onto the member's own row, and read the row back. */
+async function patchRow(cfg, uid, patch) {
+  const rows = await req(cfg, `/rest/v1/kitsune_profiles?id=eq.${encodeURIComponent(uid)}`, {
+    method: 'PATCH',
+    prefer: 'return=representation',
+    body: patch,
+  });
+  return toUser(rows?.[0]);
+}
+
 /* ---- the adapter ----------------------------------------------------- */
 export async function cloudApi(path, { method = 'GET', body } = {}) {
   const cfg = cloudConfig();
   if (!cfg) throw badRequest('Cloud sync is not configured.', 'no-cloud');
+  await ensureFresh(cfg);
 
   const [route, query = ''] = path.split('?');
   const seg = route.split('/');
@@ -189,11 +406,14 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
     });
     setToken(data);
     if (!data?.access_token) {
-      // email confirmation on: the row is created after the user signs in
-      return {};
+      /* Email confirmation is switched on: the account exists but this browser
+         has no session yet, and the profile row arrives with the trigger when
+         the address is confirmed. The UI has to say so instead of welcoming
+         somebody who is not signed in. */
+      return { signedIn: false };
     }
     await req(cfg, '/rest/v1/rpc/kitsune_join', { method: 'POST', body: { p_username: body.username } });
-    return {};
+    return { signedIn: true };
   }
 
   if (seg[0] === 'account' && seg[1] === 'login') {
@@ -232,11 +452,50 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
   }
 
   if (seg[0] === 'account' && seg[1] === 'me') {
+    /* `body.username` may arrive (the local API echoes the handle back), but it
+       is never written here: the handle is the permanent key a profile is
+       addressed by, so the only name this call can change is the display one. */
     const rows = await req(cfg, '/rest/v1/rpc/kitsune_profile_update', {
       method: 'POST',
-      body: { p_username: body.username, p_bio: body.bio, p_avatar: body.avatar, p_banner: body.banner },
+      body: { p_display_name: body.displayName, p_bio: body.bio, p_avatar: body.avatar, p_banner: body.banner },
     });
-    return { user: toUser(rows) };
+    let user = toUser(rows);
+    /* The title is written straight onto the row rather than through that
+       function, because its argument list is frozen: a member whose database
+       predates the `title` column then loses titles alone, not their name,
+       picture and background as well. */
+    if (body.title !== undefined) {
+      const uid = await myUid(cfg);
+      user = await patchRow(cfg, uid, { title: body.title });
+    }
+    return { user };
+  }
+
+  if (seg[0] === 'account' && seg[1] === 'avatar') {
+    /* This replaces the whole avatar record, so the glyph and hue a member
+       already chose ride along with the new picture — the same contract the
+       local API keeps. */
+    const uid = await myUid(cfg);
+    const [row] = await req(cfg, `/rest/v1/kitsune_profiles?id=eq.${encodeURIComponent(uid)}&select=avatar`);
+    const held = row?.avatar || {};
+    return {
+      user: await patchRow(cfg, uid, {
+        avatar: {
+          glyph: held.glyph || 'fox',
+          hue: Number(held.hue) || 0,
+          photo: body.photo ?? null,
+          /* A gallery face or a pasted link travels as an address, not as bytes. */
+          face: body.face ?? null,
+          file: body.file ?? null,
+        },
+      }),
+    };
+  }
+
+  if (seg[0] === 'favourite') {
+    const uid = await myUid(cfg);
+    const value = body?.id ? { id: Number(body.id), title: body.title, image: body.image } : null;
+    return { user: await patchRow(cfg, uid, { favourite: value }) };
   }
 
   if (seg[0] === 'account' && seg[1] === 'stats') {
@@ -251,6 +510,14 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
       },
     });
     return { user: toUser(rows) };
+  }
+
+  if (seg[0] === 'account' && seg[1] === 'cards') {
+    /* Whole-record replace, exactly like the local API: the binder itself stays
+       on the device and only the published summary travels, so a stale tab
+       cannot resurrect a card that was just fused away. */
+    const uid = await myUid(cfg);
+    return { user: await patchRow(cfg, uid, { cards: body.cards || null }) };
   }
 
   /* -- playlists -- */
@@ -290,6 +557,41 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
     };
   }
 
+  if (seg[0] === 'members') {
+    /* The term goes into a PostgREST filter, so it is cut down to the characters
+       a handle can hold — and a filter built from nothing but those cannot
+       escape the string it was meant to search for. Prefix match first, exactly
+       like the local route. */
+    const term = (params.get('q') || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim();
+    if (term.length < 2) return { users: [] };
+    const like = encodeURIComponent(term.toLowerCase());
+    const rows = await req(
+      cfg,
+      `/rest/v1/kitsune_profiles?or=(username.ilike.${like}*,display_name.ilike.${like}*)&order=username.asc&limit=8&select=*`,
+    );
+    return { users: (rows || []).map(toUser) };
+  }
+
+  if (seg[0] === 'community' && seg[1] === 'collectors') {
+    /* The RPC returns each row with its place already printed on it, so the
+       number the board sorts by and the number it shows cannot drift apart. */
+    const data = await req(cfg, '/rest/v1/rpc/kitsune_collectors', {
+      method: 'POST',
+      body: { p_limit: Number(params.get('n')) || 20 },
+    });
+    const placed = (row) => (row ? { ...toUser(row), place: Number(row.place) || 0 } : null);
+    return {
+      users: (data?.users || []).map(placed),
+      me: placed(data?.me),
+      totals: {
+        members: Number(data?.totals?.members) || 0,
+        collectors: Number(data?.totals?.collectors) || 0,
+        pulls: Number(data?.totals?.pulls) || 0,
+        highest: Number(data?.totals?.highest) || 0,
+      },
+    };
+  }
+
   if (seg[0] === 'community' && seg[1] === 'leaderboard') {
     const data = await req(cfg, '/rest/v1/rpc/kitsune_leaderboard', {
       method: 'POST',
@@ -323,18 +625,4 @@ export function googleSignInUrl() {
     scopes: 'openid email profile',
   });
   return `${cfg.url}/auth/v1/authorize?${q}`;
-}
-
-/** After the redirect Supabase hands back #access_token=… in the URL hash. */
-export function captureSessionFromHash() {
-  const hash = location.hash || '';
-  if (!hash.includes('access_token=')) return false;
-  const params = new URLSearchParams(hash.replace(/^#/, ''));
-  const access = params.get('access_token');
-  if (access) sessionStorage.setItem(TOKEN, access);
-  params.delete('access_token');
-  params.delete('refresh_token');
-  const clean = `${location.pathname}${location.search}${params.toString() ? `#${params}` : ''}`;
-  history.replaceState(null, '', clean);
-  return Boolean(access);
 }

@@ -1,0 +1,2003 @@
+/**
+ * The card binder: twenty-five frames, one clean colour each.
+ *
+ * A trading card is a very specific object — a narrow bevel, one light source,
+ * art bleeding to the edges, the name printed where a printer would print it —
+ * so this file builds that object rather than a poster with a border. The tier
+ * arrives as three custom properties (`--ga`, `--gb`, `--glow`) written by
+ * components/gacha.js from the drop table in lib/cards.js, which keeps the
+ * colour of a card and the odds of a card in the same place.
+ *
+ * A tier says what it is with *colour*, once: a flat ring in the tier's own
+ * gradient, a soft outer glow, and the same hue washing the art. The only thing
+ * that moves on a card is the shine crossing the plate — light reflecting off a
+ * printed surface, which is what a card actually does. Its angle, travel, speed
+ * and tint are written from the drop table, so a Basic card catches one slow
+ * white gleam and a crowned one catches a steeper, quicker band in its own
+ * colour, without a rule per tier. There are no per-tier weather layers: no bolt,
+ * no flame, no rain of code, no accretion disc. Twenty of them on screen at once
+ * is not a binder, it is a light rig, and the grid dropped to a slideshow for it.
+ * The one exception is the one-of-one.
+ *
+ * Motion rules: every layer is clipped by the frame, animates `transform` or
+ * `opacity` only, and uses no blur, hue cycle or blend mode. Only the one-of-one
+ * adds a second animation — a slow electric-blue breath — and it is one card in a
+ * binder, which is the entire reason it is allowed one. All of it stops under
+ * `prefers-reduced-motion` without taking any information with it.
+ */
+
+/* ---- the card ---------------------------------------------------------- */
+.g-card {
+  --ga: var(--accent);
+  --gb: #16161c;
+  --glow: var(--accent-glow);
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  margin: 0;
+  color: var(--text);
+  transform-style: preserve-3d;
+}
+
+.g-frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  /* The dark neon border: a gradient ring painted behind a solid slab, so the
+     bevel reads as one piece of printed card rather than a CSS trick. */
+  background:
+    linear-gradient(155deg, var(--ga) 0%, var(--gb) 58%, #05050a 100%) border-box,
+    #05050a padding-box;
+  border: 1px solid transparent;
+  box-shadow:
+    0 18px 42px -22px rgba(0, 0, 0, 0.9),
+    0 0 22px -10px var(--glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform var(--t-med) var(--ease-out-back), box-shadow var(--t-med) var(--ease);
+}
+
+.g-card[role='button'] {
+  cursor: pointer;
+}
+
+.g-card[role='button']:hover .g-frame,
+.g-card[role='button']:focus-visible .g-frame {
+  box-shadow:
+    0 26px 56px -24px rgba(0, 0, 0, 0.95),
+    0 0 34px -8px var(--glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.g-card:focus-visible {
+  outline: none;
+}
+
+.g-card:focus-visible .g-frame {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 3px;
+}
+
+/* The bevel: the hairline that says the frame has a thickness. */
+.g-bevel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: var(--r-md);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07), inset 0 -40px 60px -40px rgba(0, 0, 0, 0.8);
+}
+
+/* ---- the art ------------------------------------------------------------ */
+.g-art {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.1), transparent 60%),
+    linear-gradient(180deg, var(--gb), #06060b);
+}
+
+.g-art::after {
+  /* The tier wash, under the portrait, so a card reads as its colour before it
+     reads as its picture. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(170deg, var(--ga), transparent 46%);
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+/* Character portraits are bust shots; a tilt and an overcrop is what turns one
+   into a pose on a card. Every part of that framing is a variable, because the
+   form bands below reframe the same portrait rather than swapping the drawing:
+   how close the crop sits, which shoulder is forward and how hot the grade runs
+   are what make form II read as a different card from form IV. */
+.g-portrait {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--art-focus, 50% 18%);
+  transform:
+    scale(var(--art-zoom, 1.08))
+    rotate(var(--art-tilt, -1.4deg))
+    scaleX(var(--art-flip, 1));
+  transform-origin: 50% 40%;
+  filter:
+    saturate(var(--art-sat, 1.08))
+    contrast(var(--art-con, 1.05))
+    brightness(var(--art-bri, 1));
+}
+
+/* ---- the five forms ------------------------------------------------------
+   A tier does not only change the ring, it changes the picture in it: the same
+   character moves from an even bust shot, through a tighter waist-up and a
+   mirrored profile, into a close, hot, lit-from-behind headshot. Five bands —
+   the ones `formOf` names — so a card in the binder reads as one rung of an
+   evolution without the set pretending to own drawings it does not have. */
+.g-card.is-form2 {
+  --art-zoom: 1.15;
+  --art-tilt: -0.4deg;
+  --art-focus: 50% 14%;
+  --art-sat: 1.14;
+  --art-con: 1.1;
+}
+
+.g-card.is-form3 {
+  --art-zoom: 1.2;
+  --art-tilt: 0.8deg;
+  --art-flip: -1;
+  --art-focus: 50% 12%;
+  --art-sat: 1.2;
+  --art-con: 1.16;
+  --art-bri: 1.02;
+}
+
+.g-card.is-form4 {
+  --art-zoom: 1.26;
+  --art-tilt: -1.6deg;
+  --art-focus: 50% 9%;
+  --art-sat: 1.28;
+  --art-con: 1.22;
+  --art-bri: 1.05;
+}
+
+.g-card.is-form5 {
+  --art-zoom: 1.3;
+  --art-tilt: 1.2deg;
+  --art-flip: -1;
+  --art-focus: 50% 7%;
+  --art-sat: 1.34;
+  --art-con: 1.28;
+  --art-bri: 1.07;
+}
+
+/* From form IV the tier lights the picture from behind and below, the way a
+   poster is lit rather than printed. One painted gradient, no blurred layer. */
+.g-card.is-form4 .g-art::after,
+.g-card.is-form5 .g-art::after {
+  background:
+    linear-gradient(168deg, var(--ga), transparent 44%),
+    radial-gradient(
+      82% 52% at 50% 108%,
+      color-mix(in srgb, var(--glow) 44%, transparent),
+      transparent 68%
+    );
+  opacity: 0.42;
+}
+
+.g-art.is-noart::before {
+  /* A portrait that will not load still leaves a silhouette in the tier's own
+     light, so the card never shows a broken icon. */
+  content: '';
+  position: absolute;
+  inset: 12% 18% 22%;
+  border-radius: 50% 50% 42% 42%;
+  background: radial-gradient(circle at 50% 30%, var(--ga), transparent 62%);
+  opacity: 0.5;
+}
+
+/* The energy burst only from Very Rare up: nine tiers of nothing and then,
+   suddenly, light behind the character. It is one static image turned slowly on
+   its own layer, so it costs nothing to animate — but a grid of a hundred of them
+   still holds still, because a fan behind every tile is not a binder. */
+.g-burst {
+  position: absolute;
+  inset: -25%;
+  background: repeating-conic-gradient(
+    from 0deg at 50% 55%,
+    rgba(255, 255, 255, 0.14) 0deg 1deg,
+    transparent 1deg 10deg
+  );
+  opacity: 0.4;
+  animation: g-spin 40s linear infinite;
+}
+
+.g-card.g-tile .g-burst {
+  animation: none;
+}
+
+.g-lv,
+.g-copies,
+.g-evolved {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: var(--r-pill);
+  backdrop-filter: blur(6px);
+}
+
+.g-lv {
+  inset-block-start: 8px;
+  inset-inline-start: 8px;
+  background: rgba(6, 6, 11, 0.72);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The form numeral beside the level, printed in the tier's light. It is the
+   quietest thing on the card and the only mark that says the framing changed
+   on purpose, so it never takes a chip of its own. */
+.g-form {
+  color: var(--glow);
+  letter-spacing: 0.12em;
+  opacity: 0.9;
+}
+
+.g-form::before {
+  content: '·';
+  color: var(--text-faint);
+}
+
+.g-mini .g-form {
+  display: none;
+}
+
+.g-copies {
+  inset-block-end: 8px;
+  inset-inline-end: 8px;
+  background: rgba(6, 6, 11, 0.78);
+  border: 1px solid var(--line-strong);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-evolved {
+  inset-block-start: 8px;
+  inset-inline-end: 8px;
+  background: linear-gradient(120deg, var(--ga), var(--glow));
+  color: #07070c;
+}
+
+.g-evolved svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---- the shine ----------------------------------------------------------
+   One band of white crossing the plate, and the only thing on a card that moves.
+   It is drawn wider than the card so the band reaches full strength at the middle
+   of the portrait, it is clipped by the spectrum layer so it never reaches the
+   name or the numbers, and only its transform changes after the first paint.
+   Nothing here is a hue: the tier's colour is printed in the ring and the art wash,
+   and the shine is the light in the room. */
+.g-spectrum {
+  position: absolute;
+  inset: 0;
+  /* One step above the portrait and below the printed plate, so the light crosses
+     the art and never the name, the level chip or the numbers. */
+  z-index: 1;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  pointer-events: none;
+}
+
+.g-spectrum::before {
+  content: '';
+  position: absolute;
+  inset: -14% -80%;
+  /* Angle, travel, tint, speed and strength all arrive from the drop table (see
+     `paint` in components/gacha.js): the light enters steeper, runs further and
+     picks up the tier's own colour as the level climbs. Lower tiers still catch a
+     white gleam — every printed card does — and only the holographic half of the
+     set catches a coloured one. */
+  background: linear-gradient(
+    var(--sweep-angle, 100deg),
+    transparent 34%,
+    color-mix(in srgb, var(--sweep-tint, #ffffff) 20%, transparent) 43%,
+    color-mix(in srgb, var(--sweep-tint, #ffffff) 62%, transparent) 50%,
+    color-mix(in srgb, var(--sweep-tint, #ffffff) 20%, transparent) 57%,
+    transparent 66%
+  );
+  opacity: var(--sweep-op, 0.5);
+  animation: g-sweep var(--sweep-dur, 7.2s) var(--ease) var(--sweep-wait, 0s) infinite;
+}
+
+/* The tier accent: a hairline of the printed colour along the two edges the frame
+   already catches, painted once and held still. This is what a card says about its
+   level in a grid of a hundred others, and it costs one composite. */
+.g-card.is-holo .g-bevel::after,
+.g-card.is-live .g-bevel::after,
+.g-card.is-lv13 .g-bevel::after,
+.g-card.is-lv14 .g-bevel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-md);
+  background:
+    radial-gradient(96% 42% at 50% 0%, color-mix(in srgb, var(--glow) 40%, transparent), transparent 70%),
+    radial-gradient(96% 42% at 50% 100%, color-mix(in srgb, var(--ga) 32%, transparent), transparent 70%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 34%, transparent);
+  opacity: 0.34;
+}
+
+/* Rainbow Holo through GODLIKE: the ring is the tier's own colour printed flat —
+   glow into accent into the dark shoulder — and one soft outer light. No conic
+   rainbow, no spectrum that drifts through colours the tier never chose. */
+.g-card.is-holo .g-frame {
+  background:
+    linear-gradient(150deg, var(--glow) 0%, var(--ga) 42%, var(--gb) 100%) border-box,
+    linear-gradient(180deg, #0b0b12, #05050a) padding-box;
+  border-width: 2px;
+  box-shadow:
+    0 20px 46px -20px rgba(0, 0, 0, 0.9),
+    0 0 34px -14px var(--glow);
+}
+
+/* The shine climbs with the tier, but the climb is the level's arithmetic rather
+   than four hand-tuned stops: `--sweep-*` arrives from the drop table, so the band
+   on a Storm card is steeper and quicker than the band on a Rare one without this
+   stylesheet listing a rule per tier. */
+.g-card.is-crown .g-bevel::after {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 46%, transparent);
+}
+
+/* GODLIKE takes a heavier ring and a wider throw. It is still one printed gradient
+   and one static shadow — the level is the point, not the light show. */
+.g-card.is-crown .g-frame {
+  border-width: 3px;
+  box-shadow:
+    0 26px 60px -18px rgba(0, 0, 0, 0.95),
+    0 0 48px -14px var(--glow);
+}
+
+/* ---- the live card ------------------------------------------------------
+   A card reaches this by its Power number, not its tier label, so a fused mid-tier
+   card that climbed over the line is as live as a GODLIKE one. What it puts on is
+   the tier's own colour turned up — a wider ring, a brighter rim, a quicker shine —
+   and not a second light source bolted on.
+   `:where()` is load-bearing here — it keeps these rules at zero specificity so
+   a holographic tier keeps its own printed ring and a live card that is merely
+   Rare still gets one. */
+:where(.g-card.is-live) .g-frame {
+  border-width: 2px;
+  background:
+    linear-gradient(150deg, var(--glow) 0%, var(--ga) 45%, var(--gb) 100%) border-box,
+    linear-gradient(180deg, #0b0b12, #05050a) padding-box;
+  box-shadow:
+    0 22px 52px -22px rgba(0, 0, 0, 0.94),
+    0 0 40px -14px var(--glow);
+}
+
+.g-card.is-live .g-bevel::after {
+  opacity: 0.48;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glow) 52%, transparent);
+}
+
+/* A live card keeps the tier's angle and colour and simply catches more of the
+   light — the foil and the ring are already saying why it is louder. */
+.g-card.is-live .g-spectrum::before {
+  opacity: calc(var(--sweep-op, 0.5) + 0.16);
+  animation-duration: calc(var(--sweep-dur, 7s) * 0.78);
+}
+
+/* The foil: one bright band travelling through brushed lines, which is what a real
+   stamped card does when it is turned under a lamp. The lines are painted once and
+   the whole sheet moves, there is no blend mode, and the band is white rather than
+   a second hue — the tier's colour is already on the ring. */
+.g-foil {
+  position: absolute;
+  inset: 0;
+  /* One step above the portrait and below every badge, so the band never crosses
+     the level chip or the name. */
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.g-foil::before {
+  content: '';
+  position: absolute;
+  inset: -20% -120%;
+  background:
+    linear-gradient(
+      105deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.46) 50%,
+      transparent 60%
+    ),
+    repeating-linear-gradient(105deg, rgba(255, 255, 255, 0.06) 0 2px, transparent 2px 10px);
+  opacity: 0.7;
+  animation: g-foil 8s var(--ease) infinite;
+}
+
+/* A live card below Lv 15 wears no banner, so the badge is the only thing that
+   says why this one moves and the card next to it does not. */
+.g-live {
+  position: absolute;
+  z-index: 2;
+  inset-block-end: 8px;
+  inset-inline-start: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  background: rgba(6, 6, 11, 0.78);
+  border: 1px solid var(--glow);
+  color: var(--glow);
+  box-shadow: 0 0 14px -4px var(--glow);
+  animation: g-pulse 2.8s var(--ease) infinite;
+}
+
+.g-live svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* The number that made the card live is the number worth reading, so it gets the
+   room and the glow instead of sitting in the same row as Speed. */
+.g-stats li.is-power {
+  grid-column: 1 / -1;
+  color: var(--glow);
+  font-weight: 700;
+}
+
+.g-card.is-live .g-stats li.is-power b {
+  color: var(--glow);
+  font-size: 14px;
+  text-shadow: 0 0 12px var(--glow);
+}
+
+/* ---- the one-of-one --------------------------------------------------------
+   Lv 25 is one card in a binder, never a shelf of them, so it is the only plate
+   allowed a light of its own. Two colours and no others: black and electric blue.
+   The ring is a cold blue hairline on a plate that stays black, the shine is blue
+   rather than white, and the pulse on the bevel is the one breath in the set.
+
+   The fire itself: a slow blue flame turning around the outside of the plate. Two
+   painted radial gradients on two layers turning in opposite directions — no
+   filter, no blur, no shadow per frame — so the flame is soft by construction and
+   costs the compositor a transform each. Only one card in the set ever wears it. */
+.g-card.is-ultimate {
+  isolation: isolate;
+}
+
+/* The master's art is the platform mark, not a portrait, so it keeps its own
+   framing: centred, unmirrored and only a breath closer than the plate. It is
+   still form V — the highest band — but the mark is not a character to reframe. */
+.g-card.is-ultimate .g-portrait {
+  --art-zoom: 1.04;
+  --art-tilt: 0deg;
+  --art-flip: 1;
+  --art-focus: 50% 50%;
+  --art-sat: 1;
+  --art-con: 1.05;
+  --art-bri: 1.04;
+}
+
+.g-card.is-ultimate::before,
+.g-card.is-ultimate::after {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side at 50% 14%, rgba(96, 178, 255, 0.6), transparent 70%),
+    radial-gradient(closest-side at 16% 74%, rgba(20, 74, 255, 0.55), transparent 72%),
+    radial-gradient(closest-side at 84% 62%, rgba(140, 214, 255, 0.42), transparent 70%);
+  opacity: 0.5;
+  animation: g-fire 16s linear infinite;
+}
+
+.g-card.is-ultimate::after {
+  inset: -8%;
+  background:
+    radial-gradient(closest-side at 30% 88%, rgba(20, 74, 255, 0.5), transparent 68%),
+    radial-gradient(closest-side at 78% 10%, rgba(120, 198, 255, 0.46), transparent 66%);
+  opacity: 0.36;
+  animation-duration: 22s;
+  animation-direction: reverse;
+}
+
+.g-card.g-tile.is-ultimate::before,
+.g-card.g-tile.is-ultimate::after {
+  inset: -9%;
+}
+
+.g-card.is-ultimate .g-frame {
+  border-width: 2px;
+  background:
+    linear-gradient(150deg, #2f9cff 0%, #0b3cff 38%, #04070f 100%) border-box,
+    linear-gradient(180deg, #05060d, #010207) padding-box;
+  box-shadow:
+    0 30px 66px -20px rgba(0, 0, 0, 0.96),
+    0 0 54px -16px rgba(47, 156, 255, 0.72);
+}
+
+/* The pulse: cold blue at both edges and a hairline of it round the plate, faded in
+   and out on a slow clock. One painted gradient and one opacity animation — the
+   breath reads on the plate while the fire does the moving outside it, and nothing
+   else in the set breathes on this beat. */
+.g-card.is-ultimate .g-bevel::after {
+  background:
+    radial-gradient(96% 46% at 50% 0%, rgba(47, 156, 255, 0.55), transparent 70%),
+    radial-gradient(96% 46% at 50% 100%, rgba(11, 60, 255, 0.6), transparent 70%);
+  box-shadow: inset 0 0 0 1px rgba(122, 190, 255, 0.72);
+  animation: g-master-pulse 3.4s var(--ease) infinite;
+}
+
+/* The shine in the master's own colour: one band of blue light, brighter than any
+   tier gets and the only sweep in the set that is not white. */
+.g-card.is-ultimate .g-spectrum::before {
+  inset: -22% -90%;
+  background: linear-gradient(
+    100deg,
+    transparent 34%,
+    rgba(47, 156, 255, 0.45) 45%,
+    rgba(214, 236, 255, 0.7) 50%,
+    rgba(11, 60, 255, 0.45) 56%,
+    transparent 67%
+  );
+  opacity: 0.72;
+  animation-duration: 4.4s;
+}
+
+/* INFINITY is not a number, so it does not sit in the number's column. */
+.g-card.is-ultimate .g-stats li.is-power b {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: #cfe4ff;
+  text-shadow:
+    0 0 12px #4f9dff,
+    0 0 26px #0b3cff;
+}
+
+.g-card.is-ultimate .g-live {
+  border-color: #4f9dff;
+  color: #cfe4ff;
+  box-shadow: 0 0 16px -6px #2f9cff;
+}
+
+/* ---- the grid -----------------------------------------------------------
+   A binder holds a hundred of these at once, so this block is deliberately the
+   last word on every animated layer: the shine runs slower and dimmer, the accent
+   rim holds still and the stamp keeps its band but stops crossing the portrait.
+   What survives at tile size is the printed ring, the printed colour and one quiet
+   highlight — a hundred bands of light crossing at once is a wall of light, not a
+   set worth finishing. */
+.g-card.g-tile .g-spectrum::before {
+  animation-duration: 11s;
+  opacity: calc(var(--sweep-op, 0.5) * 0.42);
+}
+
+.g-card.g-tile .g-bevel::after {
+  animation: none;
+  opacity: 0.32;
+}
+
+.g-card.g-tile .g-foil::before {
+  animation: none;
+  transform: translate3d(-24%, 0, 0);
+  opacity: 0.5;
+}
+
+/* ---- the master, in the grid ------------------------------------------
+   The compendium holds exactly one Lv 25 tile, so the rule above that dims the
+   grid's shine does not apply to it: the one-of-one keeps its band and its pulse at
+   every size, because it is one card and not a shelf of them. Nothing about it
+   reaches past the frame. */
+.g-card.g-tile.is-ultimate .g-spectrum::before {
+  animation: g-sweep 4.4s var(--ease) infinite;
+  opacity: 0.66;
+}
+
+.g-card.g-tile.is-ultimate .g-bevel::after {
+  animation: g-master-pulse 3.4s var(--ease) infinite;
+}
+
+/* ---- the locked tile ------------------------------------------------------
+   A compendium tile the binder does not hold keeps its frame and its tier colours —
+   the set has to look like a set worth finishing. What it gives up
+   is the arithmetic: the portrait goes dim, the serial line says it is not owned
+   and the Power column prints a band of stars. */
+.g-card.is-locked .g-portrait {
+  filter: grayscale(0.6) brightness(0.5) blur(2px) contrast(0.94);
+}
+
+.g-card.is-locked .g-plate {
+  opacity: 0.86;
+}
+
+.g-lock {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(4, 4, 9, 0.44), rgba(4, 4, 9, 0.74));
+  backdrop-filter: blur(1.5px);
+}
+
+.g-lock svg {
+  width: 22px;
+  height: 22px;
+  color: #fff;
+  opacity: 0.9;
+}
+
+.g-lock span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--glow);
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+/* The star band that stands where a Power number would be. */
+.g-stats b.is-stars {
+  letter-spacing: 2px;
+  color: var(--glow);
+  text-shadow: 0 0 10px var(--glow);
+}
+
+/* A card this pack only reached because the streak said so. It is printed on the
+   tile because a floor that nobody can see is indistinguishable from a rig. */
+.g-raised {
+  position: absolute;
+  z-index: 2;
+  inset-block-start: 34px;
+  inset-inline-start: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(6, 6, 11, 0.76);
+  border: 1px solid var(--glow);
+  color: var(--glow);
+  backdrop-filter: blur(6px);
+}
+
+.g-raised svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* ---- the printed banner -------------------------------------------------- */
+/* Reserved for `BANNER_LV` and up (Lv 15-24, plus the one-of-one). The band carries
+   the character, the title and the serial, so the three things a graded slab prints
+   are on the card that earned them. The band is the tier's own gradient lifted to
+   paper brightness — one fixed palette per card, no spectrum cycling through hues
+   the tier never chose — and the colour is light enough on every tier for the dark
+   ink the accessibility rules want. */
+.g-banner {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  gap: 1px;
+  padding: 7px 11px 8px;
+  background: linear-gradient(
+    100deg,
+    #eef5ff 0%,
+    color-mix(in srgb, var(--glow) 46%, #ffffff) 46%,
+    color-mix(in srgb, var(--ga) 54%, #ffffff) 100%
+  );
+  color: #07070d;
+}
+
+.g-banner-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.g-banner-meta {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- the plate ----------------------------------------------------------- */
+.g-plate {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 5px;
+  padding: 9px 11px 11px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+}
+
+.g-ident {
+  display: grid;
+  gap: 1px;
+}
+
+.g-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.g-title {
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.g-serial {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-rar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.g-rar-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--glow);
+}
+
+.g-rar-rate {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.g-stats {
+  list-style: none;
+  display: grid;
+  /* Six columns so Power can take the whole first row and the other three
+     numbers still sit evenly beneath it. */
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px var(--sp-3);
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+}
+
+.g-stats li {
+  grid-column: span 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--text-dim);
+}
+
+.g-stats b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-stats .g-overall {
+  grid-column: 1 / -1;
+  margin-top: 3px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.g-stats .g-overall b {
+  font-size: 15px;
+  color: var(--glow);
+}
+
+/* An evolved card is the same drawing and a transformation of it: brighter,
+   hotter, and lit from behind. */
+.g-card.is-evolved .g-frame {
+  box-shadow:
+    0 20px 48px -20px rgba(0, 0, 0, 0.92),
+    0 0 44px -10px var(--glow);
+}
+
+/* Evolution deepens whatever form the card arrived in rather than flattening it
+   back to one shot: it lifts the grade, pushes the crop a little closer and turns
+   the pose off the card's own tilt by one more degree. */
+.g-card.is-evolved .g-portrait {
+  filter:
+    saturate(calc(var(--art-sat, 1.08) + 0.15))
+    contrast(calc(var(--art-con, 1.05) + 0.07))
+    brightness(calc(var(--art-bri, 1) + 0.04));
+  transform:
+    scale(calc(var(--art-zoom, 1.08) * 1.06))
+    rotate(calc(var(--art-tilt, -1.4deg) - 1deg))
+    scaleX(var(--art-flip, 1));
+}
+
+/* Variants: the grid tile keeps everything but the numbers, the sample row
+   keeps only the name band. */
+.g-tile .g-name {
+  font-size: 13px;
+}
+
+.g-tile .g-rar-label {
+  font-size: 9.5px;
+}
+
+.g-mini .g-plate,
+.g-tile .g-stats {
+  display: none;
+}
+
+/* ---- the chips and the legend -------------------------------------------- */
+.g-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--glow);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.g-chip.is-holo {
+  border-color: transparent;
+  background:
+    linear-gradient(#0b0b12, #0b0b12) padding-box,
+    linear-gradient(90deg, var(--glow), var(--ga)) border-box;
+  color: color-mix(in srgb, var(--glow) 72%, #ffffff);
+}
+
+.g-chip b {
+  font-weight: 600;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.g-legend-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  box-shadow: inset 2px 0 0 var(--ga);
+  transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+
+.g-legend-item:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+
+.g-legend-item:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+.g-legend-lv {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--glow);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-legend-label {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.g-legend-rate {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The same strip read as a checklist: the count of that tier's tiles the binder
+   holds, and a tick when the tier is finished. */
+.g-legend.is-progress {
+  grid-template-columns: repeat(auto-fill, minmax(184px, 1fr));
+  margin-top: var(--sp-3);
+}
+
+.g-legend-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 42px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-legend-count svg {
+  width: 13px;
+  height: 13px;
+  color: var(--success);
+}
+
+.g-legend-item.is-active {
+  border-color: var(--accent-bright);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+  box-shadow:
+    inset 2px 0 0 var(--ga),
+    0 0 0 1px var(--accent-bright);
+}
+
+.g-legend-item.is-complete .g-legend-label {
+  color: var(--text);
+}
+
+.g-legend-item.is-ultimate {
+  border-color: rgba(130, 215, 255, 0.42);
+}
+
+.g-legend-item.is-ultimate .g-legend-lv {
+  color: #eaf7ff;
+  text-shadow: 0 0 10px rgba(79, 216, 255, 0.9);
+}
+
+/* ---- the page ------------------------------------------------------------ */
+.page-packs {
+  padding-bottom: var(--sp-7);
+}
+
+/* The binder reads in blocks: header, stage, shelf, grid, odds, tools. */
+.page-packs > * + * {
+  margin-top: var(--sp-6);
+}
+
+.g-headline {
+  align-items: center;
+}
+
+.btn--pack {
+  position: relative;
+  min-height: 48px;
+  padding-inline: 18px;
+  font-size: 15px;
+}
+
+.g-pack-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  margin-inline-start: 4px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: rgba(6, 6, 11, 0.32);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.g-daily {
+  margin: var(--sp-3) 0 0;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.g-daily-used {
+  color: var(--text-faint);
+}
+
+.g-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+
+.g-fact {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.g-fact b {
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.g-fact span {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.g-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--sp-4);
+  color: var(--warn);
+  font-size: 13px;
+}
+
+/* The stage: one card held up, and its reading beside it. */
+.g-show-row {
+  display: grid;
+  grid-template-columns: minmax(0, 272px) minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+  perspective: var(--persp);
+}
+
+.g-showcase .g-card {
+  width: 100%;
+}
+
+.g-show-side {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.g-show-side h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.g-show-line {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.g-show-rate,
+.g-show-serial,
+.g-show-dull {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The stage answers "why does this one move" in one line, so the live card's
+   Power number is printed where a collector would look for it. */
+.g-show-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--accent-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-show-live svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.g-show-stats {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+}
+
+.g-show-stats li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.g-show-stats b {
+  color: var(--text);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.g-show-stats .is-overall {
+  grid-column: 1 / -1;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+}
+
+.g-show-stats .is-overall b {
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: var(--accent-text);
+}
+
+/* Power leads the tiles: it is the number that decides whether the card runs
+   its live effects, so it gets the row and the colour. */
+.g-show-stats li.is-power {
+  grid-column: 1 / -1;
+  border-color: var(--line-strong);
+}
+
+.g-show-stats li.is-power b {
+  color: var(--accent-bright);
+  font-size: 16px;
+}
+
+.g-show-top,
+.g-show-ready {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+}
+
+.g-show-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+}
+
+.g-show-actions {
+  margin-top: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* The grid. */
+.g-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.g-grid-note {
+  margin: var(--sp-4) 0 0;
+  font-size: 12.5px;
+}
+
+.g-empty {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: center;
+  margin-top: var(--sp-5);
+  padding: var(--sp-6) var(--sp-4);
+  border-radius: var(--r-lg);
+  border: 1px dashed var(--line-strong);
+  background: var(--surface);
+  text-align: center;
+}
+
+.g-empty h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+
+/* The drop table. */
+.g-odds-card {
+  margin-top: var(--sp-5);
+}
+
+.g-odds-lead {
+  margin: 0 0 var(--sp-3);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.g-odds-brief {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.g-odds {
+  display: grid;
+  gap: 3px;
+}
+
+.g-odds-head,
+.g-odds-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 84px 76px;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 7px 10px;
+  border-radius: var(--r-xs);
+  font-size: 12.5px;
+}
+
+.g-odds-head {
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.g-odds-row {
+  background: var(--surface-2);
+  box-shadow: inset 2px 0 0 var(--ga);
+  color: var(--text-dim);
+}
+
+.g-odds-lv {
+  font-weight: 750;
+  color: var(--glow);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-odds-label {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.g-odds-pct,
+.g-odds-one {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.g-odds-row.is-holo {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.07), var(--surface-2) 40%);
+}
+
+/* The tester strip. */
+.g-tools:empty {
+  display: none;
+}
+
+.g-tester {
+  margin-top: var(--sp-5);
+  border-color: var(--accent-line);
+}
+
+.g-tool-row {
+  flex-wrap: wrap;
+  margin-top: var(--sp-3);
+}
+
+.g-tool-sub {
+  margin: var(--sp-4) 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.g-tool-foot {
+  margin: var(--sp-4) 0 0;
+  font-size: 12.5px;
+}
+
+/* The tester's switches read as pressed, not merely as a different label. */
+.g-tool-row .btn.is-on {
+  border-color: var(--accent-line);
+  color: var(--accent-text);
+  box-shadow: 0 0 22px -10px var(--accent-glow);
+}
+
+/* ---- the two views, the clock, the bank ---------------------------------
+   The countdown and the streak line are read every time the page is opened, so
+   they sit beside the allowance rather than inside the odds panel: a number that
+   only appears once you expand a table is a number nobody plans around. */
+.g-modebar {
+  gap: var(--sp-3);
+}
+
+.g-view-hint {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.g-clockline,
+.g-streakline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: var(--sp-2) 0 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.g-clockline svg,
+.g-streakline svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--accent-text);
+}
+
+.g-streakline svg {
+  color: var(--warn);
+}
+
+/* Tabular figures, because a countdown that changes width as it ticks moves the
+   whole header with it. */
+.g-clock {
+  margin-inline-start: 2px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent-text);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+/* The compendium's checklist. `.filter-bar` declares `display: flex`, which an
+   author rule wins over the UA's `[hidden]`, so hiding the binder rail needs
+   saying out loud. */
+.filter-bar[hidden],
+.g-setbar:empty {
+  display: none;
+}
+
+.g-setbar-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.g-setbar-hint svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.g-set-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.g-set-head .g-grid-note {
+  margin: 0;
+}
+
+/* ---- the one-of-one ------------------------------------------------------ */
+.g-prize-wrap:empty {
+  display: none;
+}
+
+.g-prize {
+  border-color: var(--accent-line);
+  background:
+    radial-gradient(78% 120% at 12% 0%, rgba(255, 255, 255, 0.09), transparent 60%),
+    linear-gradient(180deg, #0d0d15, #07070c);
+  box-shadow:
+    var(--sh-2),
+    0 0 46px -26px rgba(139, 108, 255, 0.9);
+}
+
+.g-prize .panel-body {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.g-prize .badge {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(112deg, #ffffff, var(--accent-bright));
+  color: #07070c;
+}
+
+/* ---- the rules, printed beside the odds ---------------------------------
+   A floor that is not on the screen is indistinguishable from a rig, so every
+   rung of the ladder is listed with what it lifts to and what it pays out. */
+.g-rules {
+  display: grid;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+
+.g-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  gap: var(--sp-2);
+}
+
+.g-rule {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 9px 12px;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
+.g-rule span {
+  color: var(--text-faint);
+}
+
+.g-rule b {
+  text-align: end;
+  color: var(--text);
+  font-weight: 650;
+}
+
+.g-rules-sub {
+  margin: var(--sp-2) 0 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.g-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.g-step {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 7px 10px;
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  box-shadow: inset 2px 0 0 var(--line-strong);
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+
+.g-step-days {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.g-step-bonus {
+  color: var(--success);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-step.is-on {
+  box-shadow: inset 2px 0 0 var(--success);
+  color: var(--text);
+}
+
+.g-step-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--success);
+}
+
+.g-step-now svg {
+  width: 12px;
+  height: 12px;
+}
+
+.g-rules-foot {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+/* The row with no weight in it. It is on the table because the set has
+   twenty-five tiers, and it looks like what it is: the one card nobody rolls. */
+.g-odds-row.is-ultimate {
+  background: linear-gradient(90deg, rgba(70, 160, 255, 0.2), var(--surface-2) 44%);
+  box-shadow:
+    inset 2px 0 0 #4fd8ff,
+    0 0 24px -14px #1a7dff;
+  color: var(--text);
+}
+
+/* ---- the opening stage ---------------------------------------------------- */
+.modal-backdrop.is-gacha {
+  background: radial-gradient(72% 62% at 50% 42%, rgba(10, 8, 18, 0.88), rgba(0, 0, 0, 0.96));
+  backdrop-filter: blur(16px) saturate(1.1);
+  transition: background var(--t-med) var(--ease);
+}
+
+/* A card landing on a high tier dims the room further and shakes it — the
+   classes are put on `body` by the flow, so the whole viewport moves. */
+body.g-dim .modal-backdrop.is-gacha {
+  background: radial-gradient(62% 52% at 50% 42%, rgba(12, 6, 22, 0.94), rgba(0, 0, 0, 0.99));
+}
+
+body.g-shake .modal-backdrop.is-gacha {
+  animation: g-shake 320ms linear;
+}
+
+.g-flow {
+  position: relative;
+  width: min(96vw, 860px);
+  max-height: 92dvh;
+  overflow: auto;
+  display: grid;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+  border-radius: var(--r-xl);
+  background: linear-gradient(180deg, #0d0d15, #06060b);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--sh-pop);
+  overscroll-behavior: contain;
+}
+
+.g-flow.is-burst::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.92), rgba(160, 130, 255, 0.4) 30%, transparent 62%);
+  animation: g-burst 760ms ease-out forwards;
+}
+
+.g-flow-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.g-flow-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+
+.g-flow-count {
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.g-stage {
+  display: grid;
+  gap: var(--sp-4);
+  place-items: center;
+  min-height: 300px;
+  padding: var(--sp-4);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(60% 50% at 50% 8%, rgba(139, 108, 255, 0.16), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+  cursor: pointer;
+}
+
+.g-stage.is-settled {
+  cursor: default;
+}
+
+.g-node {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: center;
+  text-align: center;
+}
+
+.g-node h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+
+/* Once the first card lands the sealed pack steps aside and only the
+   instruction line stays: the stage must never claim the pack is still shut. */
+.g-stage.is-open .g-node-art,
+.g-stage.is-open .g-node h3 {
+  display: none;
+}
+
+.g-node-art {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 128px;
+  border-radius: var(--r-md);
+  /* The pack is sealed in the site's own accents, not a rainbow: the same two
+     hues the brand runs on, fixed round the rim. A pack that has not been opened
+     yet does not need to be told apart from anything. */
+  background:
+    conic-gradient(from 0deg, var(--accent-bright), var(--accent), #8fd7ff, var(--accent-bright))
+      border-box,
+    linear-gradient(180deg, #12121c, #07070d) padding-box;
+  border: 2px solid transparent;
+  box-shadow: 0 0 46px -12px var(--accent-glow);
+}
+
+.g-node-glyph {
+  width: 34px;
+  height: 34px;
+  color: #fff;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
+}
+
+.g-flow-hint,
+.g-flow-hint:empty {
+  margin: 0;
+}
+
+.g-flow-hint {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.g-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  justify-content: center;
+  width: 100%;
+}
+
+.g-tray .g-card {
+  width: clamp(132px, 26vw, 176px);
+}
+
+.is-landing {
+  animation: g-land 460ms var(--ease-out-back) both;
+  animation-delay: var(--d, 0ms);
+}
+
+/* The fuse: copies in, one card a tier higher out. */
+.g-stage.is-evolve {
+  cursor: default;
+}
+
+.g-fuse {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
+  justify-items: center;
+}
+
+.g-fuse-in {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  opacity: 0.7;
+}
+
+.g-fuse-in .g-card {
+  width: 116px;
+}
+
+.g-fuse-arrow {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  color: var(--accent-text);
+}
+
+.g-fuse-out .g-card {
+  width: clamp(168px, 34vw, 216px);
+  animation: g-emerge 720ms var(--ease-out-back) both;
+}
+
+.g-fuse-note {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* ---- keyframes -------------------------------------------------------------
+   Two kinds of movement live here: a band translated across a card, and an
+   opacity faded in and out. Nothing re-rasterises. The set that used to sit under
+   these names — `g-aura` and `g-ring` running an animated blur plus hue-rotate on a
+   card-sized layer, `g-mote` lighting up to twenty-six glowing dots per card,
+   `g-ember` and `g-code` walking a `background-position` across the whole plate,
+   `g-swirl`, `g-nova`, `g-corona` and `g-orbit` tilting a corona in perspective
+   past the edge of the frame — is gone, and the tiers keep their colours. */
+/* The band crosses and rests: a card catches the light, then it does not. The
+   distance comes from the tier, so a crowned card's gleam travels further than a
+   Basic one's on the same clock. */
+@keyframes g-sweep {
+  0% { transform: translate3d(var(--sweep-path, 72%), 0, 0); }
+  55% { transform: translate3d(calc(-1 * var(--sweep-path, 72%)), 0, 0); }
+  100% { transform: translate3d(calc(-1 * var(--sweep-path, 72%)), 0, 0); }
+}
+
+/* The master's fire: two layers turning in opposite directions around the plate,
+   so the blue lobes around the edge keep drifting past one another. */
+@keyframes g-fire {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes g-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes g-land {
+  from { opacity: 0; transform: translateY(20px) scale(0.9) rotate(-2.5deg); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes g-emerge {
+  0% { opacity: 0; transform: scale(0.7) rotate(4deg); filter: brightness(2.4); }
+  55% { opacity: 1; transform: scale(1.04) rotate(-1deg); filter: brightness(1.3); }
+  100% { transform: none; filter: none; }
+}
+
+@keyframes g-burst {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes g-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-7px, 3px, 0); }
+  40% { transform: translate3d(6px, -4px, 0); }
+  60% { transform: translate3d(-4px, 2px, 0); }
+  80% { transform: translate3d(3px, -1px, 0); }
+}
+
+/* The accent rim breathing: the tier's colour on the bevel, in and out. This is
+   what replaced the card-sized halo, and it paints once. */
+@keyframes g-breathe {
+  0%, 100% { opacity: 0.24; }
+  50% { opacity: 0.62; }
+}
+
+@keyframes g-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.95; }
+}
+
+/* The one-of-one's breath, and the deepest pulse in the set: the master is the only
+   card whose rim lights this far, and it is one card, so it is allowed. */
+@keyframes g-master-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.86; }
+}
+
+@keyframes g-foil {
+  0% { transform: translate3d(62%, 0, 0); opacity: 0.5; }
+  45% { opacity: 0.9; }
+  90%, 100% { transform: translate3d(-62%, 0, 0); opacity: 0.55; }
+}
+
+/* ---- motion and touch ------------------------------------------------------
+   Nothing here is information, so all of it can stop: the tier keeps its printed
+   ring, its accent rim and its band of light, only still. */
+@media (prefers-reduced-motion: reduce) {
+  .g-spectrum::before,
+  .g-bevel::after,
+  .g-foil::before,
+  .g-burst,
+  .g-live,
+  .is-landing,
+  .g-fuse-out .g-card,
+  .g-flow.is-burst::before,
+  .g-card.is-ultimate::before,
+  .g-card.is-ultimate::after {
+    animation: none !important;
+  }
+
+  /* The shine freezes mid-plate, the master's pulse freezes lit and its fire holds
+     still, so a card that cannot move still says which card in the binder is the
+     one-of-one. */
+  .g-spectrum::before {
+    transform: translate3d(-18%, 0, 0);
+  }
+
+  .g-card.is-ultimate .g-bevel::after {
+    opacity: 0.7;
+  }
+
+  body.g-shake .modal-backdrop.is-gacha {
+    animation: none;
+  }
+
+  /* A form is the crop, not the motion: the zoom and the mirrored pose stay, the
+     tilt — the part that reads as movement — comes out. */
+  .g-portrait {
+    transform: scale(var(--art-zoom, 1.08)) scaleX(var(--art-flip, 1));
+  }
+
+  .g-card.is-evolved .g-portrait {
+    transform: scale(calc(var(--art-zoom, 1.08) + 0.03)) scaleX(var(--art-flip, 1));
+  }
+}
+
+@media (max-width: 720px) {
+  .g-show-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .g-showcase .g-card {
+    width: min(72vw, 252px);
+    margin-inline: auto;
+  }
+
+  .g-grid {
+    grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+    gap: var(--sp-2);
+  }
+
+  .g-odds-head,
+  .g-odds-row {
+    grid-template-columns: 28px minmax(0, 1fr) 68px 60px;
+    gap: var(--sp-2);
+    font-size: 12px;
+  }
+
+  .g-flow {
+    padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  }
+
+  .g-stage {
+    min-height: 260px;
+    padding: var(--sp-3);
+  }
+
+  .g-tray .g-card {
+    width: min(42vw, 150px);
+  }
+
+  .g-fuse {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-3);
+  }
+
+  .g-fuse-arrow {
+    transform: rotate(90deg);
+  }
+
+  /* The checklist and the ladder are read in a narrow column, so each rung
+     wraps instead of squeezing four columns into 360px. */
+  .g-legend.is-progress {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .g-rule {
+    padding: 8px 10px;
+    font-size: 12.5px;
+  }
+
+  .g-step {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    font-size: 12px;
+  }
+
+  .g-step-floor {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .g-clockline,
+  .g-streakline {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+/* RTL: the light travels toward the reading direction instead of against it, so
+   both the sweep and the stamp run backwards. */
+[dir='rtl'] .g-spectrum::before,
+[dir='rtl'] .g-foil::before {
+  animation-direction: reverse;
+}

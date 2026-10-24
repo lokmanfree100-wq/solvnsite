@@ -1,14 +1,17 @@
 /** Settings: appearance, playback, content and local data controls. */
 
-import { h, icon, qs } from '../lib/dom.js';
-import { settings, ACCENTS, DEFAULT_ACCENT, QUALITIES, qualityLabel, clearAll, continueWatching, totalListCount, recentSearches, clearQueries } from '../lib/store.js';
+import { h, icon } from '../lib/dom.js';
+import { settings, onSettings, ACCENTS, ACCENT_LABELS, CUSTOM_ACCENT, QUALITIES, qualityLabel, clearAll, continueWatching, totalListCount, recentSearches, clearQueries } from '../lib/store.js';
+import { accentId, accentValue, paintAccent, previewAccent } from '../lib/accent.js';
+import { parseHex, toHex } from '../lib/color.js';
 import { clearCache, apiStatus, checkNow } from '../lib/anilist.js';
 import { isSignedIn, tellDiscord, staticHost } from '../lib/account.js';
-import { FAILOVER_CHOICES, TEMPLATE_HINT, addServer, extraServers, removeServer, serverName } from '../lib/sources.js';
+import { FAILOVER_CHOICES, MAIN_SERVER, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, removeServer, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
 import { toast, confirmSheet } from '../lib/ui.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
 import { cloudConfig, cloudActive, clearCloudConfig, testCloudConnection } from '../lib/cloud.js';
 import { renderFooter } from '../components/footer.js';
+import { logoMark } from '../lib/brand.js';
 
 const rowOf = ({ iconName, label, hint, control }) =>
   h('div.set-row', {},
@@ -17,11 +20,52 @@ const rowOf = ({ iconName, label, hint, control }) =>
     control,
   );
 
+/* `Sound effects` has a handle in the header as well as here, so a switch that
+   can be flipped by two owners carries the key it reads. One listener keeps
+   every row on this page honest when a setting changes anywhere else — it walks
+   the live DOM rather than holding on to nodes from a page already left. */
+onSettings(() => {
+  document
+    .querySelectorAll('.page-settings .switch[data-setting]')
+    .forEach((sw) => sw.setAttribute('aria-checked', String(Boolean(settings.get(sw.dataset.setting)))));
+});
+
+/* The accent row is repainted from the live DOM for the same reason the
+   switches are: a preset chosen by the picker's own `change`, a reset, or a
+   value restored from the cloud all have to move the ring and the hex readout,
+   and neither node belongs to whoever changed the setting. */
+function repaintAccentRow() {
+  const box = document.querySelector('.swatches[data-accent-row]');
+  if (!box) return;
+  const id = accentId();
+  box.querySelectorAll('[data-accent-id]').forEach((el) => {
+    const on = el.dataset.accentId === id;
+    el.classList.toggle('is-on', on);
+    /* Only the preset circles are toggle buttons; the picker's ring is the
+       whole state, since a colour input has no pressed state of its own. */
+    if (el.hasAttribute('aria-pressed')) el.setAttribute('aria-pressed', String(on));
+  });
+  const hex = box.querySelector('.accent-hex');
+  /* The field is both readout and keyboard route into the palette, so a
+     repaint never overwrites digits someone is halfway through typing. */
+  if (hex && document.activeElement !== hex) hex.value = `#${accentValue().toUpperCase()}`;
+  const input = box.querySelector('.swatch-input');
+  /* Keep the panel starting at what is on screen — but never while it is the
+     thing being dragged, or the wheel would jump back under the pointer. */
+  if (input && document.activeElement !== input) input.value = `#${accentValue()}`;
+}
+onSettings((key) => {
+  if (key === 'accent' || key === 'accentCustom' || key === '*') repaintAccentRow();
+});
+
+const accentName = (id) => t(ACCENT_LABELS[id] || id);
+
 const toggle = (key, label) =>
   h('button.switch', {
     role: 'switch',
     'aria-checked': String(Boolean(settings.get(key))),
     'aria-label': t(label),
+    dataset: { setting: key },
     onclick: (e) => {
       const next = e.currentTarget.getAttribute('aria-checked') !== 'true';
       e.currentTarget.setAttribute('aria-checked', String(next));
@@ -44,25 +88,66 @@ function cacheInfo() {
 export async function SettingsView() {
   const wrap = h('div.page-settings');
 
-  const currentAccent = ACCENTS[settings.get('accent')] ? settings.get('accent') : DEFAULT_ACCENT;
-  const swatches = h('div.swatches', {}, ...Object.entries(ACCENTS).map(([id, hex]) =>
-    h(`button.swatch${id === currentAccent ? '.is-on' : ''}`, {
-      style: { background: `#${hex}` },
-      'aria-label': `${id} accent`,
-      'aria-pressed': String(id === currentAccent),
-      onclick: (e) => {
-        settings.set('accent', id);
-        document.documentElement.dataset.accent = id;
-        qs('.swatches', wrap).querySelectorAll('.swatch').forEach((s) => {
-          s.classList.remove('is-on');
-          s.setAttribute('aria-pressed', 'false');
-        });
-        e.currentTarget.classList.add('is-on');
-        e.currentTarget.setAttribute('aria-pressed', 'true');
-        toast(t('Accent updated'), { tone: 'ok', iconName: 'palette' });
-      },
-    }),
-  ));
+  /* Every preset is a circle, and the last control is the colour wheel: a real
+     `<input type="color">` wearing the swatch, so any colour at all can be
+     chosen. The field after it prints the hex actually in force, and takes one
+     back — a browser with no colour panel (mobile Safari among them) still
+     gets the full choice, which is why the readout is an input and not a label. */
+  const choose = (hex) => {
+    settings.set('accentCustom', hex);
+    settings.set('accent', CUSTOM_ACCENT);
+    toast(t('Accent updated'), { tone: 'ok', iconName: 'palette' });
+  };
+
+  const hexField = h('input.input.accent-hex', {
+    type: 'text',
+    spellcheck: false,
+    maxlength: 7,
+    value: `#${accentValue().toUpperCase()}`,
+    'aria-label': t('Accent colour as a hex code'),
+    onchange: (e) => {
+      const rgb = parseHex(e.currentTarget.value);
+      if (!rgb) {
+        e.currentTarget.value = `#${accentValue().toUpperCase()}`;
+        toast(t('That is not a hex colour'), { tone: '', iconName: 'alert' });
+        return;
+      }
+      choose(`#${toHex(rgb)}`);
+    },
+  });
+
+  const swatches = h('div.swatches', {
+    role: 'group',
+    'aria-label': t('Accent colour'),
+    dataset: { accentRow: 'true' },
+  },
+    ...Object.entries(ACCENTS).map(([id, hex]) =>
+      h(`button.swatch${id === accentId() ? '.is-on' : ''}`, {
+        type: 'button',
+        dataset: { accentId: id },
+        style: { background: `#${hex}` },
+        title: accentName(id),
+        'aria-label': accentName(id),
+        'aria-pressed': String(id === accentId()),
+        onclick: () => { settings.set('accent', id); },
+      }),
+    ),
+    h(`label.swatch.swatch--pick${accentId() === CUSTOM_ACCENT ? '.is-on' : ''}`, {
+      dataset: { accentId: CUSTOM_ACCENT },
+      title: t('Pick any colour'),
+    },
+      h('input.swatch-input', {
+        type: 'color',
+        value: `#${accentValue()}`,
+        'aria-label': t('Custom accent colour'),
+        /* Dragging paints without writing: the choice is stored, toasted and
+           marked as the active one only when the picker is closed. */
+        oninput: (e) => previewAccent(e.currentTarget.value),
+        onchange: (e) => choose(e.currentTarget.value),
+      }),
+    ),
+    hexField,
+  );
 
   /** Language names stay in their own language — that is how a viewer spots theirs. */
   const langSeg = h('div.seg', { role: 'group', 'aria-label': t('Language') },
@@ -78,15 +163,25 @@ export async function SettingsView() {
     ),
   );
 
-  const audioSeg = h('div.seg', { role: 'group', 'aria-label': t('Default audio') },
-    ...['sub', 'dub'].map((v) =>
-      h(`button${settings.get('defaultAudio') === v ? '.is-active' : ''}`, {
-        onclick: (e) => {
-          settings.set('defaultAudio', v);
-          [...e.currentTarget.parentElement.children].forEach((b) => b.classList.remove('is-active'));
-          e.currentTarget.classList.add('is-active');
-        },
-      }, v === 'sub' ? t('Subbed') : t('Dubbed')),
+  /* Four audio languages, listed rather than squared off into buttons: the whole
+     name is the point and four of them do not fit side by side on a phone.
+
+     Only the tracks a configured server can actually answer are listed here. An
+     Arabic default on a sub-and-dub-only player is not a preference, it is a
+     black frame, so AR and FR join the list when a server that declares them is
+     added further down this page. */
+  const prefTracks = tracksOffered();
+  const audioSeg = h(
+    'select.select',
+    {
+      'aria-label': t('Default audio'),
+      onchange: (e) => {
+        settings.set('defaultAudio', e.currentTarget.value);
+        toast(t('Saved as {label}', { label: trackName(e.currentTarget.value) }), { tone: 'ok', iconName: 'check' });
+      },
+    },
+    ...prefTracks.map((v) =>
+      h('option', { value: v, selected: asTrack(settings.get('defaultAudio')) === v }, trackName(v)),
     ),
   );
 
@@ -301,7 +396,9 @@ export async function SettingsView() {
           confirmLabel: 'Delete everything',
           onConfirm: () => {
             clearAll();
-            document.documentElement.dataset.accent = DEFAULT_ACCENT;
+            /* Wiping storage leaves the picker's inline properties on <html>, so
+               the accent is repainted from the now-empty defaults. */
+            paintAccent();
             toast(t('Everything reset'), { tone: 'ok', iconName: 'check' });
             document.dispatchEvent(new CustomEvent('kitsune:nav'));
             setTimeout(() => location.reload(), 700);
@@ -352,6 +449,10 @@ export async function SettingsView() {
         test.classList.remove('is-busy');
         test.removeAttribute('aria-busy');
         toast(t(res.message), { tone: res.ok ? 'ok' : 'err', iconName: res.ok ? 'check' : 'alert' });
+        /* A project that just proved itself changes what the header can offer:
+           on a static copy it is the difference between a dead "Profile" link
+           and a real Sign in. Same event the session fires, same repaint. */
+        if (res.ok) document.dispatchEvent(new CustomEvent('kitsune:account'));
         paintCloud();
       },
     }, icon('link'), t('Test connection'));
@@ -385,6 +486,7 @@ export async function SettingsView() {
                     onConfirm: () => {
                       clearCloudConfig();
                       toast(t('Cloud sync cleared'), { tone: 'ok', iconName: 'check' });
+                      document.dispatchEvent(new CustomEvent('kitsune:account'));
                       paintCloud();
                     },
                   }),
@@ -412,6 +514,10 @@ export async function SettingsView() {
     }
   };
 
+  /* The languages a server said it has, shown on its own row so what the player
+     will offer is readable without opening the watch page. */
+  const trackMarks = (server) => serverTracks(server).map(trackChip).join(' · ');
+
   function paintServers() {
     const extra = extraServers();
     const nameIn = h('input.input', {
@@ -429,11 +535,47 @@ export async function SettingsView() {
       'aria-label': t('Player address'),
     });
 
+    /* Which audio languages this server carries. This is the only way Solvn can
+       know: AniList has no dub-availability field for a title, so nothing here
+       inspects the catalogue — the viewer states what their source offers, and
+       the player, the switcher and the card badges all follow that statement.
+       Japanese subtitles and the English dub are on by default because that is
+       what a template with {audio} in it almost always answers. */
+    const carried = new Set(['sub', 'dub']);
+    const trackPicker = h(
+      'div.rowline.wrap',
+      { style: { gap: '8px' }, role: 'group', 'aria-label': t('Audio languages this server carries') },
+      ...TRACKS.map((tr) =>
+        h(
+          'button.chip.chip--xs.is-active',
+          {
+            type: 'button',
+            'aria-pressed': 'true',
+            onclick: (e) => {
+              const on = !carried.has(tr.id);
+              if (on) carried.add(tr.id);
+              else carried.delete(tr.id);
+              /* Refusing the last one off is refusing to have a server at all:
+                 with no track the ladder can never pair it with a request. */
+              if (!on && !carried.size) {
+                carried.add(tr.id);
+                toast(t('Keep at least one audio language.'), { tone: 'err', iconName: 'alert' });
+                return;
+              }
+              e.currentTarget.classList.toggle('is-active', carried.has(tr.id));
+              e.currentTarget.setAttribute('aria-pressed', String(carried.has(tr.id)));
+            },
+          },
+          tr.chip,
+        ),
+      ),
+    );
+
     const add = h(
       'button.btn.btn--sm.btn--primary',
       {
         onclick: () => {
-          const problem = addServer({ name: nameIn.value, url: urlIn.value });
+          const problem = addServer({ name: nameIn.value, url: urlIn.value, tracks: [...carried] });
           if (problem) {
             toast(problem, { tone: 'err', iconName: 'alert' });
             urlIn.focus();
@@ -476,8 +618,9 @@ export async function SettingsView() {
         'div.set-row',
         {},
         h('div.ico', {}, icon('cast')),
-        h('div.txt', {}, h('b', {}, t('Main server')), h('span', {}, t('Always tried first. Part of Solvn.'))),
+        h('div.txt', {}, h('b', {}, t('Solvn Stream')), h('span', {}, t('Always tried first. Part of Solvn.'))),
         h('span.badge', {}, icon('check'), t('Built in')),
+        h('span.badge', {}, trackMarks(MAIN_SERVER)),
       ),
       ...extra.map((s) =>
         h(
@@ -485,6 +628,7 @@ export async function SettingsView() {
           {},
           h('div.ico', {}, icon('cast')),
           h('div.txt', {}, h('b', {}, serverName(s)), h('span', {}, hostOf(s.url))),
+          h('span.badge', {}, trackMarks(s)),
           h(
             'button.btn.btn--sm',
             {
@@ -511,6 +655,12 @@ export async function SettingsView() {
         h('label.cloud-field', {}, t('Server name'), nameIn),
         h('label.cloud-field', {}, t('Player address'), urlIn),
       ),
+      h(
+        'div.cloud-fields',
+        {},
+        h('label.cloud-field', {}, t('Audio languages this server carries'), trackPicker),
+      ),
+      h('p.faint.cloud-note', {}, t('Those languages are what the player switcher, the badges on the cards and the failover ladder will offer. Solvn cannot read from the catalogue which titles were re-voiced — it asks its servers instead, and never promises a track they have not declared.')),
       h('div.rowline.wrap', { style: { gap: '8px', padding: '12px 0 0' } }, add),
       h(
         'div.rowline.wrap',
@@ -543,6 +693,7 @@ export async function SettingsView() {
       rowOf({ iconName: 'mic', label: 'Default audio', hint: t('Applies when you open a new episode'), control: audioSeg }),
       rowOf({ iconName: 'next', label: 'Auto-play next episode', hint: t('The player rolls on to the next episode by itself'), control: toggle('autoplay', 'Auto-play next episode') }),
       rowOf({ iconName: 'sliders', label: 'Streaming quality', hint: t('What the player aims for. The source decides what actually plays.'), control: qualitySeg }),
+      rowOf({ iconName: 'volume', label: 'Sound effects', hint: t('A chime on a choice, a sweep on a page, a tap on a control'), control: toggle('uiSound', 'Sound effects') }),
     ),
 
     h('section.set-group', {},
@@ -583,7 +734,7 @@ export async function SettingsView() {
     h('section.set-group', {},
       h('h3', {}, t('About')),
       h('div.set-row', {},
-        h('div.ico', {}, icon('cat')),
+        h('div.ico', {}, logoMark(38)),
         h('div.txt', {},
           h('b', {}, 'Solvn'),
           h('span', {}, t('Titles, artwork and episode lists come from a public anime catalogue. Episodes are played from third-party sources: Solvn hosts no video and stores nothing on its own servers.')),

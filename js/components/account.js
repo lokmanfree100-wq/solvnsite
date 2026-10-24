@@ -1,20 +1,37 @@
 /**
  * The account face: the avatar, the sheet that signs people in, the chip in the
- * top bar. Nothing here measures a person any more — no rank pill, no badge
- * row, no scoreboard of hours — because the profile is about who you are, not
- * where you sit next to other people.
+ * top bar, and the two lines a record can be worn as — a division and a duel
+ * tally. Both are drawn from numbers this server writes, so nothing printed here
+ * is a claim; everything else about a profile is who you are rather than where
+ * you sit next to other people.
  */
 
 import { h, icon, ICONS } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
 import { go } from '../lib/router.js';
-import { account, login, signup, logout, staticHost } from '../lib/account.js';
-import { googleReady, googleSignInUrl } from '../lib/cloud.js';
-import { isGuest, setGuest } from '../lib/store.js';
+import {
+  account,
+  authUsable,
+  forgotPassword,
+  isSignedIn,
+  login,
+  logout,
+  setNewPassword,
+  shownName,
+  signup,
+} from '../lib/account.js';
+import { authReady, googleReady, googleSignInUrl } from '../lib/cloud.js';
+import { divisionOf, titleById, titleUnlocked } from '../lib/ranks.js';
+import { inboxState, inboxUsable } from '../lib/dms.js';
+import { isGuest, markAsked, setGuest, wasAsked } from '../lib/store.js';
 
-/** A server message is English; run it through t() so locales can cover it. */
-export const say = (err) => t(err?.message || 'Something went wrong. Try again.');
+/**
+ * A server message is English; run it through t() so locales can cover it.
+ * `fallback` is for the reads whose generic answer tells you nothing — a failed
+ * trade signature should say which trade did not take it.
+ */
+export const say = (err, fallback) => t(err?.message || fallback || 'Something went wrong. Try again.');
 
 const FALLBACK_GLYPH = 'ghost';
 
@@ -60,14 +77,27 @@ const initialsOf = (name) => {
 export function avatar(user, { size = 'md', extra = null } = {}) {
   const stored = user?.avatar?.glyph || FALLBACK_GLYPH;
   /* An older record still holding a raw data URL renders; a fresh one carries
-     the blob address that came out of the upload. */
-  const photo = user?.avatar?.photo || user?.avatarUrl || null;
-  const initials = initialsOf(user?.username ?? user?.displayName);
+     the blob address that came out of the upload, or the `face` address a
+     gallery portrait or a pasted link left behind. */
+  const photo = user?.avatar?.photo || user?.avatar?.face || user?.avatarUrl || null;
+  const initials = initialsOf(shownName(user));
+  const glyph = () =>
+    initials ? h('span.avatar-initials', { 'aria-hidden': 'true' }, initials) : icon(ICONS[stored] ? stored : FALLBACK_GLYPH);
   const face = photo
-    ? h('img.avatar-photo', { src: photo, alt: '', decoding: 'async' })
-    : initials
-      ? h('span.avatar-initials', { 'aria-hidden': 'true' }, initials)
-      : icon(ICONS[stored] ? stored : FALLBACK_GLYPH);
+    ? h('img.avatar-photo', {
+        src: photo,
+        alt: '',
+        decoding: 'async',
+        /* A picture that no longer exists is not worth an empty circle: the
+           member's own initials stand in until they choose another one. */
+        onError: (e) => {
+          const chipEl = e.target.closest('.avatar');
+          if (!chipEl) return;
+          chipEl.classList.remove('is-filled');
+          chipEl.replaceChildren(glyph());
+        },
+      })
+    : glyph();
   const chip = h(
     `span.avatar.avatar--${size}${photo || initials ? '.is-filled' : ''}`,
     { 'aria-hidden': 'true' },
@@ -83,8 +113,35 @@ export function avatar(user, { size = 'md', extra = null } = {}) {
 }
 
 /**
+ * The title a member chose to wear, drawn next to their name wherever the name
+ * appears. Nothing is decided here: the account stores one id and `TITLES` says
+ * whether the figures on this record earn it — so a profile shows the same
+ * answer to its owner and to a stranger, and a title that was revoked upstream
+ * quietly stops being drawn instead of lying there.
+ */
+export function titleChip(user) {
+  const title = titleById(user?.title);
+  if (!title || !titleUnlocked(title, user)) return null;
+  return h(
+    'span.user-title',
+    {
+      dataset: { title: title.id },
+      title: t(title.label),
+      style: {
+        color: tone(title.hue, 1),
+        borderColor: tone(title.hue, 0.42),
+        background: `linear-gradient(150deg, ${tone(title.hue, 0.2)}, hsl(${(title.hue + 58) % 360} 96% 60% / 0.1))`,
+      },
+    },
+    icon(title.icon),
+    t(title.label),
+  );
+}
+
+/**
  * One metric tile. It is a neutral block of type, so it reads as a figure
- * wherever it is used — the admin totals use it, and nothing on a profile does.
+ * wherever it is used — the four under a profile name and the admin totals
+ * share it.
  */
 export function statTile({ iconName, value, label, hint }) {
   return h(
@@ -93,6 +150,52 @@ export function statTile({ iconName, value, label, hint }) {
     icon(iconName),
     h('b.metric-val.tnum', {}, value),
     h('span.metric-label', {}, t(label)),
+  );
+}
+
+/**
+ * The division a duel record has reached, worn next to the name.
+ *
+ * It is drawn from `user.duel`, which only this server writes — a win is filed
+ * when both line-ups have settled — so a badge here cannot be talked into. A
+ * member who has never fought gets nothing rather than a badge for nothing, for
+ * the same reason the ranked board does not list a zero.
+ */
+export function divisionChip(user) {
+  const d = divisionOf(user);
+  if (!d) return null;
+  const label = t(d.label);
+  return h('span.div-chip', { title: label, 'aria-label': label }, icon(d.icon), h('span', {}, label));
+}
+
+/**
+ * The record the arena keeps: two columns, a rate, and the run a member is on.
+ *
+ * Printed on a profile as well as above the queue, because a win/loss line is
+ * the shortest true thing about how somebody fights. The live run is the one
+ * figure given a light — it is the number that can still be lost, and it is the
+ * one the server resets to zero the moment a duel goes against you.
+ */
+export function duelRecord(user, { hideEmpty = false } = {}) {
+  const d = user?.duel || {};
+  const wins = Number(d.wins) || 0;
+  const losses = Number(d.losses) || 0;
+  const fought = wins + losses;
+  if (!fought && hideEmpty) return null;
+  const rate = fought ? Math.round((wins / fought) * 100) : 0;
+  const rows = [
+    [t('Wins'), wins, 'trophy', ''],
+    [t('Losses'), losses, 'x', ''],
+    [t('Win rate'), `${rate}%`, 'trending', ''],
+    [t('Win streak'), Number(d.streak) || 0, 'flame', Number(d.streak) > 0 ? 'is-streak' : ''],
+    [t('Best run'), Number(d.best) || 0, 'crown', ''],
+  ];
+  return h(
+    'div.duel-record',
+    { 'aria-label': t('Duel record') },
+    ...rows.map(([label, value, iconName, cls]) =>
+      h(`span.duel-chip${cls ? `.${cls}` : ''}`, {}, icon(iconName), h('b.tnum', {}, String(value)), h('span', {}, label)),
+    ),
   );
 }
 
@@ -111,14 +214,133 @@ function field(key, props) {
   return { node: wrap, input, err, set: (m) => (err.textContent = m) };
 }
 
+/* ---- arriving --------------------------------------------------------
+   Two moments deserve more than a toast: the minute an account is created, and
+   the minute a person finds out their address is now confirmed. */
+
+/** The first thing a new member sees — the site speaking to them by name. */
+export function welcomeSheet(user) {
+  const name = shownName(user) || t('friend');
+  const api = sheet({
+    heading: t('Welcome to Solvn'),
+    width: 460,
+    render: () =>
+      h(
+        'div.welcome',
+        {},
+        avatar(user, { size: 'lg' }),
+        h('h3.welcome-title', {}, t('Welcome to Solvn, {name}! Enjoy streaming.', { name })),
+        h('p.faint', {}, t('Your name, your picture and your lists now follow your account.')),
+        h(
+          'div.auth-foot',
+          {},
+          h(
+            'button.btn.btn--primary.grow',
+            { type: 'button', onclick: () => { api.close(); go('/discover'); } },
+            icon('play'),
+            t('Start watching'),
+          ),
+          h(
+            'button.btn.grow',
+            { type: 'button', onclick: () => { api.close(); go('/profile'); } },
+            icon('user'),
+            t('My profile'),
+          ),
+        ),
+      ),
+  });
+  return api;
+}
+
 /**
- * One sheet, three ways in: Google (only when a verified cloud project exists
- * in Settings — an OAuth button with no keys behind it is a dead control),
- * email, or no account at all. "Continue as Guest" closes the sheet and is
- * remembered, so nothing on this device prompts again.
+ * Shown when the project insists on a confirmed address first: the account is
+ * real, this browser holds no session, and only the inbox can finish the job.
  */
-export function authSheet(mode = 'login') {
-  let current = mode;
+export function verifySheet(email) {
+  return sheet({
+    heading: t('Check your email'),
+    sub: t('We sent a confirmation link to {email}. Open it to finish creating your account.', { email }),
+    width: 420,
+    render: (api) =>
+      h(
+        'div.welcome',
+        {},
+        h('span.verify-art', {}, icon('check')),
+        h('button.btn.btn--primary.grow', { type: 'button', onclick: () => api.close() }, t('Got it')),
+      ),
+  });
+}
+
+/* ---- a new password --------------------------------------------------
+   The reset link has already proved who the person is — Supabase handed this
+   browser a session for it. All that is left is to write the new password onto
+   that session, which is the last thing the link can be used for. */
+export function resetSheet() {
+  const pass = field('Password', { type: 'password', name: 'new-password', autocomplete: 'new-password', required: true, minlength: 8 });
+  const again = field('Confirm password', { type: 'password', name: 'confirm-password', autocomplete: 'new-password', required: true, minlength: 8 });
+  const submit = h('button.btn.btn--primary.grow', { type: 'submit' }, t('Save new password'));
+
+  const form = h(
+    'form.auth-form.stack',
+    {
+      novalidate: true,
+      onsubmit: async (e) => {
+        e.preventDefault();
+        const value = pass.input.value;
+        if (value.length < 8) {
+          pass.set(t('Use 8 to 200 characters for your password.'));
+          pass.input.focus();
+          return;
+        }
+        if (value !== again.input.value) {
+          again.set(t('The two passwords do not match.'));
+          again.input.focus();
+          return;
+        }
+        submit.disabled = true;
+        submit.classList.add('is-busy');
+        submit.setAttribute('aria-busy', 'true');
+        try {
+          await setNewPassword(value);
+          api.close();
+          toast(t('Password updated. You are signed in.'), { tone: 'ok', iconName: 'check' });
+          go('/profile');
+        } catch (err) {
+          pass.set(say(err));
+        } finally {
+          submit.disabled = false;
+          submit.classList.remove('is-busy');
+          submit.removeAttribute('aria-busy');
+        }
+      },
+    },
+    pass.node,
+    again.node,
+    h('div.auth-foot', {}, submit),
+  );
+
+  const api = sheet({
+    heading: t('Choose a new password'),
+    sub: t('Your reset link worked. Pick a password and Solvn signs you straight back in.'),
+    width: 420,
+    render: () => form,
+  });
+  return api;
+}
+
+/**
+ * One sheet, four ways in: Google (only when a verified cloud project exists in
+ * Settings — an OAuth button with no keys behind it is a dead control), email,
+ * a reset link by email, or no account at all. "Continue as Guest" closes the
+ * sheet and is remembered, so nothing on this device prompts again.
+ *
+ * Changing mode opens a new sheet rather than swapping the body: the heading
+ * has to say what is on screen, and a sheet is cheap to rebuild.
+ */
+export function authSheet(mode = 'login', { welcome = false } = {}) {
+  const current = mode === 'signup' || mode === 'forgot' ? mode : 'login';
+  const isSignup = current === 'signup';
+  const isForgot = current === 'forgot';
   const api = { close: () => {} };
 
   const googleButton = () => {
@@ -137,14 +359,66 @@ export function authSheet(mode = 'login') {
     return btn;
   };
 
-  const build = () => {
-    const isSignup = current === 'signup';
+  /* "Did that address get an account?" must never be answerable from here, so
+     the sheet says the same thing whatever Supabase did with the request. */
+  const buildForgot = () => {
+    const email = field('Email', { type: 'email', name: 'email', autocomplete: 'email', required: true, placeholder: 'you@example.com' });
+    const submit = h('button.btn.btn--primary.grow', { type: 'submit' }, t('Send reset link'));
+    const form = h(
+      'form.auth-form.stack',
+      {
+        novalidate: true,
+        onsubmit: async (e) => {
+          e.preventDefault();
+          const value = email.input.value.trim();
+          if (!value) {
+            email.set(t('Enter the email your account uses.'));
+            email.input.focus();
+            return;
+          }
+          submit.disabled = true;
+          submit.classList.add('is-busy');
+          submit.setAttribute('aria-busy', 'true');
+          try {
+            await forgotPassword(value);
+            body.replaceChildren(
+              h(
+                'div.welcome',
+                {},
+                h('span.verify-art', {}, icon('check')),
+                h('p.faint', {}, t('If that address has an account, a reset link is on its way. Follow it to choose a new password.')),
+                h('button.btn.btn--primary.grow', { type: 'button', onclick: () => authSheet('login') }, t('Back to sign in')),
+              ),
+            );
+          } catch (err) {
+            email.set(say(err));
+            email.input.focus();
+          } finally {
+            submit.disabled = false;
+            submit.classList.remove('is-busy');
+            submit.removeAttribute('aria-busy');
+          }
+        },
+      },
+      email.node,
+      h('div.auth-foot', {}, submit),
+    );
+    const body = h(
+      'div.auth-inner',
+      {},
+      form,
+      h('button.linkish', { type: 'button', onclick: () => authSheet('login') }, t('Back to sign in')),
+    );
+    return body;
+  };
+
+  const buildForm = () => {
     const name = isSignup ? field('Username', { name: 'username', autocomplete: 'username', maxlength: 24, placeholder: 'SolvnFox' }) : null;
     const email = field('Email', { type: 'email', name: 'email', autocomplete: 'email', required: true, placeholder: 'you@example.com' });
     const pass = field('Password', { type: 'password', name: 'password', autocomplete: isSignup ? 'new-password' : 'current-password', required: true, minlength: 8 });
     const submit = h('button.btn.btn--primary.grow', { type: 'submit' }, isSignup ? t('Create account') : t('Sign in'));
 
-    const form = h(
+    return h(
       'form.auth-form.stack',
       {
         novalidate: true,
@@ -173,10 +447,20 @@ export function authSheet(mode = 'login') {
           submit.classList.add('is-busy');
           submit.setAttribute('aria-busy', 'true');
           try {
-            const user = isSignup ? await signup(body) : await login(body.email, body.password);
+            if (isSignup) {
+              const { user, needsVerify } = await signup(body);
+              setGuest(false);
+              api.close();
+              /* No session means the project wants the address confirmed first;
+                 welcoming somebody who is not in would be a lie about the state. */
+              if (needsVerify || !user) verifySheet(body.email);
+              else welcomeSheet(user);
+              return;
+            }
+            const user = await login(body.email, body.password);
             setGuest(false);
             api.close();
-            toast(t('Welcome, {name}', { name: user.username }), { iconName: 'sparkles' });
+            toast(t('Welcome back, {name}', { name: shownName(user) || t('friend') }), { iconName: 'sparkles' });
             go('/profile');
           } catch (err) {
             const msg = say(err);
@@ -196,71 +480,140 @@ export function authSheet(mode = 'login') {
       pass.node,
       h('div.auth-foot', {}, submit),
       h(
-        'button.linkish',
-        {
-          type: 'button',
-          onclick: () => {
-            current = isSignup ? 'login' : 'signup';
-            render();
-          },
-        },
-        isSignup ? t('I already have an account') : t('Create one instead'),
-      ),
-    );
-
-    return h(
-      'div.auth-inner',
-      {},
-      googleReady()
-        ? h(
-            'div.auth-oauth',
-            {},
-            googleButton(),
-            h('div.auth-or', { 'aria-hidden': 'true' }, h('span', {}, t('or use email'))),
-          )
-        : null,
-      form,
-      h('div.auth-or', { 'aria-hidden': 'true' }, h('span', {}, t('or'))),
-      h(
-        'button.btn.btn--guest',
-        {
-          type: 'button',
-          onclick: () => {
-            setGuest(true);
-            api.close();
-            toast(t('Browsing as a guest. Your history stays on this device.'), { iconName: 'ghost' });
-          },
-        },
-        icon('ghost'),
-        h('span', {}, t('Continue as Guest')),
+        'div.auth-links',
+        {},
+        h(
+          'button.linkish',
+          { type: 'button', onclick: () => authSheet(isSignup ? 'login' : 'signup') },
+          isSignup ? t('I already have an account') : t('Create one instead'),
+        ),
+        !isSignup && authReady()
+          ? h('button.linkish', { type: 'button', onclick: () => authSheet('forgot') }, t('Forgot password?'))
+          : null,
       ),
     );
   };
 
-  const body = h('div.auth-body', {}, build());
-  const render = () => {
-    body.replaceChildren(build());
-    const first = body.querySelector('input');
-    first?.focus({ preventScroll: true });
+  const build = () =>
+    isForgot
+      ? buildForgot()
+      : h(
+          'div.auth-inner',
+          {},
+          googleReady()
+            ? h(
+                'div.auth-oauth',
+                {},
+                googleButton(),
+                h('div.auth-or', { 'aria-hidden': 'true' }, h('span', {}, t('or use email'))),
+              )
+            : null,
+          buildForm(),
+          h('div.auth-or', { 'aria-hidden': 'true' }, h('span', {}, t('or'))),
+          h(
+            'button.btn.btn--guest',
+            {
+              type: 'button',
+              onclick: () => {
+                setGuest(true);
+                api.close();
+                toast(t('Browsing as a guest. Your history stays on this device.'), { iconName: 'ghost' });
+              },
+            },
+            icon('ghost'),
+            h('span', {}, t('Continue as Guest')),
+          ),
+        );
+
+  const headings = {
+    login: t('Sign in'),
+    signup: welcome ? t('Welcome to Solvn') : t('Create your account'),
+    forgot: t('Reset your password'),
+  };
+  const subs = {
+    login: t('An account keeps your name, your picture, your favourite anime and your lists in one place.'),
+    signup: welcome
+      ? t('You can watch without one — but signing up keeps your name, your picture and your lists waiting for you on any device.')
+      : t('An account keeps your name, your picture, your favourite anime and your lists in one place.'),
+    forgot: t('Tell us the email you signed up with and we send a link that lets you choose a new password.'),
   };
 
   const opened = sheet({
-    heading: current === 'signup' ? t('Create your account') : t('Sign in'),
-    sub: t('An account keeps your name, your picture, your favourite anime and your lists in one place.'),
-    render: () => body,
+    heading: headings[current],
+    sub: subs[current],
+    render: () => build(),
     width: 420,
   });
   api.close = opened.close;
   return opened;
 }
 
+/* ---- the first visit --------------------------------------------------
+   One automatic ask per device, after the startup intro has lifted. Every
+   condition is a reason not to interrupt: an account already held, a "Continue
+   as Guest" already chosen, an ask already made, or no server and no connected
+   Supabase project to answer a sign-up — in which case the sheet would only be
+   full of buttons that cannot work. */
+export function askAboutAccount() {
+  if (wasAsked() || isGuest() || !authUsable() || isSignedIn()) return;
+  markAsked();
+  authSheet('signup', { welcome: true });
+}
+
+/* ---- the signed-in menu ----------------------------------------------
+   The chip opens a menu instead of jumping straight to the profile: a member
+   wants to see whose account this browser is holding and find the way out, and
+   both belong one tap apart. */
+function accountMenu(user) {
+  const api = sheet({
+    heading: t('Account'),
+    width: 340,
+    render: () =>
+      h(
+        'div.acct-menu',
+        {},
+        h(
+          'div.acct-id',
+          {},
+          avatar(user, { size: 'md' }),
+          h('div.acct-who', {}, h('b', {}, shownName(user)), user.email ? h('span.faint', {}, user.email) : null),
+        ),
+        h(
+          'button.btn.acct-item',
+          { type: 'button', onclick: () => { api.close(); go('/profile'); } },
+          icon('user'),
+          t('My profile'),
+        ),
+        h(
+          'button.btn.acct-item',
+          { type: 'button', onclick: () => { api.close(); go('/library'); } },
+          icon('bookmark'),
+          t('My list'),
+        ),
+        /* The way into an inbox on a phone, where the side rail is folded away.
+           It is only offered when this copy has a server to file a message on. */
+        inboxUsable()
+          ? h(
+              'button.btn.acct-item',
+              { type: 'button', onclick: () => { api.close(); go('/messages'); } },
+              icon('chat'),
+              t('Messages'),
+              inboxState().unread ? h('span.count.tnum', {}, String(inboxState().unread)) : null,
+            )
+          : null,
+        signOutButton(() => api.close()),
+      ),
+  });
+  return api;
+}
+
 /* ---- the thing in the top bar --------------------------------------- */
 export function accountChip() {
   const { status, user } = account();
-  /* Without a server there is no session to show or create, and a "Sign in"
-     button that can only fail is worse than no button: the chip links to the
-     history this device keeps instead. */
-  if (staticHost()) {
+  /* No server and no connected Supabase project: there is no session to show or
+     create, and a "Sign in" button that can only fail is worse than no button.
+     The chip links to the history this device keeps instead. */
+  if (!authUsable()) {
     return h(
       'button.btn.btn--account',
       { type: 'button', title: t('Profile'), 'aria-label': t('Profile'), onclick: () => go('/profile') },
@@ -268,16 +621,18 @@ export function accountChip() {
       h('span.account-name', {}, t('Profile')),
     );
   }
-  if (status === 'signedin' && user) {    return h(
+  if (status === 'signedin' && user) {
+    return h(
       'button.btn.btn--account',
       {
         type: 'button',
-        title: t('Your profile'),
-        'aria-label': t('Your profile'),
-        onclick: () => go('/profile'),
+        title: t('Account menu'),
+        'aria-label': t('Account menu'),
+        'aria-haspopup': 'dialog',
+        onclick: () => accountMenu(user),
       },
       avatar(user, { size: 'sm' }),
-      h('span.account-name', {}, user.username),
+      h('span.account-name', {}, shownName(user)),
     );
   }
   const guest = isGuest();
@@ -294,13 +649,14 @@ export function accountChip() {
   );
 }
 
-export function signOutButton() {
+export function signOutButton(onDone) {
   return h(
     'button.btn',
     {
       type: 'button',
       onclick: async () => {
         await logout();
+        onDone?.();
         toast(t('Signed out. Your local history stays on this device.'), { iconName: 'check' });
         go('/');
       },

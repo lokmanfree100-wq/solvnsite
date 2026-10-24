@@ -1,10 +1,10 @@
 /** Discover: filterable, paginated grid with shareable URL state. */
 
 import { h, icon, qs } from '../lib/dom.js';
-import { browse, genres } from '../lib/anilist.js';
+import { browse, genres, DEFAULT_GENRES } from '../lib/anilist.js';
 import { go, parse } from '../lib/router.js';
 import { settings } from '../lib/store.js';
-import { SORTS, recentSeasons, seasonName, formatLabel, statusLabel, totalLabel } from '../lib/util.js';
+import { SORTS, recentSeasons, seasonName, formatLabel, statusLabel, totalLabel, watched } from '../lib/util.js';
 import { mediaCard, loadingGrid, emptyState, errorState } from '../components/media.js';
 import { sheet, toast } from '../lib/ui.js';
 import { t, genre } from '../lib/i18n.js';
@@ -62,7 +62,16 @@ export async function DiscoverView() {
   let total = 0;
   let requestId = 0;
 
-  const genreList = await genres().catch(() => []);
+  /* The genre sheet is a filter, not the page. Awaiting it here meant a request
+     that hung kept the whole view from mounting — an empty screen and a title
+     that never changed — so the shipped list paints now and the live one
+     replaces the chip the moment AniList answers. */
+  let genreList = DEFAULT_GENRES;
+  genres().then((list) => {
+    if (!list?.length || list === genreList) return;
+    genreList = list;
+    buildFilterBar();
+  });
 
   /* ---------- filter bar ---------- */
   const select = ({ label, value, options, onPick }) => {
@@ -175,7 +184,11 @@ export async function DiscoverView() {
       count.textContent = t('Loading…');
     }
     try {
-      const { items: got, info } = await browse(varsFor(page));
+      /* The clock is what keeps `busy` from latching: an unbounded request that
+         never settles leaves the grid under skeletons, the count reading
+         "Loading…" forever, and both the button and the scroll sentinel locked
+         off, so there is no way back except a reload. */
+      const { items: got, info } = await watched(browse(varsFor(page)));
       if (mine !== requestId) return;
       const allow = settings.get('showNsfw');
       const clean = allow ? got : got.filter((m) => !m.isAdult);
@@ -267,6 +280,11 @@ export async function DiscoverView() {
       h('div.eyebrow', {}, t('DISCOVER')),
       h('h1.display', {}, t('Browse the catalogue')),
       h('p', {}, t('Filter every title we track — sort by trend, score or season, then narrow down by genre and format.')),
+      h(
+        'div.rowline',
+        { style: { marginTop: 'var(--sp-4)' } },
+        h('a.btn.btn--sm', { href: '#/toons' }, icon('tv'), h('span', {}, t('Classic & Toons'))),
+      ),
     ),
     filterBar,
     h('div.discover-meta', {}, count, activeRow),

@@ -1,0 +1,575 @@
+/* ==========================================================================
+   Messages — the private chat.
+   Two panes side by side on a wide screen, one at a time on a phone, where the
+   address decides which is on screen. Everything here is a token: the bubbles are
+   the same glass as the panels, and the only invented value is the shape of a
+   chat line, which nothing else on the site needed before.
+   ========================================================================== */
+
+.messages {
+  display: grid;
+  grid-template-columns: minmax(292px, 356px) minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+/* ---- the list --------------------------------------------------------- */
+.msg-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  box-shadow: var(--sh-2);
+}
+
+.msg-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.msg-head .display {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: clamp(20px, 3.4vw, 26px);
+}
+
+.msg-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.msg-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 62px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
+}
+.msg-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.msg-row-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.msg-row-top b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 650;
+}
+.msg-row-last {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.msg-row-side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  font-size: 11px;
+}
+
+/* The number is a count, not a colour: it carries a figure, so it is never the
+   only thing saying a line is unread. */
+.msg-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.msg-row.is-on {
+  border-color: var(--accent-line);
+  background: var(--accent-wash);
+}
+/* A member who deleted their account leaves lines with nobody at the end of
+   them, so the row keeps its shape and loses its pointer. */
+.msg-row.is-gone {
+  min-height: 46px;
+  color: var(--text-faint);
+  cursor: default;
+  font-size: 13px;
+}
+.msg-row.is-gone svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.msg-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .msg-row:not(.is-gone):hover {
+    border-color: var(--line-strong);
+    background: var(--surface-hover);
+  }
+}
+
+.msg-note {
+  padding: var(--sp-3) 4px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+/* ---- the thread -------------------------------------------------------- */
+.msg-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  box-shadow: var(--sh-2);
+}
+
+.msg-peer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--hairline);
+}
+.msg-peer:empty {
+  display: none;
+}
+.msg-peer-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.msg-peer-name {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--text);
+  text-decoration: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.msg-peer-name:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+@media (hover: hover) {
+  .msg-peer-name:hover {
+    color: var(--accent-text);
+  }
+}
+
+/* The way out of a conversation only exists where the list is not already on
+   screen — on a wide screen it would be a button pointing at what you can see. */
+.msg-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  flex: none;
+}
+
+.msg-log {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-2) 2px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-height: 180px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.msg-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  max-width: min(560px, 88%);
+}
+.msg-line.is-mine {
+  margin-inline-start: auto;
+  flex-direction: row-reverse;
+}
+
+.msg-bubble {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.msg-line.is-mine .msg-bubble {
+  border-color: var(--accent-line);
+  background: linear-gradient(150deg, var(--accent-wash), var(--surface-3));
+}
+.msg-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  /* Long addresses and unbroken words must stretch a bubble, not the page. */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.msg-when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-end;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+.msg-read.is-seen {
+  color: var(--accent-text);
+}
+
+/* 30px on screen, 44px for the finger — the same trade the rails make. */
+.msg-unsend {
+  position: relative;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  background: var(--glass-strong);
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
+}
+.msg-unsend::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+}
+.msg-unsend svg {
+  width: 14px;
+  height: 14px;
+}
+.msg-unsend:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  .msg-line:hover .msg-unsend,
+  .msg-unsend:hover,
+  .msg-unsend:focus-visible {
+    opacity: 1;
+  }
+  .msg-unsend:hover {
+    color: var(--danger);
+    border-color: var(--line-strong);
+  }
+}
+/* Touch has no hover to wait for, and a control nobody can reach is not a
+   control. */
+@media (hover: none) {
+  .msg-unsend {
+    opacity: 1;
+  }
+}
+
+.msg-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.msg-box {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  max-height: 132px;
+  padding: 12px 14px;
+  line-height: 1.5;
+  resize: none;
+  font-family: inherit;
+  font-size: 14.5px;
+}
+.msg-form .btn {
+  min-height: 46px;
+  min-width: 46px;
+}
+
+.msg-none {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  min-height: 240px;
+  color: var(--text-faint);
+  text-align: center;
+}
+.msg-none svg {
+  width: 30px;
+  height: 30px;
+  opacity: 0.6;
+}
+.msg-none p {
+  margin: 0;
+  font-size: 13.5px;
+}
+
+/* ---- the picker in the sheet ------------------------------------------ */
+.msg-found {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.msg-found-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+}
+/* The row itself is not the button any more: opening a chat and adding a friend
+   are two different presses, so each one is its own control. */
+.msg-found-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
+}
+.msg-found-add {
+  flex: none;
+  white-space: nowrap;
+}
+.msg-found-add.is-done {
+  color: var(--text-faint);
+}
+.msg-found-names {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.msg-found-names b {
+  font-size: 14px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.msg-found-names span {
+  font-size: 12px;
+}
+.msg-found-open:focus-visible,
+.msg-found-add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  .msg-found-row:hover {
+    border-color: var(--line-strong);
+    background: var(--surface-hover);
+  }
+}
+
+/* ---- friends ----------------------------------------------------------- */
+/* Above the inbox, not behind a tab: a request is the one row in this column
+   that is waiting on the viewer. */
+.msg-friends {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--line);
+}
+.msg-friends:empty {
+  display: none;
+}
+.msg-friends-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: 6px;
+}
+.msg-friends-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.msg-friends-head .btn {
+  margin-inline-start: auto;
+}
+.msg-friend-rows,
+.msg-friends-empty {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.msg-friend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 0;
+}
+.msg-friend-row.is-ask {
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line);
+  margin-bottom: 4px;
+}
+.msg-friend-who {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.msg-friend-who b {
+  font-size: 13px;
+  font-weight: 620;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.msg-friend-who span {
+  font-size: 11.5px;
+}
+.msg-friend-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.msg-friends-empty {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 2px 0 4px;
+  color: var(--text-faint);
+}
+.msg-friends-empty svg {
+  width: 22px;
+  height: 22px;
+  opacity: 0.6;
+}
+.msg-friends-empty p {
+  margin: 0;
+  font-size: 12.5px;
+}
+/* The number a member quotes, sitting between the handle and the title chip. */
+.msg-id {
+  flex: none;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--text-faint);
+}
+
+/* ---- shapes ------------------------------------------------------------ */
+/* A wide screen keeps both panes up and lets the log scroll inside the page, so
+   the composer stays put while the lines run past it. Below that the panes take
+   turns, each one the whole page, and the log grows with it instead of fighting
+   the phone's own scroll. */
+@media (min-width: 900px) {
+  .msg-log {
+    max-height: min(58vh, 560px);
+  }
+  .msg-back {
+    display: none;
+  }
+}
+
+@media (max-width: 899px) {
+  .messages {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .messages.is-thread .msg-list,
+  .messages:not(.is-thread) .msg-thread {
+    display: none;
+  }
+  .msg-line {
+    max-width: 92%;
+  }
+}
+
+/* French and Arabic run longer than English; the row keeps its shape and lets
+   the name give way instead of pushing the unread number off the edge. */
+@media (max-width: 420px) {
+  .msg-row-top b {
+    max-width: 13ch;
+  }
+  .msg-row-side {
+    font-size: 10.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .msg-row,
+  .msg-unsend {
+    transition: none;
+  }
+}

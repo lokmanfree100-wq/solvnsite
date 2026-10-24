@@ -144,9 +144,35 @@
 .auth-form { gap: 0; }
 
 /* ---- auth modal: google + guest -------------------------------------- */
-.auth-body { display: flex; flex-direction: column; gap: var(--sp-4); }
 .auth-inner { display: flex; flex-direction: column; gap: var(--sp-4); }
 .auth-oauth { display: flex; flex-direction: column; gap: var(--sp-3); }
+.auth-links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
+.auth-links .linkish { min-height: 30px; }
+
+/* ---- arriving, verifying, the account menu ---------------------------- */
+.welcome { display: flex; flex-direction: column; align-items: center; gap: var(--sp-4); text-align: center; padding: var(--sp-2) 0 var(--sp-1); }
+.welcome-title { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.35; letter-spacing: -0.01em; }
+.welcome p { margin: 0; font-size: 13px; line-height: 1.6; max-width: 34ch; }
+.welcome .auth-foot { width: 100%; margin-top: var(--sp-1); }
+
+.verify-art {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-line);
+  background: var(--glass-strong);
+  color: var(--accent-text);
+}
+.verify-art svg { width: 28px; height: 28px; }
+
+.acct-menu { display: flex; flex-direction: column; gap: var(--sp-2); }
+.acct-id { display: flex; align-items: center; gap: var(--sp-3); padding-bottom: var(--sp-2); margin-bottom: var(--sp-1); border-bottom: 1px solid var(--hairline); }
+.acct-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.acct-who b { font-size: 15px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.acct-who span { font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.acct-item { justify-content: flex-start; min-height: 44px; }
 
 .auth-or {
   display: flex;
@@ -791,3 +817,243 @@ a.cm-name:hover { color: var(--accent-text); }
   color: var(--text);
 }
 .now-strip .btn { flex: none; margin-left: auto; }
+
+/* ---- the collectors' board --------------------------------------------
+   The same row shape as the Top 100 — place, subject, art, figure — because a
+   ranking should read like the other ranking on the site. What differs is the
+   art slot: it holds a trading card, so it keeps the card's own 5/7 ratio and
+   lets the tier frame glow, rather than flattening it into a poster. */
+.page-board { padding-bottom: var(--sp-7); }
+
+.board-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: var(--sp-5);
+}
+.board-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 130px;
+  padding: 12px 16px;
+  background: var(--glass);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  box-shadow: var(--inner-hi);
+}
+.board-tile b {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.board-tile span {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.board-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.board-row {
+  display: grid;
+  grid-template-areas: 'pos who art figs';
+  grid-template-columns: 40px minmax(0, 1fr) 78px minmax(126px, auto);
+  align-items: center;
+  gap: 14px;
+  min-height: 118px;
+  padding: 12px 14px;
+  background: var(--glass);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  box-shadow: var(--inner-hi);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
+}
+@media (hover: hover) {
+  .board-row:hover {
+    border-color: var(--accent-line);
+    transform: translateY(-2px);
+    box-shadow: var(--inner-hi), 0 14px 30px -20px var(--accent-glow);
+  }
+}
+.board-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.board-pos {
+  grid-area: pos;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-faint);
+  text-align: right;
+}
+.board-who { grid-area: who; display: flex; align-items: center; gap: 11px; min-width: 0; }
+.board-names { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.board-names b {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.board-names span {
+  font-size: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.board-art { grid-area: art; display: block; width: 78px; }
+.board-noart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 78px;
+  aspect-ratio: 5 / 7;
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-size: 10px;
+  text-align: center;
+  padding: 0 5px;
+}
+.board-noart svg { width: 17px; height: 17px; }
+
+.board-figs { grid-area: figs; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.board-power {
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--accent-text);
+}
+.board-cap {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.board-meta { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: 11.5px; }
+
+.board-row.is-top1 .board-pos { color: #ffd87a; }
+.board-row.is-top2 .board-pos { color: #dfe7f2; }
+.board-row.is-top3 .board-pos { color: #e0a06a; }
+.board-row.is-top1 { border-color: rgba(255, 216, 122, 0.28); }
+.board-row.is-top2 { border-color: rgba(223, 231, 242, 0.22); }
+.board-row.is-top3 { border-color: rgba(224, 160, 106, 0.22); }
+
+.board-foot { margin-top: var(--sp-5); }
+.board-mine { display: flex; flex-direction: column; gap: 7px; }
+.board-mine-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.board-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-4);
+  padding: 14px 16px;
+  background: var(--glass);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+}
+.board-note p { margin: 0; font-size: 13px; color: var(--text-dim); max-width: 52ch; }
+
+/* ---- the ranked rows -------------------------------------------------
+   Same shell as a collector row, without the art column: a duel is bought with
+   fights, so the row leads with the win–loss line and nothing else. The
+   compound selector is deliberate: `.board-row` also matches these rows, and a
+   later media query would otherwise win on equal specificity. */
+.board-row.rk-row {
+  grid-template-areas: 'pos who figs';
+  grid-template-columns: 40px minmax(0, 1fr) minmax(132px, auto);
+  min-height: 84px;
+}
+.rk-figs {  grid-area: figs;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.rk-wins {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--accent-text);
+}
+.rk-cap {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.rk-meta { display: flex; align-items: center; justify-content: flex-end; gap: 9px; font-size: 11.5px; }
+.rk-meta svg { width: 12px; height: 12px; }
+.rk-rate { display: inline-flex; align-items: center; gap: 4px; color: var(--text-dim); }
+/* The live run is the only figure here that can still be lost, so it is the one
+   given the warn light — the same one the record chips use. */
+.rk-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+@media (max-width: 620px) {
+  .board-row.rk-row {
+    grid-template-areas: 'pos who figs';
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    min-height: 0;
+  }
+  .rk-figs,
+  .rk-meta { align-items: flex-start; justify-content: flex-start; }
+  .rk-wins { font-size: 18px; }
+}
+
+@media (max-width: 620px) {
+  .board-row {
+    grid-template-areas: 'pos who who' 'pos art figs';
+    grid-template-columns: 30px minmax(78px, auto) minmax(0, 1fr);
+    align-items: start;
+    gap: 10px 12px;
+    min-height: 0;
+    padding: 11px 12px;
+  }
+  .board-pos { font-size: 17px; padding-top: 2px; }
+  .board-who { padding-top: 2px; }
+  .board-figs { align-items: flex-start; }
+  .board-meta { justify-content: flex-start; }
+  .board-power { font-size: 20px; }
+  .board-tile { min-width: 0; flex: 1 1 30%; padding: 10px 12px; }
+  .board-tile b { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-row { transition: none; }
+  .board-row:hover { transform: none; }
+}

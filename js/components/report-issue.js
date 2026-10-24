@@ -56,7 +56,13 @@ function field(id, label, control) {
   return { node, err, set: (m) => (err.textContent = m) };
 }
 
-export function reportSheet() {
+/**
+ * `prefill` is for the one report nobody should have to type out: the watch page
+ * hands over the title, the episode, the track and the servers it walked through
+ * when every one of them came back silent. The visitor still reads it and still
+ * presses send — the field is filled, not hidden.
+ */
+export function reportSheet(prefill = {}) {
   const detail = h('textarea.input', {
     id: 'report-detail',
     rows: 4,
@@ -64,6 +70,7 @@ export function reportSheet() {
     placeholder: t('What happened, and what did you expect instead?'),
     'aria-label': t('Describe the problem'),
   });
+  if (prefill.detail) detail.value = prefill.detail.slice(0, MAX.detail);
   const where = h('input.input', {
     id: 'report-where',
     type: 'text',
@@ -71,6 +78,7 @@ export function reportSheet() {
     placeholder: t('Title and episode, if it is about one'),
     'aria-label': t('Where it happened'),
   });
+  if (prefill.where) where.value = prefill.where.slice(0, MAX.where);
   const contact = h('input.input', {
     id: 'report-contact',
     type: 'text',

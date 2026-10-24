@@ -3,6 +3,7 @@
 import { h, icon } from '../lib/dom.js';
 import { browse, hiddenGems, genres, spotlight } from '../lib/anilist.js';
 import { continueWatching, settings } from '../lib/store.js';
+import { watched } from '../lib/util.js';
 import { lazyRow, lazyFeature, lazySplit } from '../components/media.js';
 import { continueRail } from '../components/continue-watching.js';
 import { discussionStrip } from '../components/discussion.js';
@@ -235,8 +236,8 @@ export async function HomeView(ctx) {
      weaves together. hero() shuffles what it is handed, so the opening frame
      and the running order differ on every visit. */
   Promise.all([
-    spotlight(25).catch(() => []),
-    browse({ sort: ['TRENDING_DESC'], perPage: 16 }).then(itemsOf).catch(() => []),
+    watched(spotlight(25)).catch(() => []),
+    watched(browse({ sort: ['TRENDING_DESC'], perPage: 16 }).then(itemsOf)).catch(() => []),
   ])
     .then(([spot, trend]) => {
       const picks = dedupe.claimSync(uniqueFranchises(visible(blend([spot, trend]))).slice(0, 15));
@@ -249,7 +250,7 @@ export async function HomeView(ctx) {
       heroSlot.remove();
     });
 
-  genres()
+  watched(genres())
     .then((list) => genreSection.replaceChildren(genreStrip(list.slice(0, 14))))
     .catch(() => genreSection.remove());
 

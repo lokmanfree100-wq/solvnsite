@@ -2,12 +2,18 @@
 
 import { h, icon, qs } from '../lib/dom.js';
 import { go, parse } from '../lib/router.js';
-import { listCount, totalListCount } from '../lib/store.js';
+import { totalListCount, settings, onSettings } from '../lib/store.js';
 import { randomAnime } from '../lib/anilist.js';
-import { toast } from '../lib/ui.js';
+import { sheet, toast } from '../lib/ui.js';
+import { sfx } from '../lib/sounds.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
+import { logoMark } from '../lib/brand.js';
 import { accountChip } from './account.js';
+import { inboxState, inboxUsable, subscribeInbox } from '../lib/dms.js';
+import { tradeUsable } from '../lib/trades.js';
+import { duelsUsable, fortuneUsable } from '../lib/account.js';
 import { mountLiveSearch, disposeLiveSearch } from './searchlive.js';
+import { noticeBell, disposeBell } from './notices.js';
 
 /* God mode has no entry point in the interface: /admin is reached by URL, by
    the one account the server recognises, and its gate is server-side. */
@@ -15,6 +21,7 @@ import { mountLiveSearch, disposeLiveSearch } from './searchlive.js';
 export const NAV = [
   { id: 'home', label: 'Home', path: '/', icon: 'home' },
   { id: 'discover', label: 'Discover', path: '/discover', icon: 'compass' },
+  { id: 'toons', label: 'Toons', path: '/toons', icon: 'tv' },
   { id: 'library', label: 'Library', path: '/library', icon: 'library' },
   { id: 'profile', label: 'Profile', path: '/profile', icon: 'user' },
 ];
@@ -22,10 +29,10 @@ export const NAV = [
 /** Which tab (if any) a route belongs to. */
 function tabFor(path) {
   if (path === '/') return 'home';
-  if (path.startsWith('/search')) return 'discover';
+  if (path.startsWith('/search') || path.startsWith('/top')) return 'discover';
   if (path.startsWith('/anime') || path.startsWith('/watch')) return null;
   const seg = path.split('/')[1];
-  if (seg === 'settings' || seg === 'updates') return 'profile';
+  if (seg === 'settings' || seg === 'updates' || seg === 'packs' || seg === 'leaderboard' || seg === 'messages' || seg === 'trades' || seg === 'arena' || seg === 'spin') return 'profile';
   return NAV.some((n) => n.id === seg) ? seg : null;
 }
 
@@ -33,7 +40,7 @@ function brand(compact) {
   return h(
     'a.brand',
     { href: '#/', 'aria-label': t('Solvn home'), style: compact ? { padding: '2px 12px 20px' } : null },
-    h('span.brand-mark', {}, icon('cat')),
+    h('span.brand-mark', {}, logoMark()),
     h('span.brand-word', {}, 'Solvn'),
   );
 }
@@ -112,6 +119,42 @@ function sideLink({ label, path, iconName, count, active }) {
   );
 }
 
+/* ---- the unread count in the rail --------------------------------------
+   A line that lands while you are on Home should show up on the link before you
+   go looking for it, so the rail keeps one node pointed at the inbox number and
+   the store paints that node instead of rebuilding the whole navigation — a
+   rebuild would throw away the header search box mid-type for something that is
+   one text node away. */
+let badge = null;
+
+function paintBadge() {
+  if (!badge?.isConnected) return;
+  const n = inboxState().unread;
+  badge.textContent = n > 99 ? '99+' : String(n);
+  badge.hidden = !n;
+}
+
+function inboxLink(active) {
+  return h(
+    `a.side-link${active ? '.is-active' : ''}`,
+    {
+      href: '#/messages',
+      'aria-current': active ? 'page' : null,
+      ref: (el) => {
+        badge = el.querySelector('.count');
+      },
+    },
+    icon('chat'),
+    h('span.grow', {}, t('Messages')),
+    h('span.count.tnum', { hidden: true }, ''),
+  );
+}
+
+/* The rail wears whatever number the inbox holds, so it repaints on every emit:
+   a delivery, a read tick and a line taken back all move that figure, and one
+   text node is cheaper than deciding after the fact which of them mattered. */
+subscribeInbox(() => paintBadge());
+
 /** One roll at a time — renderNav rebuilds the bar, so the flag lives here. */
 let rolling = false;
 
@@ -148,17 +191,122 @@ function randomButton() {
   return btn;
 }
 
+/* ---- the More sheet ---------------------------------------------------
+   Six controls is as wide as the dock goes before the labels start to squeeze,
+   so the last one holds everything the rail has and the five tabs cannot. Each
+   row is an anchor on the same hash the rail uses: the menu, the rail and the
+   dock never keep separate ideas of where a page lives. Closing on the way out
+   matters — a sheet lives outside the view, so a route change would leave it
+   hanging over the page it just opened. */
+function moreSheet() {
+  const { path, query } = parse();
+  const row = (api, { href, iconName, label, on }) =>
+    h(
+      `a.more-row${on ? '.is-active' : ''}`,
+      { href: `#${href}`, 'aria-current': on ? 'page' : null, onclick: () => api.close() },
+      icon(iconName),
+      h('span.grow', {}, label),
+      icon('chevronRight', { cls: 'more-caret' }),
+    );
+  const group = (title, rows) =>
+    h('div.more-group', {}, h('p.more-title', {}, title), h('div.more-rows', {}, ...rows));
+
+  sheet({
+    heading: t('All pages'),
+    width: 460,
+    render: (api) => {
+      const libraryTab = (key) => path === '/library' && query.tab === key;
+      const onPath = (p) => path === p;
+      return h(
+        'div.more-menu',
+        {},
+        group(t('Browse'), [
+          row(api, { href: '/search', iconName: 'search', label: t('Search anime'), on: onPath('/search') }),
+          row(api, { href: '/updates', iconName: 'calendarStar', label: t('Airing schedule'), on: onPath('/updates') }),
+          row(api, { href: '/top', iconName: 'trophy', label: t('Top 100'), on: onPath('/top') }),
+          row(api, { href: '/toons', iconName: 'tv', label: t('Classic & Toons'), on: onPath('/toons') }),
+          row(api, { href: '/discover', iconName: 'compass', label: t('Discover'), on: onPath('/discover') }),
+        ]),
+        group(t('Library'), [
+          row(api, { href: '/library', iconName: 'library', label: t('Everything'), on: onPath('/library') && !query.tab }),
+          row(api, { href: '/library?tab=watching', iconName: 'eye', label: t('Watching'), on: libraryTab('watching') }),
+          row(api, { href: '/library?tab=planned', iconName: 'clock', label: t('Plan to Watch'), on: libraryTab('planned') }),
+          row(api, { href: '/library?tab=completed', iconName: 'check', label: t('Completed'), on: libraryTab('completed') }),
+        ]),
+        group(t('Play'), [
+          row(api, { href: '/packs', iconName: 'sparkles', label: t('Card binder'), on: onPath('/packs') }),
+          row(api, { href: '/leaderboard', iconName: 'crown', label: t('Leaderboard'), on: onPath('/leaderboard') }),
+          fortuneUsable()
+            ? row(api, { href: '/spin', iconName: 'star', label: t('Fortune wheel'), on: onPath('/spin') })
+            : null,
+          duelsUsable() ? row(api, { href: '/arena', iconName: 'bolt', label: t('Arena'), on: onPath('/arena') }) : null,
+          inboxUsable()
+            ? row(api, { href: '/messages', iconName: 'chat', label: t('Messages'), on: onPath('/messages') })
+            : null,
+          tradeUsable()
+            ? row(api, { href: '/trades', iconName: 'swap', label: t('Trades'), on: onPath('/trades') })
+            : null,
+        ]),
+        group(t('Account'), [
+          row(api, { href: '/profile', iconName: 'user', label: t('Profile'), on: path.startsWith('/profile') }),
+          row(api, { href: '/settings', iconName: 'settings', label: t('Settings'), on: onPath('/settings') }),
+        ]),
+      );
+    },
+  });
+}
+
+/* ---- the sound handle -------------------------------------------------
+   Sound has two controls on purpose — this one in the header and the switch in
+   Settings — and both read one setting. `onSettings` repaints the header when
+   the change arrives from the other place, so the two can never disagree.
+   The sound is drawn after the write, so turning the system on answers with the
+   tone it just unlocked rather than with silence. */
+let soundBtn = null;
+const soundOn = () => settings.get('uiSound') !== false;
+const soundLabel = () => (soundOn() ? t('Turn off interface sounds') : t('Turn on interface sounds'));
+
+function paintSoundBtn() {
+  if (!soundBtn?.isConnected) return;
+  const on = soundOn();
+  soundBtn.classList.toggle('is-on', on);
+  soundBtn.setAttribute('aria-pressed', String(on));
+  soundBtn.setAttribute('aria-label', soundLabel());
+  soundBtn.replaceChildren(icon(on ? 'volume' : 'volumeOff'));
+}
+onSettings(paintSoundBtn);
+
+function soundToggle() {
+  soundBtn = h(
+    `button.icon-btn.btn--sound${soundOn() ? '.is-on' : ''}`,
+    {
+      type: 'button',
+      'aria-pressed': String(soundOn()),
+      'aria-label': soundLabel(),
+      onclick: () => {
+        const next = !soundOn();
+        settings.set('uiSound', next);
+        sfx.toggle(next);
+      },
+    },
+    icon(soundOn() ? 'volume' : 'volumeOff'),
+  );
+  return soundBtn;
+}
+
 export function renderNav() {
   const { path, query } = parse();
   const tab = tabFor(path);
   const onLibrary = path === '/library';
-  const libTab = query.tab || 'watching';
 
   /* A route change throws the top bar away, so drop the menu handle with it. */
   closeLangMenu = null;
   /* The live search box lives in the top bar too: tear its document listener
      down before this rebuild, otherwise every route change would stack another. */
   disposeLiveSearch();
+  /* Same for an open bell menu: it hangs off a node this rebuild is about to
+     throw away, and its outside-click listener would outlive both of them. */
+  disposeBell();
 
   /* ---------------- top bar ---------------- */
   const topbar = qs('#topbar');
@@ -203,6 +351,8 @@ export function renderNav() {
     h('span.topbar-spacer'),
     field,
     randomButton(),
+    soundToggle(),
+    noticeBell(),
     h('div.lang-pick', {}, languagePicker()),
     accountChip(),
   );
@@ -212,16 +362,30 @@ export function renderNav() {
     brand(true),
     sideLink({ label: t('Home'), path: '/', iconName: 'home', active: tab === 'home' }),
     sideLink({ label: t('Discover'), path: '/discover', iconName: 'compass', active: tab === 'discover' }),
-    sideLink({ label: t('Search'), path: '/search', iconName: 'search', active: path === '/search' }),
+    sideLink({ label: t('Classic & Toons'), path: '/toons', iconName: 'tv', active: path === '/toons' }),
+    /* No Search entry: the header field is the way in, and a second one in the
+       rail only asked the same question twice. */
     h('div.side-sep'),
-    h('div.side-title', {}, t('Your lists')),
-    sideLink({ label: t('Library'), path: '/library', iconName: 'library', count: totalListCount(), active: onLibrary && !query.tab }),
-    sideLink({ label: t('Watching'), path: '/library?tab=watching', iconName: 'eye', count: listCount('watching'), active: onLibrary && libTab === 'watching' }),
-    sideLink({ label: t('Completed'), path: '/library?tab=completed', iconName: 'check', count: listCount('completed'), active: onLibrary && libTab === 'completed' }),
-    sideLink({ label: t('Plan to watch'), path: '/library?tab=planned', iconName: 'bookmark', count: listCount('planned'), active: onLibrary && libTab === 'planned' }),
+    /* One Library entry, not one per list: the tabs inside the page already say
+       watching, completed and plan to watch, and a rail that repeats them turns
+       four links into the same destination. */
+    sideLink({ label: t('Library'), path: '/library', iconName: 'library', count: totalListCount(), active: onLibrary }),
     h('div.side-sep'),
     sideLink({ label: t('Airing schedule'), path: '/updates', iconName: 'calendarStar', active: path === '/updates' }),
     sideLink({ label: t('Top 100'), path: '/top', iconName: 'trophy', active: path === '/top' }),
+    sideLink({ label: t('Card binder'), path: '/packs', iconName: 'sparkles', active: path.startsWith('/packs') }),
+    sideLink({ label: t('Leaderboard'), path: '/leaderboard', iconName: 'crown', active: path === '/leaderboard' }),
+    /* Messages only earns a rail entry where a message can be stored; the link
+       would otherwise open a page whose only honest answer is that it has no
+       inbox to show. */
+    inboxUsable() ? inboxLink(path === '/messages') : null,
+    /* A deal is written on the server that runs this site, for the same reason a
+       message is — so the link appears and disappears with the same capability. */
+    tradeUsable() ? sideLink({ label: t('Trades'), path: '/trades', iconName: 'swap', active: path === '/trades' }) : null,
+    /* A fight and a spin are both settled by the server, so both links appear and
+       disappear with the same capability a trade does. */
+    duelsUsable() ? sideLink({ label: t('Arena'), path: '/arena', iconName: 'bolt', active: path === '/arena' }) : null,
+    fortuneUsable() ? sideLink({ label: t('Fortune wheel'), path: '/spin', iconName: 'star', active: path === '/spin' }) : null,
     sideLink({ label: t('Profile'), path: '/profile', iconName: 'user', active: path.startsWith('/profile') }),
     sideLink({ label: t('Settings'), path: '/settings', iconName: 'settings', active: path === '/settings' }),
     h('div.side-foot', {}, t('Free HD anime streaming.'), h('br'), t('Solvn does not store files on its own servers.')),
@@ -236,6 +400,15 @@ export function renderNav() {
         icon(n.icon),
         h('span', {}, t(n.label)),
       ),
+    ),
+    /* The dock answers for the five places a viewer returns to. Everything
+       else — schedule, top 100, lists, packs, settings — waits behind this one
+       control instead of stretching the bar into unreadable slivers. */
+    h(
+      'button.tab',
+      { type: 'button', 'aria-haspopup': 'dialog', onclick: moreSheet },
+      icon('grid'),
+      h('span', {}, t('More')),
     ),
   );
 }

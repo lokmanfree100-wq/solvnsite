@@ -186,6 +186,30 @@ export function throttle(fn, ms = 120) {
   };
 }
 
+/**
+ * Stop waiting for a promise that has stopped answering.
+ *
+ * A skeleton is a promise to paint something, and a request that hangs at the
+ * far end never pays it: the page keeps the placeholder, keeps `busy` latched,
+ * and the viewer is left on "Loading…" with no route out. Racing a clock turns
+ * silence into an ordinary failure, which every caller here already knows how
+ * to draw — an error state with a retry, a rail that bows out, a grid that
+ * falls back to the snapshot. `timed out` is the message the data layer reads as
+ * "use what we saved".
+ *
+ * The figure has to sit *outside* the request budget in `lib/anilist.js` (six
+ * seconds in the queue plus twelve once sent): a placeholder that gives up first
+ * throws away a shelf the data layer was about to fill from the saved copy, so
+ * the clock here is deliberately the slower of the two.
+ */
+export function watched(promise, ms = 20000) {
+  let timer = 0;
+  const clock = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('timed out')), ms);
+  });
+  return Promise.race([promise, clock]).finally(() => clearTimeout(timer));
+}
+
 export const clamp = (n, lo, hi) => Math.min(Math.max(n, lo), hi);
 
 export const SEASONS = ['WINTER', 'SPRING', 'SUMMER', 'FALL'];

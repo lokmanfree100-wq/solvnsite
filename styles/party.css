@@ -1,0 +1,257 @@
+/* ==========================================================================
+   Watch Together — the room beside the player.
+   A party is a panel, not a page: it has to sit in the sidebar under a phone's
+   thumb without turning the watch view into a wall. So the only shapes invented
+   here are the invite chip, the seat row and the two bars that carry news —
+   "the room moved without you" and "everybody starts in nine". Everything else
+   borrows: the chat list is the episode chat, the switch is the settings switch,
+   the buttons are the site's buttons.
+   ========================================================================== */
+
+.party-body {
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.party-hint,
+.party-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+.party-note {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* Rows of buttons: wrap on a phone, never crowd. 44px keeps every one of them a
+   real touch target even at btn--sm. */
+.party-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.party-row > .btn {
+  min-height: 44px;
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+/* ---- the invite ---------------------------------------------------------- */
+.party-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.party-code {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 var(--sp-3);
+  border: 1px dashed var(--accent-line);
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  color: var(--accent-text);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* The code is the thing a viewer reads off the screen to a friend, so it has
+     to survive a selection without breaking the layout. */
+  user-select: all;
+}
+.party-top > .btn {
+  flex: none;
+  min-height: 44px;
+}
+
+.party-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.party-who,
+.party-at {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.party-who svg,
+.party-at svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--accent-text);
+}
+.party-at {
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* ---- who is here --------------------------------------------------------- */
+.party-people {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.party-seat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 8px 0 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 11.5px;
+}
+.party-seat svg {
+  width: 12px;
+  height: 12px;
+  color: var(--gold);
+}
+.party-seat.more {
+  padding: 0 10px;
+  border-style: dashed;
+}
+.party-seat-count {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* ---- the two bars -------------------------------------------------------- */
+/* A countdown is the one moment the room asks both ends to do something at the
+   same time, so it is the loudest thing in the panel. */
+.party-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-sm);
+  background: var(--accent-wash);
+  color: var(--accent-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+.party-countdown svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.party-countdown span {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+}
+
+/* Out of step is a warning, not an error: nothing broke, the host simply moved. */
+.party-sync {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 10px 12px;
+  border: 1px solid rgba(224, 179, 65, 0.4);
+  border-radius: var(--r-sm);
+  background: rgba(224, 179, 65, 0.1);
+  color: var(--warn);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.party-sync svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.party-sync span {
+  flex: 1;
+  min-width: 140px;
+}
+.party-sync .btn {
+  flex: none;
+  min-height: 44px;
+}
+
+/* ---- follow switch -------------------------------------------------------- */
+.party-follow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: 0 2px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.party-follow > svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--accent-text);
+}
+.party-follow > span {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- chat ---------------------------------------------------------------- */
+/* The sidebar has the player above it, so the room log holds fewer lines than
+   the episode chat and scrolls inside itself. */
+.party-list {
+  max-height: min(300px, 40vh);
+  padding: var(--sp-3);
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.party-list .chat-who {
+  font-size: 12px;
+}
+.party-list .chat-text {
+  font-size: 13px;
+}
+.party-field {
+  width: 100%;
+}
+
+/* Leaving is neutral; closing takes everybody's player away, so it borrows the
+   destructive colour the confirm sheet already uses. */
+.party-close {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 34%, transparent);
+}
+
+@media (max-width: 560px) {
+  .party-list {
+    max-height: 260px;
+  }
+  .party-code {
+    letter-spacing: 0.16em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .party-countdown {
+    animation: none;
+  }
+}

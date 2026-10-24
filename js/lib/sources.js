@@ -20,7 +20,7 @@
  * A custom server is a URL template. These placeholders are filled in:
  *   {anilist}  the AniList id of the title   (number)
  *   {episode}  episode number, 1-based       (number; 1 for a film)
- *   {audio}    `sub` or `dub`
+ *   {audio}    the track id: `sub`, `dub`, `ar` or `fr`
  *   {next}     `1` when auto-next is on, else `0`
  *   {accent}  six hex digits, the highlight colour
  * Values are checked before they go in, and a template that is not https is
@@ -33,8 +33,12 @@ import { t } from './i18n.js';
 /** The server every copy of Solvn ships with. */
 export const MAIN_SERVER = {
   id: 'main',
-  name: 'Main server',
+  name: 'Solvn Stream',
   url: 'https://anigato.lol/embed/anime/{anilist}/{episode}?audio={audio}&next={next}&accent={accent}',
+  /* The two tracks this host's own `audio=` parameter understands. A server is
+     only ever asked for a track it declares, which is what keeps an Arabic or
+     French request from going out to an address that has never heard of them. */
+  tracks: ['sub', 'dub'],
 };
 
 /* How long a server stays out of the ladder after it has failed. Half an hour:
@@ -44,6 +48,77 @@ const COOLDOWN_MS = 30 * 60 * 1000;
 
 export const FRAME_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-presentation';
 export const FRAME_ALLOW = 'autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope';
+
+/* ---- audio tracks ------------------------------------------------------
+   A track is one of the audio languages Solvn can put in the player. `sub` is
+   the original Japanese with subtitles and `dub` is the English re-voice; both
+   are what the built-in server's `audio=` parameter takes. `ar` and `fr` are
+   real ids for a real purpose: a custom server that carries them declares them,
+   gets `{audio}` filled with the id, and only then appears in the switcher, the
+   ladder and the badges on the cards.
+
+   Nothing here claims a language a server has not said it has. AniList carries
+   no dub-availability field for a title, so Solvn cannot know whether episode 7
+   of a given show was re-voiced into Arabic — it knows only which languages the
+   players it is configured with offer. That is the honest ceiling, and it is why
+   an unconfigured install shows `SUB` and `EN DUB` and nothing else. */
+export const TRACKS = [
+  { id: 'sub', chip: 'SUB', label: 'Japanese (Subbed)' },
+  { id: 'dub', chip: 'EN DUB', label: 'English (Dubbed)' },
+  { id: 'ar', chip: 'AR DUB', label: 'Arabic (Dubbed)' },
+  { id: 'fr', chip: 'FR DUB', label: 'French (Dubbed)' },
+];
+
+const TRACK_IDS = TRACKS.map((tr) => tr.id);
+
+/* The three buttons the player bar always offers. `sub` and `dub` are what the
+   built-in server speaks; `ar` is here because the language of this site's
+   audience is Arabic, and a switcher that hides the one track people ask for
+   reads as a site that will not answer. Offering it is not the same as promising
+   it: a press on a track no server here carries says so, and opens the server
+   sheet with the settings route in it, instead of pointing the frame at an
+   address that has never heard of `audio=ar`. */
+const SHOWN_TRACKS = ['sub', 'dub', 'ar'];
+
+export const isTrack = (value) => TRACK_IDS.includes(value);
+
+/** Every language some enabled server can actually play, in table order. */
+export function tracksOffered() {
+  const all = servers();
+  return TRACK_IDS.filter((id) => all.some((s) => serverTracks(s).includes(id)));
+}
+
+/** The chips to draw: the three standing offers, then anything else carried. */
+export function audioChoices() {
+  const out = TRACKS.filter((tr) => SHOWN_TRACKS.includes(tr.id)).map((tr) => tr.id);
+  tracksOffered().forEach((id) => {
+    if (!out.includes(id)) out.push(id);
+  });
+  return out;
+}
+
+/** Does any server on this device answer this track today? */
+export const trackCarried = (id) => tracksOffered().includes(id);
+
+/** The four languages a preference may name; anything else is Japanese subs. */
+export const asTrack = (value) => (isTrack(value) ? value : 'sub');
+
+export const trackChip = (id) => TRACKS.find((tr) => tr.id === id)?.chip || 'SUB';
+
+/** Spoken name of a track, in the language the interface is using. Each call is
+    written out so the translation extractor can see the key. */
+export function trackName(id) {
+  if (id === 'dub') return t('English (Dubbed)');
+  if (id === 'ar') return t('Arabic (Dubbed)');
+  if (id === 'fr') return t('French (Dubbed)');
+  return t('Japanese (Subbed)');
+}
+
+/** What a server carries — a list that never contains an unknown id. */
+export function serverTracks(server) {
+  const declared = Array.isArray(server?.tracks) ? server.tracks.filter(isTrack) : [];
+  return declared.length ? TRACK_IDS.filter((id) => declared.includes(id)) : ['sub'];
+}
 
 const PLACEHOLDERS = ['anilist', 'episode', 'audio', 'next', 'accent'];
 const MAX_URL = 500;
@@ -91,6 +166,25 @@ export function cooling(id) {
   return !!rec && !!rec.at && Date.now() - rec.at < COOLDOWN_MS;
 }
 
+/**
+ * Lift every ban. The watch page calls this once a whole ladder has come up
+ * silent: at that point the cooldown has stopped protecting the viewer from a
+ * dead frame and started guaranteeing that the next episode begins with every
+ * server already assumed dead, which is the one thing a failover queue must
+ * never become.
+ */
+export function clearCooldowns() {
+  const all = records();
+  let touched = false;
+  for (const [id, rec] of Object.entries(all)) {
+    if (rec?.at) {
+      all[id] = { ...rec, at: 0 };
+      touched = true;
+    }
+  }
+  if (touched) settings.set('serverStats', all);
+}
+
 /** null means the template is usable; otherwise this is the reason it is not. */
 export function templateProblem(url) {
   const raw = String(url || '').trim();
@@ -111,7 +205,6 @@ const safe = {
     const n = Number(v);
     return Number.isFinite(n) && n > 0 && n < 1e7 ? String(Math.trunc(n)) : '';
   },
-  word: (v) => (v === 'dub' ? 'dub' : 'sub'),
   flag: (v) => (v ? '1' : '0'),
   hex: (v) => (/^[0-9a-f]{6}$/i.test(String(v || '')) ? String(v).toLowerCase() : ''),
 };
@@ -119,36 +212,56 @@ const safe = {
 /**
  * Fill a template. The built-in server keeps its documented query shape; custom
  * ones get the same values in whichever placeholders they ask for.
+ *
+ * The language that goes into `{audio}` is checked against the server first: an
+ * address is never handed a track it does not declare, because the answer to
+ * that is not an error but a player that sits there showing nothing.
  */
 export function serverUrl(server, { id, episode = 1, audio = 'sub', autoNext = true, accent = '' }) {
+  const wanted = asTrack(audio);
+  const carried = serverTracks(server);
+  const track = carried.includes(wanted) ? wanted : carried[0];
   const values = {
     anilist: safe.num(id),
     episode: safe.num(episode) || '1',
-    audio: safe.word(audio),
+    audio: track,
     next: safe.flag(autoNext),
     accent: safe.hex(accent),
   };
   return String(server.url).replace(/\{(\w+)\}/g, (m, key) => (key in values ? values[key] : m));
 }
 
-/** Name that is never empty and never absurdly long for a chip. */
+/**
+ * Name that is never empty and never absurdly long for a chip.
+ *
+ * Every label the player can show is Solvn's own: the built-in server is
+ * `Solvn Stream` and the rest are numbered, because the address behind a chip is
+ * a plumbing detail and the viewer chooses a server by number, not by whose
+ * brand happens to be on the frame.
+ */
 export function serverName(server) {
-  if (server.id === MAIN_SERVER.id) return t('Main server');
+  if (server.id === MAIN_SERVER.id) return t('Solvn Stream');
   const n = String(server.name || '').trim();
-  return n ? n.slice(0, 28) : t('Server {n}', { n: servers().indexOf(server) + 1 });
+  return n ? n.slice(0, 28) : t('Solvn Stream {n}', { n: servers().indexOf(server) + 1 });
 }
 
 /** Add a server; returns null on success or the reason it was refused. */
-export function addServer({ name = '', url = '' } = {}) {
+export function addServer({ name = '', url = '', tracks = [] } = {}) {
   const problem = templateProblem(url);
   if (problem) return problem;
   const list = extraServers();
   const clean = url.trim();
   if (list.some((s) => s.url === clean)) return t('That server is already listed.');
+  const carried = TRACK_IDS.filter((id) => tracks.includes(id));
   list.push({
     id: `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
     name: String(name).trim().slice(0, 28),
     url: clean,
+    /* Only stored when it is not the plain sub/dub pair, so the list a server
+       has never been asked about stays the same shape it always was. */
+    ...(!carried.includes('sub') || !carried.includes('dub') || carried.length > 2
+      ? { tracks: carried.length ? carried : ['sub'] }
+      : {}),
   });
   settings.set('servers', list);
   return null;

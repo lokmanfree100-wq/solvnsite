@@ -37,7 +37,7 @@
   border-radius: var(--r-md);
 }
 
-/* The cat head from the favicon, drawn in currentColor with blue eyes: it stays
+/* The brand file, in the tile the footer has always kept for it: the mark stays
    legible at this size where the full startup scene would just be a dark square. */
 .foot-mark {
   display: grid;
@@ -49,9 +49,18 @@
   border: 1px solid var(--line-strong);
   color: var(--text);
 }
+/* The artwork is the tile: it fills it, brings its own black field, and lets the
+   hairline border frame it. Nothing is drawn behind a square image. */
+.foot-mark:has(.logo) {
+  background: none;
+}
 .foot-mark svg {
   width: 28px;
   height: 28px;
+}
+.foot-mark .logo {
+  width: 100%;
+  height: 100%;
 }
 
 .foot-word {
@@ -152,10 +161,6 @@
   border-top: 1px solid var(--line);
   font-size: 12.5px;
   color: var(--text-faint);
-}
-.foot-note {
-  color: var(--text-faint);
-  opacity: 0.85;
 }
 
 /* ---- desktop: brand / navigation / DMCA side by side ------------------ */

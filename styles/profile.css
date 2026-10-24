@@ -12,8 +12,423 @@
 }
 @media (min-width: 1200px) {
   .pf-inner {
-    max-width: 1080px;
+    max-width: 1240px;
     margin-inline: auto;
+  }
+}
+
+/* ---- the hero -------------------------------------------------------
+   One wide glass panel: a light field behind the face, then the avatar in its
+   ring, the name, the locked handle, and the four figures of the shelf below.
+   The panel is the page's only large animation, and it runs on arrival, not on
+   every tab click — see `introDone` in views/profile.js. */
+.profile-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  padding: clamp(20px, 3.4vw, 34px);
+  margin-top: var(--sp-5);
+  overflow: hidden;
+}
+.pf-banner {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(74% 128% at 10% -18%, var(--accent-wash), transparent 60%),
+    radial-gradient(56% 112% at 90% -10%, var(--ambient-soft), transparent 62%),
+    linear-gradient(180deg, var(--surface-2), transparent 78%);
+}
+.pf-banner::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-line) 34%, transparent 78%);
+}
+.pf-hero-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(18px, 3vw, 30px);
+}
+.pf-who {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.profile-name {
+  margin: 0;
+  font-size: clamp(23px, 4.6vw, 34px);
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+.pf-tip {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-faint);
+}
+/* The ladder keeps to the measure of the text above it — a bar that ran the
+   whole width of the column would read as a loading indicator, not a level. */
+.pf-level {
+  max-width: 420px;
+  min-width: 0;
+}
+
+/* ---- the bio ----------------------------------------------------------
+   One line under the name, wrapped rather than truncated: a sentence somebody
+   chose to write is not something to cut off mid-word. The pencil sits beside it
+   and is only drawn on your own profile. */
+.pf-bio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 54ch;
+}
+.pf-bio {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+.pf-bio-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.pf-bio-empty svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.pf-bio-edit {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -2px;
+  padding: 0;
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.pf-bio-edit svg {
+  width: 13px;
+  height: 13px;
+}
+@media (hover: hover) {
+  .pf-bio-empty:hover {
+    border-color: var(--accent-line);
+    color: var(--accent-text);
+  }
+  .pf-bio-edit:hover {
+    border-color: var(--line-strong);
+    color: var(--accent-text);
+  }
+}
+.pf-bio-empty:focus-visible,
+.pf-bio-edit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The sheet is the only place a bio is written, so the field gets the 44px the
+   rest of the site asks of a control and the counter keeps its own column. */
+.pf-bio-field {
+  min-height: 88px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.pf-bio-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  width: 100%;
+}
+.pf-bio-count {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.pf-bio-foot .btn {
+  min-height: 44px;
+}
+.profile-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-inline-start: auto;
+}
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+/* ---- the ring --------------------------------------------------------
+   Two copies of one conic gradient: the near one masked down to its own rim,
+   the far one blurred into a bloom. `isolation` above keeps both behind the
+   face and in front of the panel, and the whole thing is three declarations of
+   CSS — no canvas, no JS, nothing to keep in step with the pointer. */
+.pf-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  isolation: isolate;
+  border-radius: 50%;
+  transition: transform var(--t-med) var(--ease);
+}
+.pf-face::before,
+.pf-face::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  z-index: -1;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--accent-bright),
+    var(--glow-cyan) 20%,
+    var(--accent) 44%,
+    var(--glow-blue) 66%,
+    var(--accent-text) 86%,
+    var(--accent-bright)
+  );
+  animation: pf-orbit 7s linear infinite;
+}
+.pf-face::before {
+  -webkit-mask: radial-gradient(closest-side, transparent 74%, #000 80%);
+  mask: radial-gradient(closest-side, transparent 74%, #000 80%);
+}
+.pf-face::after {
+  inset: -22px;
+  filter: blur(18px);
+  opacity: 0.55;
+}
+@keyframes pf-orbit {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* A touch of depth on the pointer, and the arrival lift. */
+@media (hover: hover) and (pointer: fine) {
+  .pf-face:hover {
+    transform: perspective(var(--persp)) rotateX(8deg) rotateY(-9deg) scale(1.04);
+  }
+}
+.profile-hero.is-intro {
+  animation: pf-rise var(--t-slow) var(--ease) backwards;
+}
+.profile-hero.is-intro .pf-face {
+  animation: pf-pop 620ms var(--ease-out-back) 80ms backwards;
+}
+@keyframes pf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@keyframes pf-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-face::before,
+  .pf-face::after {
+    animation: none;
+  }
+  .profile-hero.is-intro,
+  .profile-hero.is-intro .pf-face {
+    animation: none;
+  }
+  .pf-face,
+  .pf-face:hover {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* The hero carries the face, so it is drawn larger than a `lg` avatar is
+   anywhere else — the upload sheet keeps its 84px preview. */
+.profile-hero .avatar--lg {
+  width: 96px;
+  height: 96px;
+}
+.profile-hero .avatar--lg .avatar-initials {
+  font-size: 32px;
+}
+
+/* ---- the figures ---------------------------------------------------- */
+.pf-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: var(--sp-3);
+}
+.pf-stats .metric {
+  padding: 12px 14px;
+}
+.pf-stats .metric-val {
+  font-size: clamp(17px, 2.4vw, 21px);
+}
+
+/* ---- the locked handle ----------------------------------------------
+   Permanent, so there is no pencil — but a member still has to be able to
+   select it and hand it to somebody, which a `disabled` box would not allow.
+   `readonly` gives the lock and the copy. */
+.pf-handle-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+  padding-block: 4px;
+  padding-inline: 12px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.pf-handle-lock {
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--text-faint);
+}
+.pf-handle-lock svg {
+  width: 14px;
+  height: 14px;
+}
+.pf-handle-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  cursor: text;
+}
+.pf-handle-input:focus-visible {
+  outline: none;
+  color: var(--text);
+}
+/* The field is readonly, so the ring belongs on the box around it — a keyboard
+   visitor needs to see which line they can copy. */
+.pf-handle-field:focus-within {
+  border-color: var(--accent-line);
+}
+.pf-handle-tip {
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+/* The number people search by: a label, the digits, and one press to copy.
+   Quiet enough to sit under the handle without competing with the name. */
+.pf-id {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  margin-top: 4px;
+  color: var(--text-faint);
+}
+.pf-id-label {
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.pf-id-value {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+.pf-id-copy {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.pf-id-copy svg {
+  width: 14px;
+  height: 14px;
+}
+.pf-id-copy:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  .pf-id-copy:hover {
+    color: var(--text);
+    border-color: var(--line-strong);
+  }
+}
+/* A friendship that already exists is a status, not a press — so it is a chip
+   with no affordance rather than a button that would only say "no". */
+.pf-friend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+.pf-friend svg {
+  width: 14px;
+  height: 14px;
+}
+.pf-friend.is-friend {
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+  color: var(--success);
+}
+
+@media (min-width: 900px) {
+  .profile-actions {
+    justify-content: flex-end;
   }
 }
 
@@ -171,6 +586,85 @@
 }
 .av-error[hidden] { display: none; }
 
+/* ---- the face gallery -------------------------------------------------
+   Round portraits on a bare grid: no card, no frame, nothing between the face
+   and the circle it will be cut into on the profile. `object-position` sits
+   high because character art is drawn head-and-shoulders, and a centred crop
+   tends to land on a chest. */
+.av-tabs .chip {
+  min-height: 44px;
+  padding: 0 16px;
+  flex: none;
+}
+.av-panel {
+  display: grid;
+  gap: var(--sp-3);
+}
+.av-pick {
+  justify-self: start;
+  cursor: pointer;
+}
+.av-count {
+  margin: 0;
+  font-size: 12px;
+}
+.av-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+  gap: var(--sp-3);
+}
+.av-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 0 4px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  cursor: pointer;
+  transition: color var(--t-fast), transform var(--t-fast);
+}
+.av-tile img {
+  width: 100%;
+  aspect-ratio: 1;
+  height: auto;
+  object-fit: cover;
+  object-position: center 24%;
+  border-radius: 50%;
+  border: 1px solid var(--hairline);
+  background: var(--surface-3);
+  box-shadow: var(--sh-2);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.av-tile-name {
+  width: 100%;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+}
+@media (hover: hover) {
+  .av-tile:hover {
+    color: var(--text);
+    transform: translateY(-2px);
+  }
+  .av-tile:hover img {
+    border-color: var(--accent-line);
+    box-shadow: 0 0 26px -10px var(--accent-glow);
+  }
+}
+.av-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.av-tile:focus-visible img {
+  border-color: var(--accent-line);
+}
+
 /* ---- the private shelves -------------------------------------------
    The tabs reuse .chip, whose 32px height is right for a filter bar and wrong
    for a thumb. On the profile they are full 44px targets. */
@@ -323,4 +817,2022 @@
   border-color: var(--accent-line);
   box-shadow: 0 0 26px -14px var(--accent-glow);
   transform: translateY(-2px);
+}
+
+/* ---- card showcase ---------------------------------------------------
+   The row reuses the binder's .g-grid so a pinned card is the same object at
+   the same size as the one in the collection: a showcase that shrank its cards
+   would be a poster of a card, not the card. */
+.pf-showcase .g-grid {
+  margin-top: 0;
+}
+.pf-pin-tally {
+  margin-inline-start: auto;
+  padding: 3px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.pf-show-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* The picker: card plus the one control that belongs to it. */
+.pf-pin-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.pf-pin-cell.is-pinned .g-frame {
+  box-shadow:
+    0 18px 42px -22px rgba(0, 0, 0, 0.9),
+    0 0 30px -10px var(--accent-glow),
+    inset 0 0 0 1px var(--accent-line);
+}
+.pf-pin-btn {
+  min-height: 44px;
+  justify-content: center;
+}
+.pf-pin-btn.is-on {
+  border-color: var(--accent-line);
+  color: var(--accent-text);
+  background: var(--surface-3);
+}
+.pf-pin-count {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+/* ---- smartphones ------------------------------------------------------
+   The hero is the one large thing on this page, so on a phone it is the panel
+   that gives: less padding, a smaller face, a tighter name. The ring, the bloom
+   and every tap target keep their size — 44px is not a number that shrinks
+   because the screen did. */
+@media (max-width: 768px) {
+  .profile-hero {
+    gap: var(--sp-4);
+    padding: 16px;
+    margin-top: var(--sp-3);
+  }
+  .pf-hero-row {
+    gap: 16px;
+  }
+  .profile-name {
+    font-size: clamp(20px, 5.6vw, 24px);
+    letter-spacing: -0.028em;
+  }
+  .pf-tip {
+    font-size: 12px;
+  }
+  .profile-hero .avatar--lg {
+    width: 76px;
+    height: 76px;
+  }
+  .profile-hero .avatar--lg .avatar-initials {
+    font-size: 26px;
+  }
+  .pf-face::after {
+    inset: -16px;
+    filter: blur(14px);
+  }
+  .profile-side {
+    width: 100%;
+    margin-inline-start: 0;
+  }
+  .profile-actions .btn {
+    flex: 1 1 148px;
+  }
+  .pf-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-2);
+  }
+  .pf-stats .metric {
+    padding: 10px 12px;
+  }
+  .pf-stats .metric-val {
+    font-size: 17px;
+  }
+  .pf-handle-field {
+    max-width: none;
+  }
+}
+
+/* ==========================================================================
+   The band behind a profile.
+   One `.bk` node, drawn entirely from its theme key, is shared by the hero and
+   the picker tiles, so a theme looks the same in both places. Only
+   background-position, transform and opacity move — and base.css already stops
+   every animation under prefers-reduced-motion, which leaves each theme as a
+   still gradient rather than a blank strip.
+   ========================================================================== */
+.pf-banner-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pf-banner-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(4, 5, 8, 0.62), rgba(4, 5, 8, 0.26) 58%, rgba(4, 5, 8, 0.44)),
+    linear-gradient(180deg, rgba(4, 5, 8, 0.34), transparent 42%, rgba(4, 5, 8, 0.5));
+}
+.pf-banner-edit {
+  position: absolute;
+  z-index: 4;
+  top: 10px;
+  inset-inline-end: 10px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--accent-line);
+  background: var(--glass-strong);
+  color: var(--accent-text);
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast), transform var(--t-fast);
+}
+/* The visual dot is 34px; the hit area is the full 44px. */
+.pf-banner-edit::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+}
+.pf-banner-edit svg {
+  width: 15px;
+  height: 15px;
+}
+/* Room in the corner for that button, wherever the name happens to reach. */
+.profile-hero:has(.pf-banner-edit) .pf-who {
+  padding-inline-end: 30px;
+}
+@media (hover: hover) {
+  .pf-banner-edit:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: scale(1.06);
+  }
+}
+
+/* ---- the animated bands: the founding twenty-four ---------------------- */
+.bk {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.bk::before,
+.bk::after {
+  content: '';
+  position: absolute;
+  inset: -22%;
+}
+
+/* Aurora: soft ribbons of green, blue and violet drifting over a night sky. */
+.bk[data-theme='aurora'] {
+  background: linear-gradient(180deg, #05121c, #04090f);
+}
+.bk[data-theme='aurora']::before {
+  background:
+    radial-gradient(38% 120% at 20% 0%, rgba(46, 230, 166, 0.58), transparent 62%),
+    radial-gradient(34% 130% at 50% 8%, rgba(61, 139, 255, 0.5), transparent 64%),
+    radial-gradient(30% 118% at 80% 0%, rgba(184, 108, 255, 0.46), transparent 62%);
+  animation: bk-aurora-drift 22s ease-in-out infinite alternate;
+}
+.bk[data-theme='aurora']::after {
+  background: repeating-linear-gradient(96deg, rgba(255, 255, 255, 0.13) 0 2px, transparent 2px 26px);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 70%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 70%);
+  animation: bk-aurora-curtain 15s linear infinite;
+}
+@keyframes bk-aurora-drift {
+  0% {
+    transform: translate3d(-6%, 0, 0) scaleY(1);
+  }
+  50% {
+    transform: translate3d(4%, -3%, 0) scaleY(1.18);
+  }
+  100% {
+    transform: translate3d(8%, 2%, 0) scaleY(1.04);
+  }
+}
+@keyframes bk-aurora-curtain {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 260px 0;
+  }
+}
+
+/* Neon: a glowing cyan-and-magenta grid running toward the horizon. */
+.bk[data-theme='neon'] {
+  background: linear-gradient(180deg, #14001f, #05010a);
+}
+.bk[data-theme='neon']::before {
+  inset: 24% -30% -40%;
+  background:
+    repeating-linear-gradient(90deg, rgba(34, 224, 245, 0.5) 0 1px, transparent 1px 42px),
+    repeating-linear-gradient(0deg, rgba(255, 79, 163, 0.44) 0 1px, transparent 1px 26px);
+  transform: perspective(240px) rotateX(60deg);
+  transform-origin: 50% 100%;
+  animation: bk-neon-run 4s linear infinite;
+}
+.bk[data-theme='neon']::after {
+  background:
+    radial-gradient(60% 92% at 50% 30%, rgba(255, 45, 170, 0.5), transparent 62%),
+    radial-gradient(42% 74% at 16% 22%, rgba(34, 224, 245, 0.42), transparent 60%);
+  animation: bk-neon-pulse 6.6s ease-in-out infinite alternate;
+}
+@keyframes bk-neon-run {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 0 0, 0 52px;
+  }
+}
+@keyframes bk-neon-pulse {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Ember: sparks lifting off a fire that burns low along the bottom. */
+.bk[data-theme='ember'] {
+  background: linear-gradient(180deg, #190602, #070201);
+}
+.bk[data-theme='ember']::before {
+  background-image:
+    radial-gradient(2px 2px at 12% 84%, rgba(255, 210, 150, 0.95), transparent 60%),
+    radial-gradient(3px 3px at 24% 92%, rgba(255, 140, 60, 0.9), transparent 60%),
+    radial-gradient(2px 2px at 38% 88%, rgba(255, 190, 110, 0.85), transparent 60%),
+    radial-gradient(2.5px 2.5px at 51% 94%, rgba(255, 120, 40, 0.9), transparent 60%),
+    radial-gradient(2px 2px at 64% 86%, rgba(255, 220, 160, 0.9), transparent 60%),
+    radial-gradient(3px 3px at 77% 90%, rgba(255, 150, 70, 0.88), transparent 60%),
+    radial-gradient(2px 2px at 89% 82%, rgba(255, 200, 130, 0.9), transparent 60%);
+  animation: bk-ember-rise 7.4s linear infinite;
+}
+.bk[data-theme='ember']::after {
+  background:
+    radial-gradient(72% 100% at 50% 108%, rgba(255, 110, 30, 0.62), transparent 66%),
+    radial-gradient(38% 72% at 22% 104%, rgba(255, 190, 80, 0.44), transparent 62%);
+  animation: bk-ember-flicker 2.8s ease-in-out infinite alternate;
+}
+@keyframes bk-ember-rise {
+  0% {
+    transform: translateY(16%);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translateY(-44%);
+    opacity: 0;
+  }
+}
+@keyframes bk-ember-flicker {
+  from {
+    opacity: 0.62;
+    transform: scaleY(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1.06);
+  }
+}
+
+/* Code rain: columns of green glyphs falling past a scan bar. */
+.bk[data-theme='matrix'] {
+  background: linear-gradient(180deg, #01100a, #000503);
+}
+.bk[data-theme='matrix']::before {
+  background-image:
+    repeating-linear-gradient(180deg, rgba(120, 255, 180, 0.55) 0 6px, transparent 6px 34px),
+    repeating-linear-gradient(180deg, rgba(52, 214, 136, 0.4) 0 12px, transparent 12px 34px),
+    repeating-linear-gradient(90deg, rgba(2, 16, 10, 0.92) 0 2px, transparent 2px 13px);
+  background-position: 0 0, 7px 17px, 0 0;
+  animation: bk-matrix-fall 2.6s linear infinite;
+}
+.bk[data-theme='matrix']::after {
+  background: linear-gradient(180deg, transparent, rgba(150, 255, 190, 0.3) 46%, transparent 64%);
+  animation: bk-matrix-scan 5.6s linear infinite;
+}
+@keyframes bk-matrix-fall {
+  from {
+    transform: translateY(-34px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes bk-matrix-scan {
+  0% {
+    transform: translateY(-52%);
+  }
+  100% {
+    transform: translateY(52%);
+  }
+}
+
+/* Deep sea: a slow swell under moving caustics. */
+.bk[data-theme='ocean'] {
+  background: linear-gradient(180deg, #03142b, #010812);
+}
+.bk[data-theme='ocean']::before {
+  background:
+    radial-gradient(46% 80% at 24% 18%, rgba(61, 139, 255, 0.42), transparent 60%),
+    radial-gradient(40% 70% at 76% 30%, rgba(34, 224, 245, 0.34), transparent 62%),
+    radial-gradient(54% 62% at 50% 92%, rgba(10, 60, 140, 0.52), transparent 66%);
+  animation: bk-ocean-swell 17s ease-in-out infinite alternate;
+}
+.bk[data-theme='ocean']::after {
+  background-image: repeating-linear-gradient(180deg, rgba(190, 244, 255, 0.16) 0 2px, transparent 2px 16px);
+  -webkit-mask-image: radial-gradient(64% 62% at 50% 0%, #000, transparent 78%);
+  mask-image: radial-gradient(64% 62% at 50% 0%, #000, transparent 78%);
+  animation: bk-ocean-caustic 9.5s ease-in-out infinite alternate;
+}
+@keyframes bk-ocean-swell {
+  from {
+    transform: translate3d(-5%, 1%, 0) scale(1.04);
+  }
+  to {
+    transform: translate3d(5%, -3%, 0) scale(1.14);
+  }
+}
+@keyframes bk-ocean-caustic {
+  from {
+    transform: translateY(0) skewY(0deg);
+  }
+  to {
+    transform: translateY(-10px) skewY(1.4deg);
+  }
+}
+
+/* Nebula: a violet cloud turning slowly over a fixed field of stars. */
+.bk[data-theme='violet'] {
+  background: radial-gradient(120% 140% at 50% 118%, #170a2e, #06030f);
+}
+.bk[data-theme='violet']::before {
+  opacity: 0.78;
+  background: conic-gradient(
+    from 0deg at 50% 62%,
+    rgba(168, 92, 255, 0.52),
+    rgba(46, 20, 120, 0.14) 25%,
+    rgba(255, 79, 163, 0.44) 50%,
+    rgba(30, 10, 110, 0.12) 75%,
+    rgba(168, 92, 255, 0.52)
+  );
+  transform-origin: 50% 62%;
+  animation: bk-nebula-spin 36s linear infinite;
+}
+.bk[data-theme='violet']::after {
+  background-image:
+    radial-gradient(1.5px 1.5px at 18% 30%, rgba(255, 255, 255, 0.95), transparent 60%),
+    radial-gradient(1.5px 1.5px at 42% 68%, rgba(255, 255, 255, 0.8), transparent 60%),
+    radial-gradient(2px 2px at 63% 24%, rgba(214, 199, 255, 0.9), transparent 60%),
+    radial-gradient(1.5px 1.5px at 78% 58%, rgba(255, 255, 255, 0.85), transparent 60%),
+    radial-gradient(1.5px 1.5px at 90% 34%, rgba(255, 255, 255, 0.7), transparent 60%),
+    radial-gradient(2px 2px at 30% 12%, rgba(255, 214, 240, 0.85), transparent 60%);
+  animation: bk-star-twinkle 4.8s ease-in-out infinite alternate;
+}
+@keyframes bk-nebula-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes bk-star-twinkle {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Spectrum: the whole ribbon sliding sideways under a holo sheen. */
+.bk[data-theme='spectrum'] {
+  opacity: 0.76;
+  background-image: linear-gradient(90deg, #ff2d78, #ff9b2d, #ffe93c, #3cff8f, #3cc4ff, #a43cff, #ff2d78);
+  background-size: 400% 100%;
+  animation: bk-spectrum-slide 12s linear infinite;
+}
+.bk[data-theme='spectrum']::before {
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.52) 47%, transparent 62%);
+  animation: bk-holo-sweep 7s ease-in-out infinite;
+}
+.bk[data-theme='spectrum']::after {
+  background: linear-gradient(180deg, rgba(4, 5, 8, 0.42), transparent 44%, rgba(4, 5, 8, 0.4));
+}
+@keyframes bk-spectrum-slide {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 400% 50%;
+  }
+}
+@keyframes bk-holo-sweep {
+  0% {
+    transform: translateX(-58%);
+  }
+  62%,
+  100% {
+    transform: translateX(58%);
+  }
+}
+
+/* Gold leaf: a specular sweep across dark bronze, with flecks that catch. */
+.bk[data-theme='gold'] {
+  background: linear-gradient(150deg, #241703, #0a0702 62%);
+}
+.bk[data-theme='gold']::before {
+  background: linear-gradient(112deg, transparent 34%, rgba(255, 214, 120, 0.5) 50%, transparent 66%);
+  animation: bk-gold-sweep 8.6s ease-in-out infinite;
+}
+.bk[data-theme='gold']::after {
+  background-image:
+    radial-gradient(1.6px 1.6px at 20% 32%, rgba(255, 232, 170, 0.95), transparent 60%),
+    radial-gradient(2px 2px at 36% 74%, rgba(255, 196, 71, 0.9), transparent 60%),
+    radial-gradient(1.6px 1.6px at 58% 22%, rgba(255, 240, 200, 0.9), transparent 60%),
+    radial-gradient(2px 2px at 70% 62%, rgba(255, 206, 110, 0.88), transparent 60%),
+    radial-gradient(1.6px 1.6px at 86% 40%, rgba(255, 236, 180, 0.9), transparent 60%),
+    radial-gradient(1.6px 1.6px at 47% 48%, rgba(255, 214, 120, 0.8), transparent 60%);
+  animation: bk-gold-glitter 4.2s ease-in-out infinite alternate;
+}
+@keyframes bk-gold-sweep {
+  0% {
+    transform: translateX(-56%);
+  }
+  58%,
+  100% {
+    transform: translateX(56%);
+  }
+}
+@keyframes bk-gold-glitter {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Sakura: petals letting go of the top edge and swinging as they fall. */
+.bk[data-theme='sakura'] {
+  background: linear-gradient(180deg, #2b1220, #120a14 70%);
+}
+.bk[data-theme='sakura']::before {
+  background-image:
+    radial-gradient(5px 3px at 12% 8%, rgba(255, 183, 208, 0.92), transparent 62%),
+    radial-gradient(4px 3px at 34% 26%, rgba(255, 205, 224, 0.86), transparent 62%),
+    radial-gradient(6px 3px at 58% 12%, rgba(255, 172, 201, 0.88), transparent 62%),
+    radial-gradient(4px 3px at 76% 34%, rgba(255, 198, 219, 0.8), transparent 62%),
+    radial-gradient(5px 3px at 91% 18%, rgba(255, 183, 208, 0.84), transparent 62%);
+  background-size: 100% 220%;
+  animation: bk-saku-fall 12s linear infinite;
+}
+.bk[data-theme='sakura']::after {
+  background:
+    radial-gradient(52% 74% at 22% 12%, rgba(255, 143, 178, 0.34), transparent 64%),
+    radial-gradient(44% 66% at 78% 24%, rgba(196, 132, 255, 0.28), transparent 62%);
+  animation: bk-saku-blush 9s ease-in-out infinite alternate;
+}
+@keyframes bk-saku-fall {
+  from {
+    background-position: 0 -60%, 0 -60%, 0 -60%, 0 -60%, 0 -60%;
+    transform: translateX(-2%);
+  }
+  50% {
+    transform: translateX(3%);
+  }
+  to {
+    background-position: 0 160%, 0 160%, 0 160%, 0 160%, 0 160%;
+    transform: translateX(-2%);
+  }
+}
+@keyframes bk-saku-blush {
+  from {
+    opacity: 0.42;
+  }
+  to {
+    opacity: 0.95;
+  }
+}
+
+/* Storm: rain going across, and a flash that lights the whole band for a beat. */
+.bk[data-theme='storm'] {
+  background: linear-gradient(170deg, #16202c, #080c12 66%);
+}
+.bk[data-theme='storm']::before {
+  background: repeating-linear-gradient(74deg, rgba(176, 208, 255, 0.34) 0 1px, transparent 1px 15px);
+  animation: bk-storm-rain 1.1s linear infinite;
+}
+.bk[data-theme='storm']::after {
+  background:
+    radial-gradient(70% 60% at 30% 0%, rgba(206, 226, 255, 0.9), transparent 62%),
+    radial-gradient(50% 50% at 72% 10%, rgba(140, 176, 255, 0.5), transparent 60%);
+  opacity: 0;
+  animation: bk-storm-flash 7.5s ease-out infinite;
+}
+@keyframes bk-storm-rain {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 74px 200px;
+  }
+}
+@keyframes bk-storm-flash {
+  0%,
+  54%,
+  100% {
+    opacity: 0;
+  }
+  56% {
+    opacity: 0.85;
+  }
+  58% {
+    opacity: 0.12;
+  }
+  61% {
+    opacity: 0.6;
+  }
+  66% {
+    opacity: 0;
+  }
+}
+
+/* Sunset: the sun going down into its own glow, sky colour bleeding after it. */
+.bk[data-theme='sunset'] {
+  background: linear-gradient(180deg, #2b1141, #6b2130 52%, #1a0a14);
+}
+.bk[data-theme='sunset']::before {
+  inset: auto 0 18%;
+  height: 62%;
+  background: radial-gradient(58% 78% at 50% 100%, rgba(255, 168, 76, 0.95), rgba(255, 92, 120, 0.4) 52%, transparent 72%);
+  animation: bk-sunset-sink 14s ease-in-out infinite alternate;
+}
+.bk[data-theme='sunset']::after {
+  background: repeating-linear-gradient(180deg, rgba(255, 214, 150, 0.16) 0 3px, transparent 3px 22px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 46%, rgba(0, 0, 0, 0.9));
+  mask-image: linear-gradient(180deg, transparent 46%, rgba(0, 0, 0, 0.9));
+  animation: bk-sunset-heat 6s linear infinite;
+}
+@keyframes bk-sunset-sink {
+  from {
+    transform: translateY(-8%) scale(1.04);
+  }
+  to {
+    transform: translateY(12%) scale(0.94);
+  }
+}
+@keyframes bk-sunset-heat {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 22px;
+  }
+}
+
+/* Glacier: cold light moving under a sheet of ice, with fracture lines left behind. */
+.bk[data-theme='glacier'] {
+  background: linear-gradient(160deg, #0b2330, #061319 70%);
+}
+.bk[data-theme='glacier']::before {
+  background: linear-gradient(104deg, transparent 28%, rgba(158, 236, 255, 0.4) 46%, rgba(224, 250, 255, 0.18) 52%, transparent 70%);
+  animation: bk-glacier-sheen 11s ease-in-out infinite;
+}
+.bk[data-theme='glacier']::after {
+  background:
+    repeating-linear-gradient(122deg, rgba(190, 240, 255, 0.2) 0 1px, transparent 1px 34px),
+    radial-gradient(60% 80% at 76% 20%, rgba(88, 190, 235, 0.28), transparent 64%);
+  animation: bk-glacier-breathe 8s ease-in-out infinite alternate;
+}
+@keyframes bk-glacier-sheen {
+  0% {
+    transform: translateX(-58%);
+  }
+  62%,
+  100% {
+    transform: translateX(58%);
+  }
+}
+@keyframes bk-glacier-breathe {
+  from {
+    opacity: 0.45;
+    transform: translateY(-1.5%);
+  }
+  to {
+    opacity: 0.9;
+    transform: translateY(1.5%);
+  }
+}
+
+/* Lava: the crust glow breathing, with embers lifting off the surface. */
+.bk[data-theme='lava'] {
+  background: linear-gradient(180deg, #1b0705, #350c06 62%, #12040a);
+}
+.bk[data-theme='lava']::before {
+  background:
+    radial-gradient(46% 70% at 26% 100%, rgba(255, 118, 32, 0.72), transparent 62%),
+    radial-gradient(38% 62% at 68% 100%, rgba(255, 62, 30, 0.62), transparent 60%);
+  animation: bk-lava-churn 9s ease-in-out infinite alternate;
+}
+.bk[data-theme='lava']::after {
+  background-image:
+    radial-gradient(2px 2px at 18% 90%, rgba(255, 196, 120, 0.95), transparent 60%),
+    radial-gradient(2.4px 2.4px at 42% 96%, rgba(255, 150, 70, 0.9), transparent 60%),
+    radial-gradient(1.8px 1.8px at 64% 92%, rgba(255, 214, 150, 0.88), transparent 60%),
+    radial-gradient(2.2px 2.2px at 84% 98%, rgba(255, 132, 60, 0.9), transparent 60%);
+  animation: bk-lava-embers 7s linear infinite;
+}
+@keyframes bk-lava-churn {
+  from {
+    transform: translateY(4%) scaleY(0.9);
+    opacity: 0.65;
+  }
+  to {
+    transform: translateY(-4%) scaleY(1.12);
+    opacity: 1;
+  }
+}
+@keyframes bk-lava-embers {
+  from {
+    transform: translateY(18%);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.95;
+  }
+  to {
+    transform: translateY(-72%);
+    opacity: 0;
+  }
+}
+
+/* Forest: light coming through the canopy in slow-moving shafts. */
+.bk[data-theme='forest'] {
+  background: linear-gradient(180deg, #0a1d13, #04100a 72%);
+}
+.bk[data-theme='forest']::before {
+  background: repeating-linear-gradient(98deg, rgba(168, 240, 176, 0.24) 0 18px, transparent 18px 62px);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95), transparent 76%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95), transparent 76%);
+  animation: bk-forest-shafts 16s ease-in-out infinite alternate;
+}
+.bk[data-theme='forest']::after {
+  background-image:
+    radial-gradient(2px 2px at 26% 62%, rgba(206, 255, 158, 0.9), transparent 60%),
+    radial-gradient(1.6px 1.6px at 52% 44%, rgba(172, 255, 190, 0.85), transparent 60%),
+    radial-gradient(2.2px 2.2px at 74% 70%, rgba(224, 255, 168, 0.8), transparent 60%);
+  animation: bk-forest-flies 6.4s ease-in-out infinite alternate;
+}
+@keyframes bk-forest-shafts {
+  from {
+    transform: translateX(-5%) skewX(2deg);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateX(5%) skewX(-2deg);
+    opacity: 0.95;
+  }
+}
+@keyframes bk-forest-flies {
+  from {
+    transform: translate3d(-3%, 4%, 0);
+    opacity: 0.25;
+  }
+  to {
+    transform: translate3d(3%, -4%, 0);
+    opacity: 1;
+  }
+}
+
+/* Retro: a striped sun over a scanline horizon — the eighties, kept honest. */
+.bk[data-theme='retro'] {
+  background: linear-gradient(180deg, #170a2e, #2d0a3f 54%, #07040f);
+}
+.bk[data-theme='retro']::before {
+  inset: 4% 26% 34%;
+  background: linear-gradient(180deg, #ffd166, #ff5b8a 58%, #b14bd8);
+  -webkit-mask-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 1) 0 8px, transparent 8px 15px);
+  mask-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 1) 0 8px, transparent 8px 15px);
+  border-radius: 50% 50% 6% 6%;
+  animation: bk-retro-throb 7s ease-in-out infinite alternate;
+}
+.bk[data-theme='retro']::after {
+  background: repeating-linear-gradient(180deg, rgba(126, 214, 255, 0.2) 0 2px, transparent 2px 9px);
+  animation: bk-retro-scan 3.4s linear infinite;
+}
+@keyframes bk-retro-throb {
+  from {
+    transform: scale(0.95) translateY(2%);
+  }
+  to {
+    transform: scale(1.04) translateY(-2%);
+  }
+}
+@keyframes bk-retro-scan {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 9px;
+  }
+}
+
+/* Glitch: three colour copies of the same band, each one jumping out of place. */
+.bk[data-theme='glitch'] {
+  background: linear-gradient(180deg, #0b0b10, #131319);
+}
+.bk[data-theme='glitch']::before {
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 46, 99, 0.5) 0 6px, transparent 6px 30px),
+    repeating-linear-gradient(180deg, rgba(46, 224, 245, 0.42) 6px 12px, transparent 12px 36px);
+  animation: bk-glitch-jerk 2.6s steps(2, end) infinite;
+}
+.bk[data-theme='glitch']::after {
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 6px);
+  animation: bk-glitch-tear 4.1s steps(3, end) infinite;
+}
+@keyframes bk-glitch-jerk {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.55;
+  }
+  34% {
+    transform: translate3d(-7px, 2px, 0);
+    opacity: 1;
+  }
+  62% {
+    transform: translate3d(6px, -3px, 0);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.55;
+  }
+}
+@keyframes bk-glitch-tear {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  40% {
+    transform: translateX(14px);
+  }
+  70% {
+    transform: translateX(-10px);
+  }
+}
+
+/* Cyber: a data stream falling down a dark blue wall, lit by a passing scan. */
+.bk[data-theme='cyber'] {
+  background: linear-gradient(180deg, #04101f, #070b16);
+}
+.bk[data-theme='cyber']::before {
+  background:
+    repeating-linear-gradient(90deg, rgba(60, 235, 255, 0.32) 0 1px, transparent 1px 30px),
+    repeating-linear-gradient(180deg, rgba(60, 235, 255, 0.5) 0 12px, transparent 12px 44px);
+  animation: bk-cyber-stream 5.2s linear infinite;
+}
+.bk[data-theme='cyber']::after {
+  inset: 0;
+  background: linear-gradient(180deg, transparent 42%, rgba(120, 226, 255, 0.34) 50%, transparent 58%);
+  animation: bk-cyber-sweep 6.6s ease-in-out infinite;
+}
+@keyframes bk-cyber-stream {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 0 0, 0 44px;
+  }
+}
+@keyframes bk-cyber-sweep {
+  0% {
+    transform: translateY(-60%);
+  }
+  70%,
+  100% {
+    transform: translateY(60%);
+  }
+}
+
+/* Toxic: acid green bubbling over a dark sludge floor. */
+.bk[data-theme='toxic'] {
+  background: linear-gradient(180deg, #0c1608, #050a04);
+}
+.bk[data-theme='toxic']::before {
+  background:
+    radial-gradient(40% 66% at 24% 100%, rgba(163, 255, 60, 0.6), transparent 62%),
+    radial-gradient(34% 58% at 72% 100%, rgba(90, 235, 120, 0.52), transparent 60%);
+  animation: bk-toxic-swell 7.4s ease-in-out infinite alternate;
+}
+.bk[data-theme='toxic']::after {
+  background-image:
+    radial-gradient(6px 6px at 22% 76%, rgba(206, 255, 128, 0.5) 44%, rgba(206, 255, 128, 0) 46%),
+    radial-gradient(9px 9px at 48% 88%, rgba(170, 250, 110, 0.44) 44%, rgba(170, 250, 110, 0) 46%),
+    radial-gradient(5px 5px at 70% 80%, rgba(224, 255, 150, 0.5) 44%, rgba(224, 255, 150, 0) 46%);
+  animation: bk-toxic-bubble 5.6s ease-in-out infinite alternate;
+}
+@keyframes bk-toxic-swell {
+  from {
+    transform: scaleY(0.86) translateY(3%);
+    opacity: 0.6;
+  }
+  to {
+    transform: scaleY(1.14) translateY(-3%);
+    opacity: 1;
+  }
+}
+@keyframes bk-toxic-bubble {
+  from {
+    transform: translateY(10%) scale(0.9);
+  }
+  to {
+    transform: translateY(-14%) scale(1.1);
+  }
+}
+
+/* Ink: a wash spreading on wet paper, then settling. */
+.bk[data-theme='ink'] {
+  background: linear-gradient(150deg, #12141a, #1c1e26 58%, #0e1014);
+}
+.bk[data-theme='ink']::before {
+  background:
+    radial-gradient(30% 62% at 26% 40%, rgba(10, 12, 16, 0.92), transparent 62%),
+    radial-gradient(22% 48% at 44% 62%, rgba(16, 18, 24, 0.8), transparent 60%),
+    radial-gradient(26% 54% at 74% 34%, rgba(12, 14, 20, 0.86), transparent 62%);
+  animation: bk-ink-bleed 13s ease-in-out infinite alternate;
+}
+.bk[data-theme='ink']::after {
+  background: linear-gradient(118deg, transparent 40%, rgba(226, 232, 244, 0.16) 50%, transparent 60%);
+  animation: bk-ink-dry 10s ease-in-out infinite;
+}
+@keyframes bk-ink-bleed {
+  from {
+    transform: scale(0.9) rotate(-1.5deg);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1.12) rotate(1.5deg);
+    opacity: 1;
+  }
+}
+@keyframes bk-ink-dry {
+  0% {
+    transform: translateX(-52%);
+  }
+  65%,
+  100% {
+    transform: translateX(52%);
+  }
+}
+
+/* Chrome: a brushed metal band with the highlight walking along it. */
+.bk[data-theme='chrome'] {
+  background: linear-gradient(100deg, #1a1e26, #3b4250 30%, #14171d 56%, #3a414e 78%, #15181e);
+}
+.bk[data-theme='chrome']::before {
+  background: repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.09) 0 1px, transparent 1px 7px);
+  animation: bk-chrome-brush 22s linear infinite;
+}
+.bk[data-theme='chrome']::after {
+  background: linear-gradient(104deg, transparent 36%, rgba(236, 246, 255, 0.62) 48%, rgba(150, 190, 220, 0.24) 54%, transparent 66%);
+  animation: bk-chrome-flash 6.8s ease-in-out infinite;
+}
+@keyframes bk-chrome-brush {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 120px 0;
+  }
+}
+@keyframes bk-chrome-flash {
+  0% {
+    transform: translateX(-56%);
+  }
+  60%,
+  100% {
+    transform: translateX(56%);
+  }
+}
+
+/* Cosmos: a slow-drifting starfield under two nebulae that change their minds. */
+.bk[data-theme='cosmos'] {
+  background: radial-gradient(120% 130% at 50% 120%, #101a3a, #04060f 70%);
+}
+.bk[data-theme='cosmos']::before {
+  background-image:
+    radial-gradient(1.4px 1.4px at 14% 22%, #fff, transparent 60%),
+    radial-gradient(1.8px 1.8px at 32% 68%, rgba(255, 255, 255, 0.9), transparent 60%),
+    radial-gradient(1.2px 1.2px at 51% 34%, #fff, transparent 60%),
+    radial-gradient(2px 2px at 67% 78%, rgba(220, 236, 255, 0.95), transparent 60%),
+    radial-gradient(1.4px 1.4px at 82% 46%, #fff, transparent 60%),
+    radial-gradient(1.6px 1.6px at 92% 16%, rgba(255, 255, 255, 0.85), transparent 60%);
+  animation: bk-cosmos-drift 30s linear infinite;
+}
+.bk[data-theme='cosmos']::after {
+  background:
+    radial-gradient(44% 70% at 26% 30%, rgba(122, 92, 255, 0.44), transparent 64%),
+    radial-gradient(40% 62% at 74% 62%, rgba(46, 190, 235, 0.34), transparent 62%);
+  animation: bk-cosmos-shift 15s ease-in-out infinite alternate;
+}
+@keyframes bk-cosmos-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-6%, -4%, 0);
+  }
+}
+@keyframes bk-cosmos-shift {
+  from {
+    opacity: 0.45;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+/* Eclipse: the corona breathing around a disc that never moves. */
+.bk[data-theme='eclipse'] {
+  background: radial-gradient(90% 130% at 50% 44%, #1a1330, #05040a 68%);
+}
+.bk[data-theme='eclipse']::before {
+  inset: 16% 34%;
+  border-radius: 50%;
+  background: radial-gradient(50% 50% at 50% 50%, #08070f 62%, rgba(8, 7, 15, 0) 64%);
+  box-shadow:
+    0 0 34px 6px rgba(196, 148, 255, 0.5),
+    inset 0 0 24px rgba(255, 214, 150, 0.35);
+  animation: bk-eclipse-ring 8s ease-in-out infinite alternate;
+}
+.bk[data-theme='eclipse']::after {
+  background: radial-gradient(58% 76% at 50% 44%, rgba(255, 206, 120, 0.28), transparent 58%);
+  animation: bk-eclipse-flare 6.2s ease-in-out infinite alternate;
+}
+@keyframes bk-eclipse-ring {
+  from {
+    transform: scale(0.97);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+@keyframes bk-eclipse-flare {
+  from {
+    opacity: 0.25;
+    transform: scale(1.1);
+  }
+  to {
+    opacity: 0.75;
+    transform: scale(0.92);
+  }
+}
+
+/* Fireworks: three bursts, each arriving at a different beat. */
+.bk[data-theme='fireworks'] {
+  background: linear-gradient(180deg, #07091a, #02030a);
+}
+.bk[data-theme='fireworks']::before {
+  background-image:
+    radial-gradient(circle at 24% 34%, rgba(255, 255, 255, 0.95) 0 1px, transparent 2px),
+    radial-gradient(circle at 62% 22%, rgba(255, 255, 255, 0.9) 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 52%, rgba(255, 255, 255, 0.9) 0 1px, transparent 2px);
+  background-size: 46% 46%, 40% 40%, 52% 52%;
+  background-repeat: no-repeat;
+  animation: bk-fire-petal 4.2s ease-out infinite;
+}
+.bk[data-theme='fireworks']::after {
+  background:
+    radial-gradient(30% 44% at 24% 34%, rgba(255, 122, 170, 0.55), transparent 62%),
+    radial-gradient(26% 38% at 62% 22%, rgba(122, 226, 255, 0.5), transparent 62%),
+    radial-gradient(28% 40% at 82% 52%, rgba(255, 214, 120, 0.5), transparent 62%);
+  animation: bk-fire-glow 4.2s ease-out infinite;
+}
+@keyframes bk-fire-petal {
+  0% {
+    transform: scale(0.1);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  55% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+@keyframes bk-fire-glow {
+  0% {
+    opacity: 0;
+  }
+  16% {
+    opacity: 0.9;
+  }
+  62% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Bubbles: a slow lift of pale spheres over a deep-water blue. */
+.bk[data-theme='bubbles'] {
+  background: linear-gradient(180deg, #04202e, #061019);
+}
+.bk[data-theme='bubbles']::before {
+  background-image:
+    radial-gradient(12px 12px at 18% 88%, rgba(180, 240, 255, 0.28) 56%, rgba(226, 250, 255, 0.55) 62%, transparent 66%),
+    radial-gradient(18px 18px at 44% 96%, rgba(160, 230, 255, 0.22) 56%, rgba(216, 246, 255, 0.48) 62%, transparent 66%),
+    radial-gradient(9px 9px at 68% 90%, rgba(190, 244, 255, 0.3) 56%, rgba(232, 252, 255, 0.6) 62%, transparent 66%),
+    radial-gradient(15px 15px at 88% 94%, rgba(170, 236, 255, 0.24) 56%, rgba(222, 248, 255, 0.5) 62%, transparent 66%);
+  animation: bk-bub-rise 9s linear infinite;
+}
+.bk[data-theme='bubbles']::after {
+  background: radial-gradient(70% 90% at 50% 110%, rgba(96, 214, 255, 0.3), transparent 66%);
+  animation: bk-bub-glow 6.5s ease-in-out infinite alternate;
+}
+@keyframes bk-bub-rise {
+  from {
+    transform: translateY(14%);
+    opacity: 0.35;
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-84%);
+    opacity: 0;
+  }
+}
+@keyframes bk-bub-glow {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 0.9;
+  }
+}
+
+/* ---- the eighteen soft-neon bands -------------------------------------
+   Added for the shelf's second half: pale hues over near-black, and nothing here
+   moves anything but a gradient's position, a transform or an opacity. No filter,
+   no blur, no blend — forty-two tiles in a picker stay cheap on a phone because
+   each one costs two composited layers, the same as the first twenty-four.
+   ------------------------------------------------------------------------ */
+
+/* Mint mist: two pale green blooms breathing over cool water. */
+.bk[data-theme='mint'] {
+  background: linear-gradient(170deg, #041b18, #02090d);
+}
+.bk[data-theme='mint']::before {
+  background:
+    radial-gradient(44% 76% at 26% 24%, rgba(46, 230, 166, 0.34), transparent 62%),
+    radial-gradient(38% 68% at 76% 64%, rgba(126, 242, 198, 0.26), transparent 64%);
+  animation: bk-mint-breathe 19s ease-in-out infinite alternate;
+}
+.bk[data-theme='mint']::after {
+  background-image: repeating-linear-gradient(104deg, rgba(198, 255, 232, 0.1) 0 3px, transparent 3px 34px);
+  animation: bk-mint-drift 26s linear infinite;
+}
+@keyframes bk-mint-breathe {
+  from {
+    transform: translate3d(-4%, -2%, 0) scale(1.02);
+    opacity: 0.72;
+  }
+  to {
+    transform: translate3d(4%, 3%, 0) scale(1.14);
+    opacity: 1;
+  }
+}
+@keyframes bk-mint-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 340px 0;
+  }
+}
+
+/* Lilac haze: a violet fog that thickens and thins by the slow inch. */
+.bk[data-theme='lilac'] {
+  background: linear-gradient(180deg, #150a24, #070311);
+}
+.bk[data-theme='lilac']::before {
+  background:
+    radial-gradient(52% 84% at 34% 30%, rgba(185, 140, 255, 0.32), transparent 64%),
+    radial-gradient(46% 72% at 78% 70%, rgba(255, 154, 231, 0.22), transparent 66%);
+  animation: bk-lilac-roll 23s ease-in-out infinite alternate;
+}
+.bk[data-theme='lilac']::after {
+  background-image: repeating-linear-gradient(180deg, rgba(226, 208, 255, 0.09) 0 2px, transparent 2px 22px);
+  animation: bk-lilac-rise 15s linear infinite;
+}
+@keyframes bk-lilac-roll {
+  from {
+    transform: translate3d(-6%, 2%, 0) scale(1.05);
+  }
+  to {
+    transform: translate3d(6%, -3%, 0) scale(1.16);
+  }
+}
+@keyframes bk-lilac-rise {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 -220px;
+  }
+}
+
+/* Peach glow: warm apricot light coming up through the dusk. */
+.bk[data-theme='peach'] {
+  background: linear-gradient(180deg, #1a0c10, #09040a);
+}
+.bk[data-theme='peach']::before {
+  background:
+    radial-gradient(60% 70% at 50% 104%, rgba(255, 158, 122, 0.44), transparent 64%),
+    radial-gradient(40% 56% at 22% 78%, rgba(255, 196, 140, 0.24), transparent 66%);
+  animation: bk-peach-lift 21s ease-in-out infinite alternate;
+}
+.bk[data-theme='peach']::after {
+  background: radial-gradient(30% 44% at 76% 22%, rgba(255, 214, 170, 0.2), transparent 70%);
+  animation: bk-peach-throb 9s ease-in-out infinite alternate;
+}
+@keyframes bk-peach-lift {
+  from {
+    transform: translate3d(0, 5%, 0) scale(1.02);
+  }
+  to {
+    transform: translate3d(0, -4%, 0) scale(1.12);
+  }
+}
+@keyframes bk-peach-throb {
+  from {
+    opacity: 0.34;
+  }
+  to {
+    opacity: 0.86;
+  }
+}
+
+/* Ice bloom: pale cyan plates sliding under a frozen sheen. */
+.bk[data-theme='ice'] {
+  background: linear-gradient(160deg, #051a24, #030a11);
+}
+.bk[data-theme='ice']::before {
+  background:
+    linear-gradient(122deg, transparent 34%, rgba(159, 232, 255, 0.22) 44%, transparent 54%),
+    linear-gradient(238deg, transparent 40%, rgba(96, 214, 255, 0.18) 50%, transparent 60%);
+  animation: bk-ice-slide 24s ease-in-out infinite alternate;
+}
+.bk[data-theme='ice']::after {
+  background-image:
+    radial-gradient(1.5px 1.5px at 24% 34%, rgba(226, 250, 255, 0.9), transparent 60%),
+    radial-gradient(1.5px 1.5px at 58% 72%, rgba(190, 244, 255, 0.8), transparent 60%),
+    radial-gradient(2px 2px at 82% 26%, rgba(255, 255, 255, 0.75), transparent 60%);
+  animation: bk-ice-sparkle 6s ease-in-out infinite alternate;
+}
+@keyframes bk-ice-slide {
+  from {
+    transform: translate3d(-8%, 3%, 0);
+  }
+  to {
+    transform: translate3d(8%, -3%, 0);
+  }
+}
+@keyframes bk-ice-sparkle {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Mango tide: amber bands rolling sideways like a slow heat wave. */
+.bk[data-theme='mango'] {
+  background: linear-gradient(180deg, #1d1206, #0b0605);
+}
+.bk[data-theme='mango']::before {
+  background:
+    radial-gradient(48% 66% at 20% 30%, rgba(255, 194, 71, 0.34), transparent 62%),
+    radial-gradient(44% 60% at 84% 66%, rgba(255, 140, 66, 0.26), transparent 64%);
+  animation: bk-mango-swell 20s ease-in-out infinite alternate;
+}
+.bk[data-theme='mango']::after {
+  background-image: repeating-linear-gradient(72deg, rgba(255, 226, 160, 0.12) 0 6px, transparent 6px 46px);
+  animation: bk-mango-run 18s linear infinite;
+}
+@keyframes bk-mango-swell {
+  from {
+    transform: translate3d(-4%, -2%, 0) scale(1.04);
+  }
+  to {
+    transform: translate3d(4%, 2%, 0) scale(1.16);
+  }
+}
+@keyframes bk-mango-run {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 460px 0;
+  }
+}
+
+/* Lotus pink: petals dropping through magenta water-light. */
+.bk[data-theme='lotus'] {
+  background: linear-gradient(180deg, #1b0714, #0a040c);
+}
+.bk[data-theme='lotus']::before {
+  background-image:
+    radial-gradient(9px 6px at 16% 8%, rgba(255, 111, 174, 0.5) 56%, transparent 62%),
+    radial-gradient(7px 5px at 42% 20%, rgba(255, 168, 210, 0.44) 56%, transparent 62%),
+    radial-gradient(11px 7px at 68% 6%, rgba(255, 111, 174, 0.38) 56%, transparent 62%),
+    radial-gradient(8px 5px at 88% 16%, rgba(255, 190, 224, 0.42) 56%, transparent 62%);
+  animation: bk-lotus-fall 14s linear infinite;
+}
+.bk[data-theme='lotus']::after {
+  background: radial-gradient(58% 70% at 50% 100%, rgba(255, 92, 170, 0.3), transparent 66%);
+  animation: bk-lotus-glow 11s ease-in-out infinite alternate;
+}
+@keyframes bk-lotus-fall {
+  from {
+    transform: translate3d(0, -18%, 0) rotate(-6deg);
+  }
+  to {
+    transform: translate3d(-6%, 118%, 0) rotate(8deg);
+  }
+}
+@keyframes bk-lotus-glow {
+  from {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
+}
+
+/* Polar night: a low green curtain over a black-blue sky. */
+.bk[data-theme='polar'] {
+  background: linear-gradient(180deg, #03101c, #01070d);
+}
+.bk[data-theme='polar']::before {
+  background:
+    radial-gradient(36% 120% at 26% -6%, rgba(67, 240, 200, 0.4), transparent 60%),
+    radial-gradient(30% 116% at 66% -10%, rgba(96, 180, 255, 0.3), transparent 62%);
+  animation: bk-polar-curtain 25s ease-in-out infinite alternate;
+}
+.bk[data-theme='polar']::after {
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 22%, rgba(255, 255, 255, 0.85), transparent 60%),
+    radial-gradient(1.5px 1.5px at 46% 14%, rgba(214, 244, 255, 0.75), transparent 60%),
+    radial-gradient(1.5px 1.5px at 74% 30%, rgba(255, 255, 255, 0.7), transparent 60%),
+    radial-gradient(2px 2px at 92% 12%, rgba(255, 255, 255, 0.8), transparent 60%);
+  animation: bk-polar-stars 5.5s ease-in-out infinite alternate;
+}
+@keyframes bk-polar-curtain {
+  from {
+    transform: translate3d(-7%, 0, 0) scaleY(1);
+  }
+  to {
+    transform: translate3d(7%, 3%, 0) scaleY(1.2);
+  }
+}
+@keyframes bk-polar-stars {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Siren teal: long waves undulating in a warm-cold sea. */
+.bk[data-theme='siren'] {
+  background: linear-gradient(200deg, #022026, #04101c);
+}
+.bk[data-theme='siren']::before {
+  background:
+    radial-gradient(70% 46% at 30% 34%, rgba(34, 224, 245, 0.32), transparent 64%),
+    radial-gradient(62% 40% at 78% 62%, rgba(64, 255, 190, 0.22), transparent 66%);
+  animation: bk-siren-wave 16s ease-in-out infinite alternate;
+}
+.bk[data-theme='siren']::after {
+  background-image: repeating-linear-gradient(180deg, rgba(190, 250, 255, 0.11) 0 2px, transparent 2px 20px);
+  animation: bk-siren-swell 12s ease-in-out infinite alternate;
+}
+@keyframes bk-siren-wave {
+  from {
+    transform: translate3d(-6%, 3%, 0) skewY(-1.6deg);
+  }
+  to {
+    transform: translate3d(6%, -3%, 0) skewY(1.6deg);
+  }
+}
+@keyframes bk-siren-swell {
+  from {
+    transform: translateY(6px);
+  }
+  to {
+    transform: translateY(-10px);
+  }
+}
+
+/* Dusk violet: the last light sinking behind a low cloud. */
+.bk[data-theme='dusk'] {
+  background: linear-gradient(180deg, #12071f, #05030b 62%, #0a0512);
+}
+.bk[data-theme='dusk']::before {
+  background: radial-gradient(76% 42% at 50% 74%, rgba(139, 108, 255, 0.38), transparent 68%);
+  animation: bk-dusk-sink 22s ease-in-out infinite alternate;
+}
+.bk[data-theme='dusk']::after {
+  background-image: repeating-linear-gradient(96deg, rgba(224, 202, 255, 0.1) 0 4px, transparent 4px 40px);
+  animation: bk-dusk-streak 30s linear infinite;
+}
+@keyframes bk-dusk-sink {
+  from {
+    transform: translate3d(0, -6%, 0) scale(1.04);
+    opacity: 0.7;
+  }
+  to {
+    transform: translate3d(0, 6%, 0) scale(1.14);
+    opacity: 1;
+  }
+}
+@keyframes bk-dusk-streak {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 400px 0;
+  }
+}
+
+/* Cotton candy: pink and blue sugar clouds crossfading. */
+.bk[data-theme='cotton'] {
+  background: linear-gradient(180deg, #1c0f1c, #0b0713);
+}
+.bk[data-theme='cotton']::before {
+  background:
+    radial-gradient(42% 62% at 24% 32%, rgba(255, 179, 217, 0.36), transparent 62%),
+    radial-gradient(40% 58% at 72% 46%, rgba(168, 232, 255, 0.32), transparent 64%);
+  animation: bk-cotton-drift 24s ease-in-out infinite alternate;
+}
+.bk[data-theme='cotton']::after {
+  background: radial-gradient(56% 50% at 50% 96%, rgba(255, 200, 240, 0.22), transparent 68%);
+  animation: bk-cotton-blush 13s ease-in-out infinite alternate;
+}
+@keyframes bk-cotton-drift {
+  from {
+    transform: translate3d(-5%, 2%, 0) scale(1.06);
+  }
+  to {
+    transform: translate3d(5%, -4%, 0) scale(1.18);
+  }
+}
+@keyframes bk-cotton-blush {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+
+/* Honeycomb: amber cells sliding over a warm dark. */
+.bk[data-theme='honey'] {
+  background: linear-gradient(180deg, #1c1204, #0a0604);
+}
+.bk[data-theme='honey']::before {
+  background-image:
+    repeating-linear-gradient(60deg, rgba(255, 180, 67, 0.2) 0 2px, transparent 2px 30px),
+    repeating-linear-gradient(120deg, rgba(255, 200, 100, 0.18) 0 2px, transparent 2px 30px),
+    repeating-linear-gradient(0deg, rgba(255, 170, 60, 0.14) 0 2px, transparent 2px 30px);
+  animation: bk-honey-crawl 28s linear infinite;
+}
+.bk[data-theme='honey']::after {
+  background: radial-gradient(46% 62% at 62% 38%, rgba(255, 196, 88, 0.3), transparent 66%);
+  animation: bk-honey-throb 10s ease-in-out infinite alternate;
+}
+@keyframes bk-honey-crawl {
+  from {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  to {
+    background-position: 300px 120px, -300px 120px, 0 -240px;
+  }
+}
+@keyframes bk-honey-throb {
+  from {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.9;
+    transform: scale(1.1);
+  }
+}
+
+/* Neon ripple: rings widening out of one bright point. */
+.bk[data-theme='ripple'] {
+  background: radial-gradient(120% 130% at 50% 50%, #04151f, #01070d);
+}
+.bk[data-theme='ripple']::before {
+  background-image: repeating-radial-gradient(circle at 50% 50%, rgba(56, 245, 255, 0.28) 0 2px, transparent 2px 46px);
+  animation: bk-ripple-open 9s ease-out infinite;
+}
+.bk[data-theme='ripple']::after {
+  background: radial-gradient(22% 30% at 50% 50%, rgba(126, 246, 255, 0.42), transparent 70%);
+  animation: bk-ripple-core 4.5s ease-in-out infinite alternate;
+}
+@keyframes bk-ripple-open {
+  from {
+    transform: scale(0.55);
+    opacity: 0.95;
+  }
+  to {
+    transform: scale(1.3);
+    opacity: 0.15;
+  }
+}
+@keyframes bk-ripple-core {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Heartbeat: two pink arcs thumping in the dark. */
+.bk[data-theme='pulse'] {
+  background: linear-gradient(180deg, #17060f, #080309);
+}
+.bk[data-theme='pulse']::before {
+  background:
+    radial-gradient(34% 92% at 34% 50%, rgba(255, 93, 143, 0.34), transparent 66%),
+    radial-gradient(34% 92% at 66% 50%, rgba(255, 140, 180, 0.26), transparent 66%);
+  animation: bk-pulse-beat 3.2s ease-in-out infinite;
+}
+.bk[data-theme='pulse']::after {
+  background-image: repeating-linear-gradient(90deg, rgba(255, 190, 220, 0.09) 0 2px, transparent 2px 34px);
+  animation: bk-pulse-slide 20s linear infinite;
+}
+@keyframes bk-pulse-beat {
+  0%,
+  100% {
+    transform: scale(1.02);
+    opacity: 0.5;
+  }
+  18% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  32% {
+    transform: scale(1.04);
+    opacity: 0.7;
+  }
+  46% {
+    transform: scale(1.1);
+    opacity: 0.95;
+  }
+}
+@keyframes bk-pulse-slide {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 340px 0;
+  }
+}
+
+/* Silk veil: soft diagonal sheen drawn slowly across the band. */
+.bk[data-theme='veil'] {
+  background: linear-gradient(150deg, #131022, #070510);
+}
+.bk[data-theme='veil']::before {
+  background: linear-gradient(112deg, rgba(217, 194, 255, 0.06) 20%, rgba(240, 226, 255, 0.22) 46%, rgba(217, 194, 255, 0.06) 72%);
+  animation: bk-veil-drape 14s ease-in-out infinite alternate;
+}
+.bk[data-theme='veil']::after {
+  background-image: repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 14px);
+  animation: bk-veil-shift 26s linear infinite;
+}
+@keyframes bk-veil-drape {
+  from {
+    transform: translate3d(-28%, 0, 0);
+  }
+  to {
+    transform: translate3d(28%, 0, 0);
+  }
+}
+@keyframes bk-veil-shift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 380px 0;
+  }
+}
+
+/* Light beam: pale shafts turning down from one point above. */
+.bk[data-theme='beam'] {
+  background: linear-gradient(180deg, #0a1420, #04080f);
+}
+.bk[data-theme='beam']::before {
+  background: conic-gradient(
+    from 180deg at 50% -12%,
+    transparent 0 12deg,
+    rgba(207, 228, 255, 0.26) 18deg,
+    transparent 26deg 48deg,
+    rgba(180, 214, 255, 0.2) 56deg,
+    transparent 66deg 92deg,
+    rgba(222, 238, 255, 0.22) 100deg,
+    transparent 110deg 360deg
+  );
+  transform-origin: 50% -12%;
+  animation: bk-beam-turn 34s linear infinite;
+}
+.bk[data-theme='beam']::after {
+  background: radial-gradient(40% 30% at 50% 0%, rgba(214, 234, 255, 0.36), transparent 70%);
+  animation: bk-beam-glow 8s ease-in-out infinite alternate;
+}
+@keyframes bk-beam-turn {
+  to {
+    transform: rotate(20deg);
+  }
+}
+@keyframes bk-beam-glow {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Neon horizon: a bright line holding the sky open. */
+.bk[data-theme='horizon'] {
+  background: linear-gradient(180deg, #061020, #02060d 58%, #04212a);
+}
+.bk[data-theme='horizon']::before {
+  background:
+    linear-gradient(180deg, transparent 56%, rgba(38, 240, 208, 0.5) 62%, transparent 68%),
+    radial-gradient(70% 40% at 50% 62%, rgba(38, 240, 208, 0.24), transparent 70%);
+  animation: bk-horizon-breathe 15s ease-in-out infinite alternate;
+}
+.bk[data-theme='horizon']::after {
+  background-image: repeating-linear-gradient(180deg, rgba(190, 250, 240, 0.1) 0 1px, transparent 1px 18px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 62%, #000 78%);
+  mask-image: linear-gradient(180deg, transparent 62%, #000 78%);
+  animation: bk-horizon-run 11s linear infinite;
+}
+@keyframes bk-horizon-breathe {
+  from {
+    transform: translate3d(0, 2%, 0) scaleY(1);
+    opacity: 0.65;
+  }
+  to {
+    transform: translate3d(0, -2%, 0) scaleY(1.12);
+    opacity: 1;
+  }
+}
+@keyframes bk-horizon-run {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 180px;
+  }
+}
+
+/* Koi pond: orange shapes drifting under pale water. */
+.bk[data-theme='koi'] {
+  background: linear-gradient(180deg, #062029, #031016);
+}
+.bk[data-theme='koi']::before {
+  background-image:
+    radial-gradient(26px 11px at 22% 40%, rgba(255, 138, 76, 0.55) 56%, transparent 62%),
+    radial-gradient(20px 9px at 66% 62%, rgba(255, 196, 120, 0.45) 56%, transparent 62%),
+    radial-gradient(16px 8px at 84% 28%, rgba(255, 255, 255, 0.34) 56%, transparent 62%);
+  animation: bk-koi-swim 26s ease-in-out infinite alternate;
+}
+.bk[data-theme='koi']::after {
+  background-image: repeating-radial-gradient(circle at 40% 50%, rgba(180, 244, 255, 0.11) 0 1px, transparent 1px 38px);
+  animation: bk-koi-ripple 12s ease-in-out infinite alternate;
+}
+@keyframes bk-koi-swim {
+  from {
+    transform: translate3d(-10%, 3%, 0) rotate(-2deg);
+  }
+  to {
+    transform: translate3d(10%, -4%, 0) rotate(2deg);
+  }
+}
+@keyframes bk-koi-ripple {
+  from {
+    transform: scale(0.94);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(1.14);
+    opacity: 1;
+  }
+}
+
+/* Crystal grid: pale facets with a shimmer running across them. */
+.bk[data-theme='crystal'] {
+  background: linear-gradient(200deg, #081726, #040a14);
+}
+.bk[data-theme='crystal']::before {
+  background-image:
+    repeating-linear-gradient(128deg, rgba(125, 232, 255, 0.16) 0 2px, transparent 2px 34px),
+    repeating-linear-gradient(52deg, rgba(255, 138, 224, 0.14) 0 2px, transparent 2px 34px);
+  animation: bk-crystal-shift 30s ease-in-out infinite alternate;
+}
+.bk[data-theme='crystal']::after {
+  background: linear-gradient(100deg, transparent 38%, rgba(232, 250, 255, 0.26) 50%, transparent 62%);
+  animation: bk-crystal-shimmer 8s ease-in-out infinite alternate;
+}
+@keyframes bk-crystal-shift {
+  from {
+    transform: translate3d(-5%, -2%, 0);
+  }
+  to {
+    transform: translate3d(5%, 2%, 0);
+  }
+}
+@keyframes bk-crystal-shimmer {
+  from {
+    transform: translate3d(-34%, 0, 0);
+    opacity: 0.3;
+  }
+  to {
+    transform: translate3d(34%, 0, 0);
+    opacity: 0.9;
+  }
+}
+
+/* A band inside a hero sits under the veil, so it may stay brighter than one a
+   member is choosing between. */
+.pf-banner > .bk {
+  opacity: 0.94;
+}
+
+/* ---- the picker ------------------------------------------------------ */
+.bk-preview {
+  position: relative;
+  aspect-ratio: 4 / 1;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+}
+.bk-preview-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bk-preview-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+.bk-preview-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--inner-hi);
+  pointer-events: none;
+}
+.bk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  gap: var(--sp-3);
+}
+.bk-tile {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 5;
+  min-height: 56px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
+}
+/* Forty-two bands is a long shelf, and every one of them animates. A tile the
+   member cannot see yet is skipped rather than composited, which is what keeps
+   the picker as cheap as the twenty-four it grew out of. */
+.bk-grid .bk-tile {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 68px;
+}
+.bk-tile-name {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 14px 9px 5px;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-align: start;
+  background: linear-gradient(180deg, transparent, rgba(3, 4, 8, 0.8));
+}
+.bk-tile-worn {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: 6px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  border: 1px solid var(--accent-line);
+  color: var(--accent-text);
+}
+.bk-tile-worn svg {
+  width: 12px;
+  height: 12px;
+}
+.bk-tile[aria-pressed='true'] {
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 1px var(--accent-line), 0 12px 28px -16px var(--accent-glow);
+}
+/* A locked band is still shown at full colour — that is the point of showing it —
+   but it is dimmed, unclickable and carries the level that would open it. */
+.bk-tile.is-locked {
+  cursor: default;
+  border-color: var(--hairline);
+}
+.bk-tile.is-locked > .bk {
+  opacity: 0.42;
+  filter: saturate(0.7);
+}
+.bk-tile-lock {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  background: var(--glass-strong);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+}
+.bk-tile-lock svg {
+  width: 11px;
+  height: 11px;
+}
+/* Won on the wheel, so it says where it came from as well as that it is open. */
+.bk-tile-mark {
+  position: absolute;
+  top: 6px;
+  inset-inline-start: 6px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  border: 1px solid var(--accent-line);
+  color: var(--accent-text);
+}
+.bk-tile-mark svg {
+  width: 12px;
+  height: 12px;
+}
+@media (hover: hover) {
+  .bk-tile:hover {
+    border-color: var(--accent-line);
+    transform: translateY(-2px);
+    box-shadow: var(--sh-2);
+  }
+}
+.bk-tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 420px) {
+  .bk-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-2);
+  }
+}
+
+/* ---- the title worn next to the name --------------------------------
+   One chip, drawn wherever a name is drawn: the hero, a comment line, the
+   discussion strip and the board. Its colours come from the title itself, so
+   twelve of them read as twelve different ribbons without twelve rules here. */
+.user-title {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 5px;
+  max-width: 20ch;
+  padding: 3px 9px 3px 7px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-title svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.pf-name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.pf-name-row .profile-name {
+  margin: 0;
+}
+/* 32px of glass, 44px of hit area — the same trade as the band's corner button. */
+.pf-title-edit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--glass-strong);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast), transform var(--t-fast);
+}
+.pf-title-edit::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+}
+.pf-title-edit svg {
+  width: 14px;
+  height: 14px;
+}
+.pf-title-edit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  .pf-title-edit:hover {
+    border-color: var(--accent-line);
+    color: var(--accent-text);
+    transform: scale(1.06);
+  }
+}
+
+/* ---- the ladder in the sheet ---------------------------------------- */
+.tl-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.tl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
+}
+.tl-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--text-faint);
+}
+.tl-mark svg {
+  width: 17px;
+  height: 17px;
+}
+.tl-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tl-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 650;
+}
+.tl-hint {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.tl-worn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  margin-inline-start: auto;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--accent-text);
+}
+.tl-worn svg {
+  width: 14px;
+  height: 14px;
+}
+.tl-row[aria-pressed='true'] {
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 1px var(--accent-line), 0 12px 28px -18px var(--accent-glow);
+}
+/* A rung not yet reached: still legible, still labelled, but plainly not a
+   button — and the lock icon says why the row cannot be pressed. */
+.tl-row.is-locked {
+  cursor: default;
+  background: transparent;
+  border-style: dashed;
+  opacity: 0.62;
+}
+@media (hover: hover) {
+  .tl-row:not(.is-locked):hover {
+    border-color: var(--accent-line);
+    transform: translateY(-1px);
+    box-shadow: var(--sh-2);
+  }
+}
+.tl-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 420px) {
+  .tl-row {
+    gap: 10px;
+    padding: 9px 10px;
+  }
+  .user-title {
+    max-width: 15ch;
+  }
 }

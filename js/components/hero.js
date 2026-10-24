@@ -1,12 +1,12 @@
 /**
  * Spotlight banner used on Home.
  *
- * It advances on its own every ~7s with a crossfade, and it also answers to
+ * It advances on its own every 5s with a crossfade, and it also answers to
  * the 44px arrows and the dots. The timer is polite: it holds while a viewer
- * is pointing at the banner or tabbing through it, it holds while the tab is
- * hidden, and it never runs at all under `prefers-reduced-motion`. It is torn
- * down through the view's `onCleanup`, so a route change cannot leave a
- * phantom interval repainting a detached node.
+ * is pointing at the banner, holding a finger on it or tabbing through it, it
+ * holds while the tab is hidden, and it never runs at all under
+ * `prefers-reduced-motion`. It is torn down through the view's `onCleanup`, so
+ * a route change cannot leave a phantom interval repainting a detached node.
  *
  * Vertical scrolling, the wheel and swipes belong to the page — nothing here
  * captures them.
@@ -15,9 +15,10 @@
 import { h, icon } from '../lib/dom.js';
 import { title, titleAlt, formatLabel, yearOf, episodeCount, statusLabel, plainDescription, scoreLabel } from '../lib/util.js';
 import { t, genre } from '../lib/i18n.js';
+import { sfx } from '../lib/sounds.js';
 
 const MAX_SLIDES = 15;
-const ROTATE_MS = 7000;
+const ROTATE_MS = 5000;
 /* A touch longer than --t-slow (420ms) so an outgoing slide is only dropped
    once its fade-out has definitely finished — or, if `transitionend` never
    arrives, once this fallback timer does. */
@@ -50,6 +51,7 @@ export function hero(items, { onCleanup } = {}) {
   let timer = 0;
   let hovering = false;
   let focused = false;
+  let touching = false;
 
   const stage = h('div.hero');
   const dots = h('div.hero-dots', { role: 'tablist', 'aria-label': t('Featured titles') });
@@ -185,15 +187,18 @@ export function hero(items, { onCleanup } = {}) {
      overwritten by a tick that happened to be about to fire. */
   function go(i) {
     show(i);
+    sfx.slide();
     start();
   }
 
   /* ---- auto-rotation ------------------------------------------------- */
   function advance() {
-    // Held: a hidden tab, the pointer resting on the banner, or keyboard focus
-    // inside it. The interval keeps ticking, so it resumes on the next tick.
-    if (document.hidden || hovering || focused) return;
+    // Held: a hidden tab, the pointer resting on the banner, a finger on it,
+    // or keyboard focus inside it. The interval keeps ticking, so it resumes
+    // on the next tick.
+    if (document.hidden || hovering || focused || touching) return;
     show(index + 1);
+    sfx.slide();
   }
 
   function start() {
@@ -231,6 +236,19 @@ export function hero(items, { onCleanup } = {}) {
   wrap.addEventListener('focusout', () => {
     focused = false;
   });
+  /* `pointerenter` is not a promise on a touchscreen — a tap can report it and
+     nothing else — so a finger down holds the banner in its own terms and the
+     countdown gets a full interval once it lifts. */
+  wrap.addEventListener('touchstart', () => {
+    touching = true;
+  }, { passive: true });
+  const lift = () => {
+    if (!touching) return;
+    touching = false;
+    start();
+  };
+  wrap.addEventListener('touchend', lift, { passive: true });
+  wrap.addEventListener('touchcancel', lift, { passive: true });
 
   show(0, { animate: false });
   start();

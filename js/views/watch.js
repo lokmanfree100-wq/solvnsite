@@ -5,7 +5,6 @@ import { detail, episodes as fetchEpisodes } from '../lib/anilist.js';
 import { go, parse } from '../lib/router.js';
 import {
   settings,
-  accentHex,
   getProgress,
   setProgress,
   clearProgress,
@@ -22,13 +21,33 @@ import {
   setNowWatching,
 } from '../lib/store.js';
 import { isSignedIn, tellDiscord } from '../lib/account.js';
-import { title, formatLabel, yearOf, statusLabel, listLabel, STATUS_TONE, plainDescription, countdown, scoreLabel, clamp } from '../lib/util.js';
-import { buildEpisodes, resolveEpisodeCount } from '../lib/embed.js';
-import { FRAME_ALLOW, FRAME_SANDBOX, cooling, failoverMs, markServer, serverName, serverUrl, servers } from '../lib/sources.js';
+import { followTitle } from '../lib/notices.js';
+import { title, formatLabel, yearOf, statusLabel, listLabel, STATUS_TONE, plainDescription, countdown, scoreLabel, clamp, watched } from '../lib/util.js';
+import { buildEpisodes, episodeCountIsGuess, resolveEpisodeCount } from '../lib/embed.js';
+import { FRAME_ALLOW, FRAME_SANDBOX, asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isTrack, markServer, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
+import { accentValue } from '../lib/accent.js';
 import { mediaRow, emptyState, episodeArt } from '../components/media.js';
+import { reportSheet } from '../components/report-issue.js';
 import { commentPanel } from '../components/comments.js';
+import { partyPanel, parseCode } from '../components/party.js';
+import { moveParty } from '../lib/rooms.js';
 import { sheet, toast } from '../lib/ui.js';
 import { t } from '../lib/i18n.js';
+
+/**
+ * What rides along on every link this page makes. A track is only named when it
+ * is not the plain original, and a room only while one is open — so
+ * `…/watch/1535/9` is Japanese with subtitles, `?audio=ar` is the request a
+ * viewer would paste to a friend, and `?room=7K2M4Q` is the seat that friend
+ * lands in. Both have to survive a hop to the next episode or a party started on
+ * Ep 1 ends the moment anybody presses Next.
+ */
+function querySuffix(track, room) {
+  const parts = [];
+  if (isTrack(track) && track !== 'sub') parts.push(`audio=${track}`);
+  if (room) parts.push(`room=${encodeURIComponent(room)}`);
+  return parts.length ? `?${parts.join('&')}` : '';
+}
 
 export function WatchView({ params, route, onCleanup }) {
   const id = params.id;
@@ -41,6 +60,9 @@ export function WatchView({ params, route, onCleanup }) {
      away from the play button. */
   let media = savedMedia(id);
   let total = resolveEpisodeCount(media);
+  /* False for the long runners the catalogue lists without a count. The floor
+     of twelve is then where the rail starts, not where the show ends. */
+  let counted = !episodeCountIsGuess(media);
   let isMovie = media.format === 'MOVIE';
   let eps = isMovie ? [{ number: 1, title: title(media) }] : [];
   const stored = getProgress(id);
@@ -48,13 +70,48 @@ export function WatchView({ params, route, onCleanup }) {
      is a guess, and clamping a shared link like …/24 against a guessed 12 would
      quietly play the wrong episode. `repaint` clamps it for real. */
   let ep = Math.max(1, requestedEp || stored?.episode || 1);
+
+  /* A title the catalogue gives no count for has no ceiling we were told, so
+     none is invented: `hasNext` stays alive past the twelve the rail starts on,
+     and the rail grows to hold whatever episode the viewer reaches. `OPEN_END`
+     is only the arithmetic guard on a hand-typed address. */
+  const OPEN_END = 2000;
+  function hasNext() {
+    return !isMovie && (!counted || ep < total);
+  }
+  function makeRoom(n) {
+    for (let i = eps.length + 1; i <= n; i++) eps.push({ number: i, title: null, thumb: null, desc: null });
+  }
   /* Audio precedence: the link you followed beats where this show left off,
      and both beat the default — so "start new episodes dubbed" finally reaches
-     a title this browser has never opened. */
-  const pref = settings.get('defaultAudio') === 'dub' ? 'dub' : 'sub';
-  const q = route.query.audio === 'dub' || route.query.audio === 'sub' ? route.query.audio : null;
-  let audio = q || stored?.audio || pref;
+     a title this browser has never opened.
+
+     A track the configured servers do not declare is dropped rather than asked
+     for. `ar` sent to a sub-and-dub-only player is not a missing language, it is
+     a black frame with a spinner, so the preference falls back to the original
+     Japanese and says so in the switcher instead. */
+  const offered = tracksOffered();
+  const want = (value) => {
+    const track = asTrack(value);
+    return offered.includes(track) ? track : 'sub';
+  };
+  const pref = want(settings.get('defaultAudio'));
+  const q = isTrack(route.query.audio) ? route.query.audio : null;
+  let audio = want(q || stored?.audio || pref);
   let current = eps.find((e) => e.number === ep) || { number: ep, title: null };
+  /* An invite in the address is a seat, and the card beside the player takes it.
+     Nothing here joins or hosts on its own — that is the panel's decision, and it
+     needs the catalogue title before it can open a room. */
+  let room = parseCode(route.query.room) || null;
+  /** Put or clear the code in the address without losing the track or the scroll. */
+  function setRoomCode(next) {
+    const wanted = next || null;
+    if (wanted === room) return;
+    room = wanted;
+    go(`/watch/${media.id}/${ep}${querySuffix(audio, room)}`, { replace: true, keepScroll: true });
+  }
+  /** Every link this page makes to another episode: same track, same room. */
+  const epHref = (n) => `#/watch/${media.id}/${n}${querySuffix(audio, room)}`;
   /* A metadata answer that lands after the viewer moved on must not paint into
      a route nobody is looking at any more. */
   let live = true;
@@ -65,6 +122,9 @@ export function WatchView({ params, route, onCleanup }) {
   function mark() {
     setProgress(media, ep, { audio });
     setNowWatching(media, ep);
+    /* The host's own position, told to the room. Only ever one write: a guest
+     * calling this does nothing, because there is only one hand on a party. */
+    moveParty({ media: Number(media.id), ep, audio });
   }
   mark();
 
@@ -84,11 +144,57 @@ export function WatchView({ params, route, onCleanup }) {
   const bootSwap = h('button.btn.btn--sm.btn--glass', { onclick: () => advance(true) }, icon('shuffle'), t('Switch server'));
   const bootNext = h('button.btn.btn--sm.btn--glass.hide', { onclick: () => goEp(ep + 1) }, icon('next'), t('Next episode'));
   const bootList = h('a.btn.btn--sm.btn--glass.hide', { href: `#/anime/${id}` }, icon('list'), t('Episode list'));
-  const bootLast = [bootNext, bootList];
+  /* The way out of an episode that does not exist yet: the last one that really
+     does. The number is written when the panel opens, because only the
+     catalogue knows what has aired. */
+  const bootJumpLabel = h('span', {});
+  const bootJump = h('button.btn.btn--sm.btn--glass.hide', {
+    onclick: () => {
+      const last = latestAired();
+      if (last >= 1) goEp(last);
+    },
+  }, icon('play'), bootJumpLabel);
+  /* Following a title is how the bell knows to shout when this episode does
+     air, so the dead end comes with the thing that un-deads it. */
+  const bootNotify = h('button.btn.btn--sm.btn--glass.hide', {
+    onclick: async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try {
+        if (!(await followTitle(Number(media.id), title(media)))) throw new Error('refused');
+        toast(t('We will tell you when it airs.'), { tone: 'ok', iconName: 'bell' });
+        btn.classList.add('is-done');
+      } catch {
+        toast(t('Could not save that.'), { tone: 'bad', iconName: 'alert' });
+      } finally {
+        btn.disabled = false;
+      }
+    },
+  }, icon('bell'), t('Notify me'));
+  const bootWhen = h('span.player-boot-when.hide', {});
+  /* The way out when nothing answered: another server to try. It is a route, not
+     a promise — adding a source is the viewer's call, and only they know which
+     ones their network can reach. */
+  const bootServers = h('a.btn.btn.btn--sm.btn--glass.hide', { href: '#/settings' }, icon('sliders'), t('Add a server'));
+  /* The other half of a silent ladder: the viewer says the episode did not
+     play, and Solvn writes down what it already knows — the title, the number,
+     the track and every address it walked. A report of "some shows don't work"
+     is not actionable; this one is. */
+  const bootReport = h('button.btn.btn--sm.btn--glass.hide', {
+    onclick: () =>
+      reportSheet({
+        where: `${title(media)} · ${t('Episode {n}', { n: ep })} · ${trackName(audio)}`,
+        detail: t('Nothing played on any server for this episode. Servers tried: {list}', {
+          list: pool.map((s) => serverName(s)).join(', '),
+        }),
+      }),
+  }, icon('alert'), t('Report this episode'));
+  const bootLast = [bootNext, bootList, bootServers, bootReport, bootJump, bootNotify];
   const boot = h('div.player-boot', {},
     h('div.player-boot-stack', {},
       bootSpin,
       bootMsg,
+      bootWhen,
       h('div.rowline.wrap', { style: { gap: '8px', justifyContent: 'center' } }, bootRetry, bootSwap, ...bootLast),
     ),
   );
@@ -130,7 +236,7 @@ export function WatchView({ params, route, onCleanup }) {
       episode: ep,
       audio,
       autoNext: settings.get('autoplay'),
-      accent: accentHex(settings.get('accent')),
+      accent: accentValue(),
     });
 
   function arm() {
@@ -139,25 +245,107 @@ export function WatchView({ params, route, onCleanup }) {
   }
 
   /**
-   * Every enabled server on this track, then the same run on the other one.
+   * Every server that carries this track, then the same servers on the other
+   * language, and finally one more attempt at the head of the queue.
    *
    * A server this device just watched fail goes to the back of the queue rather
    * than opening the next episode, so one dead frame does not cost a dozen
    * seconds every time the viewer hops. `ordered` + `pinned` are the case where
    * they picked that server by name: that list is used exactly as given.
+   *
+   * The repeat at the end is not decoration. Most stalls are transient — a slow
+   * CDN edge, an episode still being mirrored, a phone that slept through the
+   * request — and on a one-server install a ladder without it means the player
+   * gives up after a single try.
    */
   function startRun(ordered, pinned) {
     pool = ordered || servers();
     if (serverIdx >= pool.length) serverIdx = 0;
-    const other = audio === 'dub' ? 'sub' : 'dub';
     const order = pool.map((_, i) => i);
     if (!pinned) order.sort((a, b) => Number(cooling(pool[a].id)) - Number(cooling(pool[b].id)));
-    run = [];
-    for (const track of [audio, other]) order.forEach((i) => run.push({ i, track }));
+
+    const lap = (tracks) => {
+      const out = [];
+      for (const track of tracks) {
+        order.forEach((i) => {
+          if (serverTracks(pool[i]).includes(track)) out.push({ i, track });
+        });
+      }
+      return out;
+    };
+
+    /* Japanese subtitles are the floor: the one track a Solvn with nothing added
+       to it can always answer. Already on it, the other chance is English. */
+    let steps = lap([audio, audio === 'sub' ? 'dub' : 'sub']);
+    if (!steps.length) steps = lap(['sub', 'dub']);
+    if (!steps.length) steps = order.map((i) => ({ i, track: 'sub' }));
+
+    /* The address or the preference named a language nothing in this pool
+       carries. Drop to the first rung that exists and let the chip say so,
+       instead of framing a track that was never there. */
+    if (steps[0].track !== audio) setTrack(steps[0].track);
+
+    run = [...steps, steps[0]];
     pos = 0;
   }
 
+  /* ---- the airing lock ---------------------------------------------------
+     AniList names the episode that has *not* aired yet, so Solvn knows which
+     numbers on the rail are fiction. A frame aimed at one of those answers with
+     somebody else's error page — a cross-origin player cannot be told what to
+     hide, and its own "not aired" notice carries its own branding. So the frame
+     is never aimed there: the ladder stops, the overlay says what is true in
+     Solvn's words, and the viewer is handed the last episode that really is out.
+     ------------------------------------------------------------------------ */
+  function nextUnaired() {
+    if (isMovie || media.status !== 'RELEASING') return 0;
+    return Number(media.nextAiringEpisode?.episode) || 0;
+  }
+
+  function latestAired() {
+    const next = nextUnaired();
+    if (!next) return 0;
+    const at = Number(media.nextAiringEpisode?.airingAt) || 0;
+    return at * 1000 > Date.now() ? Math.max(1, next - 1) : next;
+  }
+
+  /** Show Solvn's own notice and take the provider's page back out of the frame. */
+  function showLocked() {
+    clearTimeout(watchdog);
+    watchdog = null;
+    /* A frame that was already pointed at this episode before the catalogue
+       answered is replaced with an empty one: leaving it loaded would keep the
+       other site's error page — and anything still playing out of it — behind our
+       own notice. */
+    if (frame.getAttribute('src')) {
+      const blank = makeFrame();
+      frameBox.replaceChild(blank, frame);
+      frame = blank;
+    }
+    const last = latestAired();
+    bootSpin.classList.add('hide');
+    boot.classList.remove('is-gone');
+    bootLast.forEach((b) => b.classList.add('hide'));
+    /* Retry and Switch server are honest answers to a silent frame and a lie
+       about this one: no server carries an episode that has not been made yet. */
+    bootRetry.classList.add('hide');
+    bootSwap.classList.add('hide');
+    bootMsg.textContent = t('Episode {n} has not aired yet.', { n: ep });
+    bootWhen.classList.remove('hide');
+    bootWhen.textContent = t('Airing {when}', { when: countdown(Number(media.nextAiringEpisode?.airingAt) || 0) });
+    if (last >= 1) {
+      bootJumpLabel.textContent = t('Play episode {n}', { n: last });
+      bootJump.classList.remove('hide');
+    }
+    bootList.classList.remove('hide');
+    if (isSignedIn()) bootNotify.classList.remove('hide');
+  }
+
   function hideBoot() {
+    /* News from a frame the viewer should never have been shown is not news: if
+       the catalogue has since told us this episode is not out, the notice stands. */
+    const next = nextUnaired();
+    if (next && ep >= next) return showLocked();
     clearTimeout(watchdog);
     watchdog = null;
     /* The document arrived. That is the only good news a cross-origin frame can
@@ -189,12 +377,17 @@ export function WatchView({ params, route, onCleanup }) {
 
   /** Point the frame at the current rung of the ladder and restart the clock. */
   function play(msg) {
+    const next = nextUnaired();
+    if (next && ep >= next) return showLocked();
     boot.classList.remove('is-gone');
     bootSpin.classList.remove('hide');
     bootLast.forEach((b) => b.classList.add('hide'));
+    bootRetry.classList.remove('hide');
+    bootSwap.classList.remove('hide');
+    bootWhen.classList.add('hide');
     bootMsg.textContent = msg || t('Warming up the player…');
     loadFrame(frameUrl());
-    frame.title = `${title(media)} — ${t('Episode {n}', { n: ep })} (${audio === 'dub' ? t('Dub') : t('Sub')})`;
+    frame.title = `${title(media)} — ${t('Episode {n}', { n: ep })} (${trackName(audio)})`;
     arm();
   }
 
@@ -205,6 +398,10 @@ export function WatchView({ params, route, onCleanup }) {
      sitting on 0:00 is the second signal, and it is treated the same way: that
      server is dropped to the back of the queue for the rest of the cooldown. */
   function advance(manual) {
+    /* A locked episode is not a dead server, so hopping must not blame one: the
+       notice replaces the ladder instead of walking it. */
+    const next = nextUnaired();
+    if (next && ep >= next) return showLocked();
     clearTimeout(watchdog);
     watchdog = null;
     markServer(pool[serverIdx] && pool[serverIdx].id, false);
@@ -222,36 +419,48 @@ export function WatchView({ params, route, onCleanup }) {
     if (pos > 0) {
       bootMsg.textContent =
         step.track !== run[0].track
-          ? t('Trying the {a} source instead.', { a: step.track === 'dub' ? t('Dub') : t('Sub') })
+          ? t('Trying the {a} source instead.', { a: trackName(step.track) })
           : t('Trying {name}…', { name: serverName(pool[step.i]) });
     }
     loadFrame(frameUrl());
-    frame.title = `${title(media)} — ${t('Episode {n}', { n: ep })} (${audio === 'dub' ? t('Dub') : t('Sub')})`;
+    frame.title = `${title(media)} — ${t('Episode {n}', { n: ep })} (${trackName(audio)})`;
     arm();
   }
 
   function giveUp() {
-    /* Every server on this track and the other one had its turn and said
-       nothing. Marking the whole pool is honest, and it means the next episode
-       starts on a fresh window instead of the same silent ladder. */
-    pool.forEach((s) => markServer(s.id, false));
+    /* Every server had its turn on both tracks and said nothing. Their bans are
+       lifted rather than extended: a pool that goes into the next episode
+       already assumed dead starts that episode at the back of its own queue, and
+       the viewer sees a slower player for a reason they cannot see. */
+    clearCooldowns();
     bootSpin.classList.add('hide');
-    bootMsg.textContent = t('No server answered for this episode.');
-    if (ep < total) bootNext.classList.remove('hide');
+    /* The one meaning this can have, said plainly: a cross-origin player cannot
+       report *why* it showed nothing, and Solvn only indexes titles — it holds no
+       video of its own. So the gap is in what the servers carry, and the moves
+       left are theirs: another server, another episode, another title. */
+    bootMsg.textContent = t('Nothing answered on any server, on either track. This one is not carried yet.');
+    /* The one move that is not "try again later": on a serialised show that is
+       still releasing, an episode the mirrors have not caught up with is common,
+       and the one before it nearly always plays. */
+    const last = latestAired();
+    if (last >= 1 && last < ep) {
+      bootJumpLabel.textContent = t('Play episode {n}', { n: last });
+      bootJump.classList.remove('hide');
+    }
+    bootServers.classList.remove('hide');
+    if (hasNext()) bootNext.classList.remove('hide');
     bootList.classList.remove('hide');
+    bootReport.classList.remove('hide');
   }
 
   /** Change track without remounting the view — the ladder's own step. */
   function setTrack(next) {
     audio = next;
     mark();
-    subBtn.classList.toggle('is-active', audio === 'sub');
-    dubBtn.classList.toggle('is-active', audio === 'dub');
-    subBtn.setAttribute('aria-pressed', String(audio === 'sub'));
-    dubBtn.setAttribute('aria-pressed', String(audio === 'dub'));
+    paintTrackSeg();
     /* A hop nobody clicked still has to be reflected in the address, or a link
        copied from the bar at that moment opens the other track. */
-    go(`/watch/${media.id}/${ep}${audio === 'dub' ? '?audio=dub' : ''}`, { replace: true, keepScroll: true });
+    go(`/watch/${media.id}/${ep}${querySuffix(audio, room)}`, { replace: true, keepScroll: true });
   }
 
   /** Manual choice from the sheet: that server first, the rest as the ladder. */
@@ -267,15 +476,34 @@ export function WatchView({ params, route, onCleanup }) {
   const playerShell = h('div.player-shell', {}, frameBox, h('div.player-bar'));
 
   /* ---------------- controls ---------------- */
-  const subBtn = h('button.is-active', { 'aria-pressed': 'true', onclick: () => swap('sub') }, t('Sub'));
-  const dubBtn = h('button', { 'aria-pressed': 'false', onclick: () => swap('dub') }, t('Dub'));
-  const audioSeg = h('div.seg', { role: 'group', 'aria-label': t('Audio track') }, subBtn, dubBtn);
+  /* Three buttons from the first frame — SUB, EN DUB, AR DUB — plus any other
+     language a configured server declares. The Arabic chip is on the bar because
+     it is the language this site's viewers ask for, and it is honest because a
+     press on a track nothing here carries answers with words and a route, not
+     with a black frame: the built-in player only ever spoke sub and dub, so
+     `audio=ar` is a real request to a real server the viewer has to add. */
+  const audioSeg = h('div.seg.seg--tracks', { role: 'group', 'aria-label': t('Audio track') });
+  function paintTrackSeg() {
+    audioSeg.replaceChildren(
+      ...audioChoices().map((tr) => {
+        const carried = trackCarried(tr);
+        return h(`button${audio === tr ? '.is-active' : ''}`, {
+          'aria-pressed': String(audio === tr),
+          title: carried ? trackName(tr) : t('{track} — no server here carries it yet', { track: trackName(tr) }),
+          'aria-label': trackName(tr),
+          class: carried ? null : 'is-uncarried',
+          onclick: () => swap(tr),
+        }, trackChip(tr), carried ? null : icon('lock'));
+      }),
+    );
+  }
+  paintTrackSeg();
 
   /* Which server is on screen right now, and a way to pick another one without
      waiting for the silence clock. */
   const serverChip = h('button.btn.btn--sm.btn--glass.q-chip', {
     'aria-label': t('Streaming server'),
-    onclick: openServerSheet,
+    onclick: () => openServerSheet(),
   }, icon('cast'), h('span', {}, serverName(pool[serverIdx])));
 
   /* A frame can load its page and still show nothing but 0:00, and a
@@ -287,7 +515,17 @@ export function WatchView({ params, route, onCleanup }) {
     onclick: () => advance(true),
   }, icon('refresh'), h('span', {}, t('Not playing?')));
 
-  function openServerSheet() {
+  /**
+   * The server sheet.
+   *
+   * `wanted` is the track a chip asked for and nothing carried — naming it here
+   * is what lets the sheet say which of these addresses would answer it instead
+   * of listing servers that all play the same two languages. Each row prints the
+   * tracks its server actually declares, so a server that speaks Arabic is
+   * recognisable before it is picked rather than after it fails.
+   */
+  function openServerSheet(wanted) {
+    const ask = isTrack(wanted) ? wanted : null;
     const pick = h('div.stack');
     const paint = () => {
       /* A server can be added in Settings while this page sits open. Rebuilding
@@ -299,24 +537,34 @@ export function WatchView({ params, route, onCleanup }) {
       startRun([onScreen, ...all.filter((s) => s !== onScreen)], true);
       serverIdx = 0;
       pick.replaceChildren(
-        ...pool.map((s, i) =>
-          h(`button.check${i === serverIdx ? '.is-on' : ''}`, {
-            style: { height: '46px', padding: '0 14px', fontSize: '14px' },
+        ...pool.map((s, i) => {
+          const carried = serverTracks(s);
+          const answers = !ask || carried.includes(ask);
+          return h(`button.check${i === serverIdx ? '.is-on' : ''}`, {
+            style: { height: '46px', padding: '0 14px', fontSize: '14px', width: '100%' },
             type: 'button',
             'aria-pressed': String(i === serverIdx),
             onclick: () => {
               chooseServer(s);
               api.close();
             },
-          }, i === serverIdx ? icon('check') : null, h('span', {}, serverName(s))),
-        ),
+          },
+            i === serverIdx ? icon('check') : null,
+            h('span.grow', { style: { textAlign: 'start' } }, serverName(s)),
+            h('span.muted', {
+              style: { fontSize: '11.5px', letterSpacing: '0.04em', color: answers ? null : 'var(--warn)' },
+            }, carried.map(trackChip).join(' · ')),
+          );
+        }),
         h('a.btn.btn--sm', { href: '#/settings' }, icon('sliders'), t('Add another server in Settings')),
       );
     };
     paint();
     const api = sheet({
       heading: t('Streaming server'),
-      sub: t('If the video stalls, pick the next one here or just wait — Solvn moves to it by itself.'),
+      sub: ask
+        ? t('No server here carries {track} yet. These are the languages each one plays.', { track: trackName(ask) })
+        : t('If the video stalls, pick the next one here or just wait — Solvn moves to it by itself.'),
       width: 400,
       render: () => pick,
     });
@@ -417,7 +665,7 @@ export function WatchView({ params, route, onCleanup }) {
               qChip.replaceChildren(icon('sliders'), h('span', {}, qualityLabel(q.id)));
               toast(t('Saved as {label}', { label: q.label }), { tone: 'ok', iconName: 'check' });
             },
-          }, q.id === cur ? icon('check') : null, h('span', {}, q.label), q.id === '2160p' ? h('span.badge', {}, t('4K')) : null),
+          }, q.id === cur ? icon('check') : null, h('span', {}, q.label), q.id === '2160p' ? h('span.badge.badge--4k', {}, t('4K')) : null),
         ),
       );
     };
@@ -431,6 +679,8 @@ export function WatchView({ params, route, onCleanup }) {
           h('p', { style: { fontSize: '13.5px', color: 'var(--text-dim)', lineHeight: '1.6' } },
             t('The player streams what its source actually has, so this is the quality it aims for rather than a guarantee. Most anime caps out at 1080p and 4K is rare.')),
           grid,
+          h('p.faint', { style: { fontSize: '12.5px', lineHeight: '1.55' } },
+            t('Your choice is remembered and used for every episode you open.')),
         ),
     });
   }
@@ -440,10 +690,10 @@ export function WatchView({ params, route, onCleanup }) {
     bar.replaceChildren(
       ...[
         isMovie ? null : h('button.btn.btn--sm.btn--icon', { 'aria-label': t('Previous episode'), class: ep <= 1 ? 'is-disabled' : '', onclick: () => goEp(ep - 1) }, icon('prev', { cls: 'flip' })),
-        isMovie ? null : h('button.btn.btn--sm.btn--icon', { 'aria-label': t('Next episode'), class: ep >= total ? 'is-disabled' : '', onclick: () => goEp(ep + 1) }, icon('next', { cls: 'flip' })),
-        audioSeg,
+        isMovie ? null : h('button.btn.btn--sm.btn--icon', { 'aria-label': t('Next episode'), class: hasNext() ? '' : 'is-disabled', onclick: () => goEp(ep + 1) }, icon('next', { cls: 'flip' })),
+        offered.length > 1 ? audioSeg : null,
         h('div.now-playing', {},
-          h('div.np-1', {}, isMovie ? t('Film') : t('Episode {ep} of {total}', { ep, total })),
+          h('div.np-1', {}, isMovie ? t('Film') : counted ? t('Episode {ep} of {total}', { ep, total }) : t('Episode {n}', { n: ep })),
           h('div.np-2', {}, current.title || title(media)),
         ),
         h('span.rowline', { style: { gap: '10px' } },
@@ -547,7 +797,7 @@ export function WatchView({ params, route, onCleanup }) {
       list.append(
         h(
           `a.ep${e.number === ep ? '.is-current' : ''}${watched ? '.is-watched' : ''}${locked ? '.is-locked' : ''}`,
-          { href: locked ? null : `#/watch/${media.id}/${e.number}${audio === 'dub' ? '?audio=dub' : ''}`, 'aria-disabled': String(locked) },
+          { href: locked ? null : epHref(e.number), 'aria-disabled': String(locked) },
           h('div.ep-num.tnum', {}, locked ? icon('clock') : String(e.number)),
           h('div.ep-body', {},
             h('div.ep-title.clamp-2', { style: { fontSize: '13.5px' } }, e.title || t('Episode {n}', { n: e.number })),
@@ -572,13 +822,16 @@ export function WatchView({ params, route, onCleanup }) {
   }
 
   function paintUpNext() {
-    if (isMovie || ep >= total) return upNextHost.replaceChildren();
+    /* Hidden rather than guessed when no count came back: the Next button will
+       keep walking, but nothing here promises a card for an episode nobody has
+       confirmed exists. */
+    if (isMovie || !counted || !hasNext()) return upNextHost.replaceChildren();
     const n = eps.find((e) => e.number > ep);
     upNextHost.replaceChildren(
       h('div.panel-card', {},
         h('div.panel-head', {}, icon('next', { cls: 'flip' }), h('h3.grow', {}, t('Up next'))),
         n
-          ? h('a.up-next', { href: `#/watch/${media.id}/${n.number}${audio === 'dub' ? '?audio=dub' : ''}` },
+          ? h('a.up-next', { href: epHref(n.number) },
               h('div.up-next-art', {}, h('span.art-ph', {}, icon('film')), episodeArt(media, n, { eager: true })),
               h('div.grow', {},
                 h('div', { style: { fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13.5px' } }, n.title || t('Episode {n}', { n: n.number })),
@@ -613,6 +866,39 @@ export function WatchView({ params, route, onCleanup }) {
     recsHost.replaceChildren(...parts);
   }
 
+  /* ---------------- watch together ---------------- */
+  /**
+   * Move this page to wherever the room is. A guest following the host and the
+   * Catch up button both land here, and both go through the view's own moves —
+   * `swap` so an uncarried track still answers with words instead of a black
+   * frame, `goEp` so the progress, the rail and the address all follow.
+   */
+  function goToRoom(target) {
+    const wanted = clamp(Math.max(1, Number(target.ep) || 1), 1, OPEN_END);
+    const nextAudio = isTrack(target.audio) ? target.audio : audio;
+    const otherTitle = Number(target.media) && String(target.media) !== String(media.id);
+    if (otherTitle) {
+      /* The host jumped to another show. That is a different page with a
+         different catalogue, so the whole link goes — with the room still riding
+         in it, or the party ends at the first scene change. */
+      go(`/watch/${target.media}/${wanted}${querySuffix(nextAudio, room)}`);
+      return;
+    }
+    if (nextAudio !== audio) swap(nextAudio);
+    if (wanted !== ep) goEp(wanted);
+  }
+
+  const partyCard = partyPanel({
+    code: room,
+    where: () => ({ media: Number(media.id), ep, audio, label: title(media) }),
+    moveTo: goToRoom,
+    /* The countdown is absolute server time, so both ends reload their own frame
+       on it. That is the whole of the sync Solvn can honestly deliver. */
+    restart: () => play(t('Starting together…')),
+    onCode: setRoomCode,
+    onCleanup,
+  });
+
   /* ---------------- assembly ---------------- */
   const wrap = h('div.watch', {},
     h('div.rowline', { style: { padding: '10px 0 4px' } },
@@ -623,7 +909,7 @@ export function WatchView({ params, route, onCleanup }) {
     playerShell,
     h('div.watch-layout', {},
       infoHost,
-      h('div.side-panel', {}, upNextHost, railCard, commentPanel(media, ep, { onCleanup })),
+      h('div.side-panel', {}, upNextHost, railCard, partyCard, commentPanel(media, ep, { onCleanup })),
     ),
     recsHost,
   );
@@ -651,8 +937,10 @@ export function WatchView({ params, route, onCleanup }) {
      answers, this device's own records are still enough to fill the rail. */
   function repaint(asked) {
     total = resolveEpisodeCount(media);
+    counted = !episodeCountIsGuess(media);
     isMovie = media.format === 'MOVIE';
-    ep = clampEp(asked, total);
+    ep = counted ? clampEp(asked, total) : clamp(Math.max(1, asked), 1, OPEN_END);
+    if (!counted) makeRoom(ep);
     current = eps.find((e) => e.number === ep) || { number: ep, title: null };
     start = blockOf(ep);
     mark();
@@ -663,21 +951,30 @@ export function WatchView({ params, route, onCleanup }) {
     paintRecs();
     paintBar();
     syncTitle();
-    if (ep !== asked) play(); // the link asked for an episode that does not exist
+    /* The catalogue answers after the player is already on the page, so this is
+       the moment a locked episode can be discovered mid-flight. */
+    const next = nextUnaired();
+    if (next && ep >= next) showLocked();
+    else if (ep !== asked) play(); // the link asked for an episode that does not exist
   }
 
   async function hydrate() {
     const asked = ep;
     let learned = false;
     try {
-      const record = await detail(id);
+      /* Both clocks matter here: the player is already on the page and the
+         title came with the link that opened it, so metadata is a refinement.
+         A request that hangs would otherwise keep `repaint()` from ever
+         running, and a watch page that never repaints has no episode list, no
+         server bar and no next-episode button. */
+      const record = await watched(detail(id));
       if (!live) return;
       if (record?.id) {
         if (record.type !== 'ANIME') return go(`/anime/${id}`);
         media = record;
         learned = true;
       }
-      eps = media.format === 'MOVIE' ? [{ number: 1, title: title(media) }] : await loadEpisodes(media);
+      eps = media.format === 'MOVIE' ? [{ number: 1, title: title(media) }] : await watched(loadEpisodes(media));
     } catch {
       if (!live) return;
       eps = buildEpisodes(media, media.streamingEpisodes || []);
@@ -693,14 +990,28 @@ export function WatchView({ params, route, onCleanup }) {
 
   /* ---------------- navigation helpers ---------------- */
   function goEp(n) {
-    const target = clampEp(n, total);
+    const target = counted ? clampEp(n, total) : clamp(Math.max(1, n), 1, OPEN_END);
     if (target === ep) return;
+    if (!counted) makeRoom(target);
     setProgress(media, target, { audio });
-    go(`/watch/${media.id}/${target}${audio === 'dub' ? '?audio=dub' : ''}`);
+    go(`/watch/${media.id}/${target}${querySuffix(audio, room)}`);
   }
 
   function swap(nextAudio) {
     if (nextAudio === audio) return;
+    /* A language nothing on this device carries is not a track to load — it is a
+       thing to explain, and a way to get it. The frame stays on what is already
+       playing, the viewer is told plainly which chip they pressed and why it is
+       quiet, and the sheet that opens is the one with every server and the
+       Settings route in it. So the button is never dead: it answers. */
+    if (!trackCarried(nextAudio)) {
+      toast(t('No server here carries {track} yet. Add one that does and this button plays it.', { track: trackName(nextAudio) }), {
+        tone: 'info',
+        iconName: 'info',
+      });
+      openServerSheet(nextAudio);
+      return;
+    }
     /* setTrack puts the new track in the address bar for us. The viewer picked a
        track, so the ladder restarts on it rather than finishing a run that was
        built for the other one. */
@@ -728,7 +1039,7 @@ function announce(media, ep, audio) {
   const line =
     media.format === 'MOVIE'
       ? `${t('Watching {title}', { title: name })} · ${t('Film')} · Solvn`
-      : `${t('Watching {title}', { title: name })} · ${t('Ep {n}', { n: ep })}${audio === 'dub' ? ` · ${t('Dub')}` : ` · ${t('Sub')}`} · Solvn`;
+      : `${t('Watching {title}', { title: name })} · ${t('Ep {n}', { n: ep })} · ${trackChip(audio)} · Solvn`;
   tellDiscord({ url: hook, text: line }).catch(() => {});
 }
 
