@@ -1158,5 +1158,6 @@ export function ArenaView({ onCleanup }) {
     closeStage();
     document.removeEventListener('kitsune:account', onAccount);
   });
+  wrap.append(head, lineupRow, list);
   return wrap;
 }
