@@ -1437,3 +1437,472 @@
     transition: none;
   }
 }
+
+/* ==========================================================================
+   The arena's atmosphere and impact layer.
+
+   The board sits in a lit room rather than a black panel: a horizon glow, a
+   perspective floor and a vignette, each one static, so nothing here animates
+   on a loop. Every moving pixel belongs to an event — a hit, a brace, a heal, a
+   result — and every one is transform, opacity or filter, never layout.
+   ========================================================================== */
+
+.bt-scrim {
+  background:
+    radial-gradient(70% 55% at 50% 0%, rgb(139 108 255 / 0.18), transparent 68%),
+    radial-gradient(42% 40% at 12% 18%, rgb(96 62 190 / 0.16), transparent 72%),
+    radial-gradient(42% 40% at 88% 12%, rgb(64 120 210 / 0.12), transparent 72%),
+    var(--scrim);
+}
+.bt-stage {
+  border-color: color-mix(in srgb, var(--accent-line) 52%, var(--line-strong));
+  background:
+    radial-gradient(120% 85% at 50% -12%, rgb(139 108 255 / 0.16), transparent 62%),
+    radial-gradient(60% 46% at 10% 0%, rgb(255 255 255 / 0.055), transparent 62%),
+    radial-gradient(60% 46% at 90% 0%, rgb(255 255 255 / 0.04), transparent 62%),
+    linear-gradient(180deg, rgb(26 24 35 / 0.97), rgb(8 9 12 / 0.99));
+  box-shadow:
+    0 32px 90px -36px #000,
+    0 0 70px -34px var(--accent-glow),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+.bt-head {
+  position: relative;
+  padding-bottom: var(--sp-2);
+}
+.bt-head::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-line), transparent);
+}
+.bt-head .ar-clock {
+  background: rgb(6 6 10 / 0.62);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 0 18px -10px var(--accent-glow);
+}
+
+/* The floor is a light pool with a perspective grid, painted behind the cards.
+   It is a real child so the lines, the spark field and the damage numbers keep
+   their own stacking order above it. */
+.bt-board {
+  isolation: isolate;
+}
+.bt-floor {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  pointer-events: none;
+  background:
+    radial-gradient(58% 44% at 50% 52%, var(--accent-wash), transparent 72%),
+    linear-gradient(180deg, transparent 48%, rgb(139 108 255 / 0.1) 76%, transparent 98%);
+}
+.bt-floor::before {
+  content: '';
+  position: absolute;
+  inset-inline: -12%;
+  bottom: -4%;
+  height: 64%;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.085) 0 1px, transparent 1px 46px),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.06) 0 1px, transparent 1px 30px);
+  transform: perspective(520px) rotateX(58deg);
+  transform-origin: 50% 100%;
+  opacity: 0.55;
+  -webkit-mask-image: radial-gradient(62% 82% at 50% 82%, #000 28%, transparent 78%);
+  mask-image: radial-gradient(62% 82% at 50% 82%, #000 28%, transparent 78%);
+}
+.bt-floor::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(68% 62% at 50% 46%, transparent 54%, rgb(0 0 0 / 0.4) 100%);
+}
+.bt-line {
+  position: relative;
+  z-index: 1;
+}
+.bt-board .ar-spark-layer {
+  z-index: 2;
+}
+
+/* ---- damage and clash --------------------------------------------------- */
+
+.bt-dmg {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 4.4vw, 32px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow:
+    0 2px 0 rgb(0 0 0 / 0.72),
+    0 0 20px var(--accent-glow);
+  animation: bt-dmg 900ms cubic-bezier(0.18, 0.7, 0.3, 1) forwards;
+}
+.bt-dmg.is-strong {
+  color: #ffd76a;
+  font-size: clamp(27px, 5.4vw, 40px);
+  text-shadow:
+    0 2px 0 rgb(64 22 0 / 0.8),
+    0 0 28px rgb(255 180 70 / 0.62);
+}
+.bt-dmg.is-heal {
+  color: #7ff0b6;
+  text-shadow:
+    0 2px 0 rgb(0 40 20 / 0.7),
+    0 0 22px rgb(90 209 154 / 0.55);
+}
+@keyframes bt-dmg {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -82%) scale(1.14);
+  }
+  52% {
+    transform: translate(-50%, -120%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -190%) scale(0.94);
+  }
+}
+
+.bt-clash {
+  position: absolute;
+  z-index: 3;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  pointer-events: none;
+  animation: bt-clash 460ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+.bt-clash::before,
+.bt-clash::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 84px;
+  height: 2px;
+  margin: -1px 0 0 -42px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #fff 46%, #fff 54%, transparent);
+  box-shadow: 0 0 14px var(--accent-glow);
+  transform: rotate(-42deg);
+}
+.bt-clash::after {
+  width: 60px;
+  margin-left: -30px;
+  opacity: 0.78;
+  transform: rotate(46deg);
+}
+.bt-clash.is-strong {
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+}
+.bt-clash.is-strong::before {
+  width: 112px;
+  height: 3px;
+  margin-left: -56px;
+}
+@keyframes bt-clash {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-8deg);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1.08) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.32) rotate(4deg);
+  }
+}
+
+/* The victim takes the blow away from the strike, then settles. */
+.bt-fighter.is-hit > .ar-fighter-card {
+  animation: bt-hit 320ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes bt-hit {
+  0% {
+    transform: translate(0, 0) rotate(0) scale(1);
+    filter: brightness(1);
+  }
+  32% {
+    transform: translate(0, 5px) rotate(-1.2deg) scale(0.982);
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0) scale(1);
+    filter: brightness(1);
+  }
+}
+.bt-fighter.is-hit .ar-hp {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.55),
+    0 0 14px -2px rgb(255 255 255 / 0.6);
+}
+
+/* The fill snaps to the new figure and a pale ghost under it catches up a beat
+   later, so the eye sees exactly how much came off rather than only the result. */
+.bt-fighter .ar-hp {
+  position: relative;
+}
+.bt-hp-ghost {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(255 255 255 / 0.46);
+  transform-origin: left center;
+  transition: transform 520ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  pointer-events: none;
+}
+.bt-line:last-child .bt-hp-ghost {
+  transform-origin: right center;
+}
+[dir='rtl'] .bt-hp-ghost {
+  transform-origin: right center;
+}
+[dir='rtl'] .bt-line:last-child .bt-hp-ghost {
+  transform-origin: left center;
+}
+.bt-fighter .ar-hp-fill {
+  position: relative;
+  z-index: 1;
+}
+
+/* Brace and Guard are not hits, so they shake nothing: the frame rings and
+   warms instead, and a heal prints above it in green. */
+.bt-fighter.is-bracing .ar-fighter-card {
+  animation: bt-brace 460ms ease-out;
+}
+@keyframes bt-brace {
+  40% {
+    box-shadow:
+      0 0 0 2px var(--accent-line),
+      0 0 32px -10px var(--accent-glow);
+  }
+}
+.bt-fighter.is-healing .ar-fighter-card {
+  animation: bt-heal 560ms ease-out;
+}
+@keyframes bt-heal {
+  40% {
+    box-shadow:
+      0 0 0 2px rgb(127 240 182 / 0.55),
+      0 0 30px -10px rgb(90 209 154 / 0.6);
+    filter: brightness(1.18) saturate(1.15);
+  }
+}
+
+/* ---- the three moves --------------------------------------------------- */
+
+.bt-actions {
+  padding: 6px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.045), rgb(255 255 255 / 0.012));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+.bt-action {
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, rgb(35 32 48 / 0.92), rgb(14 13 21 / 0.92));
+  box-shadow:
+    0 8px 20px -16px #000,
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+  transition:
+    transform 140ms var(--ease),
+    border-color 160ms var(--ease),
+    box-shadow 160ms var(--ease);
+}
+.bt-action:not(:disabled):active {
+  transform: translateY(1px) scale(0.985);
+}
+@media (hover: hover) {
+  .bt-action:not(:disabled):hover {
+    border-color: var(--accent-line);
+    box-shadow:
+      0 0 24px -12px var(--accent-glow),
+      inset 0 1px 0 rgb(255 255 255 / 0.08);
+  }
+}
+
+/* ---- the manga introduction -------------------------------------------- */
+
+.bt-intro {
+  overflow-y: auto;
+  background:
+    radial-gradient(62% 58% at 50% 46%, rgb(139 108 255 / 0.14), transparent 72%),
+    linear-gradient(180deg, rgb(12 11 17 / 0.97), rgb(8 9 11 / 0.995));
+}
+.bt-intro::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 0deg at 50% 50%,
+    rgb(255 255 255 / 0.055) 0deg 1deg,
+    transparent 1deg 10deg
+  );
+  -webkit-mask-image: radial-gradient(closest-side, transparent 40%, #000 86%);
+  mask-image: radial-gradient(closest-side, transparent 40%, #000 86%);
+  opacity: 0.62;
+}
+.bt-intro > * {
+  position: relative;
+  z-index: 1;
+}
+.bt-intro .ar-intro-vs {
+  box-shadow:
+    0 0 34px -10px var(--accent-glow),
+    inset 0 0 14px -6px var(--accent-glow);
+  animation: bt-vs 900ms var(--ease-out-back) both;
+}
+@keyframes bt-vs {
+  0% {
+    opacity: 0;
+    transform: scale(0.62) rotate(-14deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.1) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+.bt-bubble {
+  position: relative;
+  width: min(32ch, 100%);
+  margin-top: 4px;
+  padding: 10px 13px;
+  border: 2px solid #14111c;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 1px 1px, rgb(20 17 28 / 0.12) 1px, transparent 1.7px) 0 0 / 7px 7px,
+    linear-gradient(180deg, #ffffff, #ece7fa);
+  color: #14111c;
+  box-shadow:
+    0 12px 26px -14px rgb(0 0 0 / 0.9),
+    inset 0 2px 0 rgb(255 255 255 / 0.35);
+  animation: bt-bubble-in 320ms var(--ease-out-back) both;
+}
+.bt-bubble::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  inset-inline-start: 20px;
+  width: 14px;
+  height: 14px;
+  background: #f7f4ff;
+  border-inline-start: 2px solid #14111c;
+  border-block-start: 2px solid #14111c;
+  transform: rotate(45deg);
+}
+.ar-intro-side.is-right .bt-bubble::before {
+  inset-inline-start: auto;
+  inset-inline-end: 20px;
+}
+.bt-bubble .ar-taunt {
+  max-width: none;
+  margin: 0;
+  color: #14111c;
+  font-size: 13.5px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: 0.005em;
+  animation: none;
+}
+@keyframes bt-bubble-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.bt-intro-side .ar-intro-names b {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+/* ---- the result --------------------------------------------------------- */
+
+.bt-result {
+  animation: bt-result-in 360ms var(--ease-out-back);
+}
+@keyframes bt-result-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.ar-stage.is-win .bt-result {
+  background:
+    radial-gradient(80% 120% at 50% 0%, rgb(90 209 154 / 0.12), transparent 68%),
+    var(--surface-2);
+  box-shadow: 0 0 44px -24px rgb(90 209 154 / 0.6);
+}
+.ar-stage.is-loss .bt-result {
+  background:
+    radial-gradient(80% 120% at 50% 0%, rgb(240 138 138 / 0.1), transparent 68%),
+    var(--surface-2);
+}
+
+/* ---- shapes ------------------------------------------------------------- */
+@media (max-width: 620px) {
+  .bt-bubble {
+    width: 100%;
+    padding: 8px 10px;
+  }
+  .bt-bubble .ar-taunt {
+    font-size: 12px;
+  }
+  .bt-dmg {
+    font-size: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bt-dmg,
+  .bt-clash,
+  .bt-bubble,
+  .bt-intro .ar-intro-vs,
+  .bt-result {
+    animation: none;
+  }
+  .bt-fighter.is-hit > .ar-fighter-card,
+  .bt-fighter.is-bracing .ar-fighter-card,
+  .bt-fighter.is-healing .ar-fighter-card {
+    animation: none;
+  }
+  .bt-hp-ghost {
+    transition: none;
+  }
+  .bt-action {
+    transition: none;
+  }
+}

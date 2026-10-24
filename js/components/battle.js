@@ -78,6 +78,40 @@ function sparks(layer, x, y, strong) {
   setTimeout(() => bits.remove(), 640);
 }
 
+/** Where a tile sits inside the spark field, as a percentage pair. */
+function pointIn(layer, el) {
+  if (!el) return null;
+  const box = layer.getBoundingClientRect();
+  const rect = el.getBoundingClientRect();
+  if (!box.width || !box.height) return null;
+  return {
+    x: ((rect.left + rect.width / 2 - box.left) / box.width) * 100,
+    y: ((rect.top + rect.height / 2 - box.top) / box.height) * 100,
+  };
+}
+
+/** The number a hit prints: it lifts off the card and fades, so a glance at the
+    board carries the damage without reading the call sheet. `aria-hidden`
+    because the same figure is already in the log for a screen reader. */
+function damagePop(layer, at, text, { strong = false, heal = false } = {}) {
+  if (reduced() || !at) return;
+  const tag = h(`span.bt-dmg${strong ? '.is-strong' : ''}${heal ? '.is-heal' : ''}`, { 'aria-hidden': 'true' }, text);
+  tag.style.left = `${at.x}%`;
+  tag.style.top = `${at.y}%`;
+  layer.append(tag);
+  setTimeout(() => tag.remove(), 900);
+}
+
+/** The crossing slash where the blade met the card. */
+function clashBurst(layer, at, strong) {
+  if (reduced() || !at) return;
+  const burst = h(`span.bt-clash${strong ? '.is-strong' : ''}`, { 'aria-hidden': 'true' });
+  burst.style.left = `${at.x}%`;
+  burst.style.top = `${at.y}%`;
+  layer.append(burst);
+  setTimeout(() => burst.remove(), 520);
+}
+
 let liveStage = null;
 
 /**
@@ -99,6 +133,7 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
   function fighterTile(f, side) {
     const shown = displayCard(f);
     const r = rarityOf(shown.lv);
+    const ghost = h('i.bt-hp-ghost');
     const bar = h('i.ar-hp-fill');
     const num = h('span.ar-hp-num.tnum', {}, String(f.hp));
     const shield = h('span.bt-shield', { hidden: true }, icon('shield'), h('span', {}, t('Braced')));
@@ -107,13 +142,14 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
       { 'data-id': f.id },
       h('div.ar-fighter-card', {}, gachaCard(shown, { variant: 'tile', eager: false })),
       shield,
-      h('div.ar-hp', { role: 'presentation' }, bar),
+      h('div.ar-hp', { role: 'presentation' }, ghost, bar),
       num,
     );
     tile.style.setProperty('--ga', r.a);
     tile.style.setProperty('--gb', r.b);
     tile.style.setProperty('--glow', r.glow);
     tile.__bar = bar;
+    tile.__ghost = ghost;
     tile.__num = num;
     tile.__shield = shield;
     tile.__fighter = f;
@@ -159,14 +195,14 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
       ),
       h('div.bt-head-end', {}, clock, closeBtn),
     ),
-    h('div.ar-board.bt-board', {}, mineLine, layer, rivalLine),
+    h('div.ar-board.bt-board', {}, h('div.bt-floor', { 'aria-hidden': 'true' }), mineLine, layer, rivalLine),
     h('div.bt-feed', {}, log, turnLine),
     result,
   );
 
-  const strikeBtn = h('button.btn.bt-action', { type: 'button' }, icon('sword'), h('span', {}, t('Strike')));
-  const braceBtn = h('button.btn.bt-action', { type: 'button' }, icon('shield'), h('span', {}, t('Brace')));
-  const abilityBtn = h('button.btn.bt-action', { type: 'button' }, icon('bolt'), h('span', {}, t('Ability')));
+  const strikeBtn = h('button.btn.bt-action', { type: 'button', 'data-sfx': 'none' }, icon('sword'), h('span', {}, t('Strike')));
+  const braceBtn = h('button.btn.bt-action', { type: 'button', 'data-sfx': 'none' }, icon('shield'), h('span', {}, t('Brace')));
+  const abilityBtn = h('button.btn.bt-action', { type: 'button', 'data-sfx': 'none' }, icon('bolt'), h('span', {}, t('Ability')));
   const actions = h('div.bt-actions', {}, strikeBtn, braceBtn, abilityBtn);
   panel.insertBefore(actions, result);
 
@@ -185,7 +221,7 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
         h('span.faint', {}, battle.sides[side].handle || (side === 'rival' && mode === 'cpu' ? t('Arena CPU') : '')),
       ),
       card ? h('span.ar-ability', {}, icon(ABILITY_ICON[card.ability]), h('span', {}, ABILITY_LABEL[card.ability]())) : null,
-      h('p.ar-taunt', {}, `“${lineText}”`),
+      h('div.bt-bubble', {}, h('p.ar-taunt', {}, lineText)),
     );
   };
 
@@ -272,6 +308,24 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
   /* ---- painting --------------------------------------------------------- */
   const activeId = (side) => activeOf(battle, side)?.id || null;
 
+  /* A blade landing moves the whole board, not just the card. Web Animations
+     keeps this out of the stage's CSS entrance, so a hit can never replay the
+     pop-in that belongs to opening the stage. */
+  function shakeStage(strong) {
+    if (reduced() || !panel.animate) return;
+    const d = strong ? 9 : 5;
+    panel.animate(
+      [
+        { transform: 'translate(0, 0)' },
+        { transform: `translate(${-d}px, ${d / 2}px)` },
+        { transform: `translate(${d}px, ${-d / 2}px)` },
+        { transform: `translate(${-Math.round(d / 2)}px, 0)` },
+        { transform: 'translate(0, 0)' },
+      ],
+      { duration: strong ? 320 : 220, easing: 'cubic-bezier(.2,.7,.3,1)' },
+    );
+  }
+
   function paintFighters() {
     for (const side of ['mine', 'rival']) {
       for (const f of battle.sides[side].cards) {
@@ -279,6 +333,7 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
         if (!tile) continue;
         const share = Math.max(0, f.hp) / Math.max(1, f.maxHp);
         tile.__bar.style.transform = `scaleX(${share})`;
+        tile.__ghost.style.transform = `scaleX(${share})`;
         tile.__num.textContent = String(Math.round(f.hp));
         tile.classList.toggle('is-down', f.hp <= 0);
         tile.classList.toggle('is-low', f.hp > 0 && f.hp < f.maxHp * 0.35);
@@ -331,41 +386,52 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     while (log.childElementCount > 5) log.lastElementChild.remove();
   }
 
-  function paintEvent(ev, remote) {
+  function paintEvent(ev, auto = false) {
+    if (!ev || ev.kind === 'end') return;
     if (ev.kind === 'brace') {
+      const actor = tiles.get(ev.by);
+      if (actor) {
+        actor.classList.add('is-bracing');
+        setTimeout(() => actor.classList.remove('is-bracing'), 460);
+      }
+      if (!auto && !reduced()) sfx.brace();
       writeLog([icon('shield'), h('span', {}, t('{name} braces for the next hit.', { name: ev.byName }))]);
       return;
     }
     if (ev.kind === 'guard') {
-      writeLog(
+      const actor = tiles.get(ev.by);
+      if (actor) {
+        actor.classList.add('is-healing');
+        setTimeout(() => actor.classList.remove('is-healing'), 560);
+      }
+      if (ev.healed > 0) damagePop(layer, pointIn(layer, actor), `+${ev.healed}`, { heal: true });
+      if (!auto && !reduced()) sfx.guard();      writeLog(
         [icon(ABILITY_ICON.guard), h('span', {}, t('Guard — {name} recovers {n}.', { name: ev.byName, n: ev.healed }))],
         'is-ability',
       );
       return;
     }
+    const strong = Boolean(ev.crit || ev.kind === 'ability');
     const actor = tiles.get(ev.by);
     actor?.classList.add('is-lunge');
     setTimeout(() => actor?.classList.remove('is-lunge'), 260);
 
     const victim = tiles.get(ev.to);
+    const at = pointIn(layer, victim);
     if (victim) {
-      const box = layer.getBoundingClientRect();
-      const rect = victim.getBoundingClientRect();
-      if (box.width && box.height) {
-        sparks(
-          layer,
-          ((rect.left + rect.width / 2 - box.left) / box.width) * 100,
-          ((rect.top + rect.height / 2 - box.top) / box.height) * 100,
-          ev.crit || ev.kind === 'ability',
-        );
+      if (at) {
+        sparks(layer, at.x, at.y, strong);
+        clashBurst(layer, at, strong);
       }
       victim.classList.add('is-hit');
-      setTimeout(() => victim.classList.remove('is-hit'), 260);
+      setTimeout(() => victim.classList.remove('is-hit'), 300);
     }
+    damagePop(layer, at, `-${ev.dmg}`, { strong });
+    shakeStage(strong);
 
-    if (remote && !reduced()) {
-      if (ev.crit || ev.kind === 'ability') sfx.reveal(1);
-      else sfx.click();
+    if (!auto && !reduced()) {
+      if (ev.kind === 'ability') sfx.ability();
+      else sfx.strike(strong);
     }
     if (ev.kind === 'ability') {
       writeLog(
@@ -382,7 +448,6 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     }
     if (ev.down) {
       writeLog([icon('x'), h('span', {}, t('{name} is out.', { name: ev.toName }))], 'is-down');
-      if (remote && !reduced()) sfx.evolve(1);
     }
   }
 
@@ -407,7 +472,7 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     }
   }
 
-  function doAct(side, kind, { remote = false, auto = false } = {}) {
+  function doAct(side, kind, { auto = false } = {}) {
     if (ended || !started || !live) return;
     if (side !== battle.turn) return;
     const ev = act(battle, kind, side, Date.now());
@@ -415,7 +480,7 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     if (side === 'mine' && match) match.sendMove(kind, battle.n);
     paintFighters();
     if (auto) writeLog([icon('clock'), h('span', {}, t('The clock took your strike.'))]);
-    paintEvent(ev, remote);
+    paintEvent(ev, auto);
     if (ev.kind === 'end') {
       setTimeout(() => finish(ev.winner, ev.reason, { broadcast: side === 'mine' }), reduced() ? 0 : 520);
       return;
@@ -526,7 +591,10 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     result.hidden = false;
 
     turnLine.replaceChildren(icon(won ? 'trophy' : 'x'), h('span', {}, won ? t('The record is yours.') : t('No streak survives a loss.')));
-    if (!reduced()) sfx.evolve(won ? 3 : 1);
+    if (!reduced()) {
+      if (won) sfx.victory();
+      else sfx.defeat();
+    }
 
     if (onSettle) {
       try {
@@ -583,7 +651,7 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
   function applyRemote(move) {
     if (ended || !started) return;
     if (battle.turn !== 'rival') return;
-    doAct('rival', move.kind, { remote: true });
+    doAct('rival', move.kind);
   }
 
   /* ---- the other end ---------------------------------------------------- */

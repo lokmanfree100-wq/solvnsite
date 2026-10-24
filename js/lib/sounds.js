@@ -213,6 +213,60 @@ export const sfx = {
       if (stage >= 3) tone({ freq: 90, to: 52, ms: 300, type: 'triangle', peak: 0.6, delay: 0.2 });
     });
   },
+  /** A blade lands: a short air crack over a body punch. The heavy version is
+      the same hit with a sub-bass under it, so a critical or an ability reads
+      as bigger without becoming a different, unrelated noise. */
+  strike(heavy = false) {
+    once(heavy ? 'strikeHeavy' : 'strike', () => {
+      sweep({ ms: 90, from: 5200, to: 900, peak: heavy ? 0.7 : 0.45 });
+      tone({ freq: 220, to: 80, ms: 120, type: 'triangle', peak: heavy ? 0.62 : 0.42 });
+      tone({ freq: 1760, to: 880, ms: 55, type: 'square', peak: 0.1 });
+      if (heavy) {
+        tone({ freq: 110, to: 46, ms: 240, type: 'sine', peak: 0.58, delay: 0.02 });
+        sweep({ ms: 260, from: 1200, to: 3600, peak: 0.28, delay: 0.04 });
+      }
+    });
+  },
+  /** A card sets its guard: a wooden knock, deliberately not a blade. */
+  brace() {
+    once('brace', () => {
+      tone({ freq: 180, to: 118, ms: 90, type: 'square', peak: 0.28 });
+      tone({ freq: 90, to: 58, ms: 150, type: 'sine', peak: 0.38, delay: 0.02 });
+    });
+  },
+  /** Guard gives hit points back: a warm pair rising under the knock. */
+  guard() {
+    once('guard', () => {
+      tone({ freq: 392, to: 587, ms: 150, type: 'sine', peak: 0.3 });
+      tone({ freq: 587, to: 784, ms: 190, type: 'sine', peak: 0.22, delay: 0.08 });
+    });
+  },
+  /** An ability goes off: air rises, a saw edge, then the floor drops out. */
+  ability() {
+    once('ability', () => {
+      sweep({ ms: 220, from: 600, to: 4800, peak: 0.52 });
+      tone({ freq: 330, to: 990, ms: 240, type: 'sawtooth', peak: 0.18 });
+      tone({ freq: 132, to: 66, ms: 260, type: 'triangle', peak: 0.5, delay: 0.06 });
+    });
+  },
+  /** The fight is won: four notes up and a sweep under the last two. */
+  victory() {
+    once('victory', () => {
+      const notes = [[523, 784, 120, 0, 0.34], [659, 1046, 130, 0.1, 0.32], [784, 1319, 170, 0.2, 0.29], [1046, 1568, 300, 0.32, 0.25]];
+      for (const [from, to, ms, delay, peak] of notes) tone({ freq: from, to, ms, type: 'sine', peak, delay });
+      sweep({ ms: 400, from: 500, to: 4200, peak: 0.46, delay: 0.18 });
+    });
+  },
+  /** The fight is lost: the same chord walking down, with a soft floor. */
+  defeat() {
+    once('defeat', () => {
+      const notes = [[392, 294, 180, 0], [330, 233, 210, 0.12], [262, 175, 340, 0.26]];
+      for (const [from, to, ms, delay] of notes) {
+        tone({ freq: from, to, ms, type: 'triangle', peak: 0.3, delay });
+      }
+      tone({ freq: 90, to: 52, ms: 340, type: 'sine', peak: 0.38, delay: 0.18 });
+    });
+  },
 };
 
 /* ---- the presses -------------------------------------------------------
@@ -247,6 +301,9 @@ const SELECTABLE = 'a.card, a.ep, a.up-next, .g-card[role="button"]';
 const NAVLINK = 'a[href^="#/"]';
 
 const inert = (el) => el.disabled || el.getAttribute('aria-disabled') === 'true' || el.classList.contains('is-disabled');
+/* A control that answers with its own game cue opts out of the generic tap, so
+   one move never sounds twice — the blade, not the button, is the event. */
+const silent = (el) => Boolean(el.closest('[data-sfx="none"]'));
 
 /* When the last press spoke, so the route change it caused knows there is
    nothing left to say. A button that turns the page later — the random pick,
@@ -269,7 +326,7 @@ function press(e) {
   }
   if (el.closest(NAVLINK)) return;
   const ctl = el.closest(TAPPABLE);
-  if (ctl && !inert(ctl)) {
+  if (ctl && !inert(ctl) && !silent(ctl)) {
     sfx.click();
     pressedAt = Date.now();
   }
@@ -312,7 +369,7 @@ export function installInterfaceSounds() {
     }
     if (el.closest(NAVLINK)) return;
     const ctl = el.closest(TAPPABLE);
-    if (ctl && !inert(ctl)) {
+    if (ctl && !inert(ctl) && !silent(ctl)) {
       sfx.click();
       pressedAt = Date.now();
     }
