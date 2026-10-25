@@ -444,7 +444,6 @@ export async function SettingsView() {
                 : t('This device caught up with the cloud.'),
               { tone: 'ok', iconName: 'check' },
             );
-            document.dispatchEvent(new CustomEvent('kitsune:core'));
             paintCloud();
           } catch (err) {
             toast(say(err), { tone: 'err', iconName: 'alert' });
@@ -487,8 +486,6 @@ export async function SettingsView() {
         try {
           restoreBundle(JSON.parse(await file.text()));
           toast(t('Backup restored.'), { tone: 'ok', iconName: 'check' });
-          document.dispatchEvent(new CustomEvent('kitsune:account'));
-          document.dispatchEvent(new CustomEvent('kitsune:core'));
         } catch (err) {
           toast(say(err), { tone: 'err', iconName: 'alert' });
         } finally {

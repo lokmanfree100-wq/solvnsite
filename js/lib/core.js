@@ -173,7 +173,6 @@ async function autoSettle() {
   if (pending && pending.uid !== uid) {
     await landPending(uid);
     toast(t('Your data now lives in the central cloud.'), { tone: 'ok', iconName: 'check' });
-    document.dispatchEvent(new CustomEvent('kitsune:core'));
     return;
   }
   if (pending) pending = null;
