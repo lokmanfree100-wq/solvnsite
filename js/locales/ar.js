@@ -114,7 +114,6 @@ const ui = {
   'All Saved': 'المحفوظات كلّها',
   'Also mentioned': 'مُشار إليه أيضًا',
   'Alternative setting': 'عالم بديل',
-  'Always tried first. Part of Solvn.': 'يُجرَّب أولًا دائمًا. وهو جزء من Solvn.',
   Any: 'الكل',
   'Any format': 'كل الصيَغ',
   'Any season': 'كل المواسم',
@@ -136,7 +135,6 @@ const ui = {
   'Browse anime': 'تصفّح الأنمي',
   'Browse by genre': 'تصفّح حسب النوع',
   'Browse the catalogue': 'تصفّح الفهرس',
-  'Built in': 'مدمج',
   'Cache cleared — data will refetch': 'تم مسح الذاكرة المؤقتة — ستُعاد تحميل البيانات',
   Cancel: 'إلغاء',
   Cancelled: 'مُلغى',
@@ -221,7 +219,6 @@ const ui = {
     'يجب أن يستخدم العنوان واحدًا على الأقل من {anilist} أو {episode} أو {audio}.',
   'just now': 'الآن',
   Keyword: 'كلمة مفتاحية',
-  'Solvn Stream': 'بث Solvn',
   "Not playing?": "لا يوجد تشغيل؟",
   "Not playing? Switch to another server": "لا يوجد تشغيل؟ انتقل إلى خادم آخر",
   Optional: 'اختياري',
@@ -833,6 +830,24 @@ const ui = {
   'Titles, artwork and episode lists come from a public anime catalogue. Episodes are played from third-party sources: Solvn hosts no video and stores nothing on its own servers.':
     'تأتي العناوين والصور وقوائم الحلقات من فهرس أنمي عام، وتُعرض الحلقات من مصادر خارجية: لا يستضيف Solvn أي فيديو ولا يخزّن شيئًا على خوادمه.',
   /* ---- failover player, discussion, continue watching, report modal ---- */
+  'A framed player page picks its own stream, so this list appears only for sources Solvn plays itself.':
+    'صفحة مشغّل خارجية تختار جودتها بنفسها، لذا تظهر هذه القائمة للمصادر التي يشغّلها Solvn بنفسه فقط.',
+  'Add one in Settings ▸ Streaming servers and this player uses it.':
+    'أضف مصدرًا في الإعدادات ▸ خوادم البث وسيستخدمه هذا المشغّل.',
+  Auto: 'تلقائي',
+  'Framed page': 'صفحة مُضمَنة',
+  'In-house player': 'مشغّل Solvn',
+  'No source configured yet': 'لم يُضبط أي مصدر بعد',
+  'No source yet': 'لا مصدر بعد',
+  'No video source is configured yet.': 'لم يُضبط أي مصدر فيديو بعد.',
+  'Solvn will not play from {host}.': 'لن يشغّل Solvn أي شيء من {host}.',
+  'Switched to {label}': 'تم التبديل إلى {label}',
+  'These are the resolutions this stream actually carries. Picking one changes it right away; Auto lets the player choose for your connection.':
+    'هذه هي الدقات المتاحة فعليًا في هذا البث؛ اختيار واحدة يغيّرها فورًا، أمّا «تلقائي» فيترك الاختيار للمشغّل حسب سرعة اتصالك.',
+  'The player has nothing to play until an address is added below.':
+    'لا شيء يشغّله المشغّل حتى تُضيف عنوانًا بالأسفل.',
+  'Two addresses work: a player page — {embed} — or the file itself, an `.m3u8` or `.mp4`, which Solvn plays in its own player — {file}.':
+    'عنوانان مقبولان: صفحة مشغّل — {embed} — أو الملف نفسه بصيغة `.m3u8` أو `.mp4`، ويشغّله Solvn في مشغّله الخاص — {file}.',
   '{n} min left': 'متبقٍ {n} دقيقة',
   'Catalogue cache': 'ذاكرة الفهرس المؤقتة',
   Contact: 'تواصل',

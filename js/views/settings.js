@@ -6,7 +6,7 @@ import { accentId, accentValue, paintAccent, previewAccent } from '../lib/accent
 import { parseHex, toHex } from '../lib/color.js';
 import { clearCache, apiStatus, checkNow } from '../lib/anilist.js';
 import { isSignedIn, tellDiscord, staticHost } from '../lib/account.js';
-import { FAILOVER_CHOICES, MAIN_SERVER, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, removeServer, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
+import { FAILOVER_CHOICES, MEDIA_HINT, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, removeServer, serverKind, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
 import { toast, confirmSheet } from '../lib/ui.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
 import { cloudConfig, cloudActive, clearCloudConfig, testCloudConnection } from '../lib/cloud.js';
@@ -608,9 +608,12 @@ export async function SettingsView() {
   paintCloud();
 
   /* ---- streaming servers ------------------------------------------------ */
-  /* Solvn hosts no video, so a server here is another player page that the
-     watch frame loads *inside* Solvn. The built-in one always goes first;
-     anything added below joins the same failover ladder, in this order. */
+  /* Solvn hosts no video of its own, so every source is one of two things: an
+     address pointing at a file the watch page plays in its own player, or an
+     address pointing at somebody else's player page, framed. What is drawn
+     inside a framed page belongs to that page — its controls, its quality choice
+     and its corner mark cannot be taken out from here. Nothing ships
+     pre-configured, and each entry is tried in the order it is listed. */
   const serversBody = h('div');
   const hostOf = (url) => {
     try {
@@ -720,20 +723,21 @@ export async function SettingsView() {
     );
 
     serversBody.replaceChildren(
-      h(
-        'div.set-row',
-        {},
-        h('div.ico', {}, icon('cast')),
-        h('div.txt', {}, h('b', {}, t('Solvn Stream')), h('span', {}, t('Always tried first. Part of Solvn.'))),
-        h('span.badge', {}, icon('check'), t('Built in')),
-        h('span.badge', {}, trackMarks(MAIN_SERVER)),
-      ),
+      extra.length
+        ? null
+        : h(
+            'div.set-row',
+            {},
+            h('div.ico', {}, icon('alert')),
+            h('div.txt', {}, h('b', {}, t('No source configured yet')), h('span', {}, t('The player has nothing to play until an address is added below.'))),
+          ),
       ...extra.map((s) =>
         h(
           'div.set-row',
           {},
           h('div.ico', {}, icon('cast')),
           h('div.txt', {}, h('b', {}, serverName(s)), h('span', {}, hostOf(s.url))),
+          h('span.badge', {}, serverKind(s) === 'media' ? t('In-house player') : t('Framed page')),
           h('span.badge', {}, trackMarks(s)),
           h(
             'button.btn.btn--sm',
@@ -760,6 +764,14 @@ export async function SettingsView() {
         {},
         h('label.cloud-field', {}, t('Server name'), nameIn),
         h('label.cloud-field', {}, t('Player address'), urlIn),
+      ),
+      h(
+        'p.faint.cloud-note',
+        {},
+        t('Two addresses work: a player page — {embed} — or the file itself, an `.m3u8` or `.mp4`, which Solvn plays in its own player — {file}.', {
+          embed: TEMPLATE_HINT,
+          file: MEDIA_HINT,
+        }),
       ),
       h(
         'div.cloud-fields',

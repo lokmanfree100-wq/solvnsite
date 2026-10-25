@@ -1,4 +1,4 @@
-/** Watch: framed player with server failover, episode rail, sub/dub switch, progress. */
+/** Watch: our own player with server failover, episode rail, sub/dub switch, progress. */
 
 import { h, icon, qs } from '../lib/dom.js';
 import { detail, episodes as fetchEpisodes } from '../lib/anilist.js';
@@ -24,7 +24,8 @@ import { isSignedIn, tellDiscord } from '../lib/account.js';
 import { followTitle } from '../lib/notices.js';
 import { title, formatLabel, yearOf, statusLabel, listLabel, STATUS_TONE, plainDescription, countdown, scoreLabel, clamp, watched } from '../lib/util.js';
 import { buildEpisodes, episodeCountIsGuess, resolveEpisodeCount } from '../lib/embed.js';
-import { FRAME_ALLOW, FRAME_SANDBOX, asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isTrack, markServer, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
+import { asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isBlockedUrl, isMediaUrl, isTrack, markServer, serverKind, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
+import { createStage } from '../lib/playback.js';
 import { accentValue } from '../lib/accent.js';
 import { mediaRow, emptyState, episodeArt } from '../components/media.js';
 import { reportSheet } from '../components/report-issue.js';
@@ -199,47 +200,47 @@ export function WatchView({ params, route, onCleanup }) {
     ),
   );
 
-  /* Sandboxed without top-navigation, popups or modals: a player may do what it
-     likes inside its own frame, and it cannot move the tab, open a window or
-     hand the viewer to another site. */
-  const makeFrame = () => {
-    const elt = h('iframe', {
-      title: `${title(media)} — ${t('Episode {n}', { n: ep })}`,
-      sandbox: FRAME_SANDBOX,
-      allow: FRAME_ALLOW,
-      referrerpolicy: 'strict-origin-when-cross-origin',
-      loading: 'eager',
-    });
-    /* News from a frame the viewer already left is not news. A slow document can
-       finish loading after the ladder has moved on, and letting that through
-       would hide the boot overlay on a server that has answered nothing. */
-    elt.addEventListener('load', () => {
-      if (elt === frame) hideBoot();
-    });
-    return elt;
-  };
-  let frame = makeFrame();
-  /* The provider's own corner watermark lives inside its cross-origin frame and
-     cannot be removed from here, so Solvn's brand chip covers the same spot. */
-  const frameBox = h('div.player-frame', {}, frame, boot, h('div.player-brand', { 'aria-hidden': 'true' }, 'solvn.site'));
+  /* The stage is whatever holds the picture, and `lib/playback.js` builds it: a
+     `<video>` Solvn owns when the source is a file it can play, a sandboxed frame
+     when the source is somebody else's player page. A frame gets no top-
+     navigation, popups or modals — it may do what it likes inside its own box and
+     cannot move the tab, open a window or hand the viewer to another site. */
+  const stageTitle = () => `${title(media)} — ${t('Episode {n}', { n: ep })} (${trackName(audio)})`;
+  let stage = null;
+  /* Solvn's mark is drawn here, on the player box, rather than asked of whatever
+     is inside it: it cannot be covered, removed or hidden by a source, it scales
+     with the player instead of the screen, and it rides into full screen because
+     the shell it lives in is what goes there. */
+  const frameBox = h('div.player-frame', {}, boot, h('div.player-brand', { 'aria-hidden': 'true' }, 'solvn.site'));
 
-  /* A frame quieter than this is treated as a dead server. The number comes
-     from Settings so a viewer on a fast line can demand three seconds; the
-     reasoning behind the default is in `failoverMs`. */
+  /** Take the picture out of the box, and stop it talking. */
+  function dropStage() {
+    if (!stage) return;
+    stage.destroy();
+    frameBox.removeChild(stage.node);
+    stage = null;
+  }
+
+  /* A stage quieter than this is treated as a dead server. The number comes from
+     Settings so a viewer on a fast line can demand three seconds; the reasoning
+     behind the default is in `failoverMs`. */
   let watchdog = null;
   let pool = servers();
   let run = [];
   let pos = 0;
   let serverIdx = 0;
 
-  const frameUrl = () =>
-    serverUrl(pool[serverIdx] || pool[0], {
+  const frameUrl = () => {
+    const server = pool[serverIdx] || pool[0];
+    if (!server) return '';
+    return serverUrl(server, {
       id,
       episode: ep,
       audio,
       autoNext: settings.get('autoplay'),
       accent: accentValue(),
     });
+  };
 
   function arm() {
     clearTimeout(watchdog);
@@ -262,6 +263,15 @@ export function WatchView({ params, route, onCleanup }) {
    */
   function startRun(ordered, pinned) {
     pool = ordered || servers();
+    /* A device that has configured nothing has no ladder: there is no rung to
+       walk and none to fall back to. `play` reads the empty run and shows the
+       way to fix that instead of inventing a source to fill the box. */
+    if (!pool.length) {
+      serverIdx = 0;
+      run = [];
+      pos = 0;
+      return;
+    }
     if (serverIdx >= pool.length) serverIdx = 0;
     const order = pool.map((_, i) => i);
     if (!pinned) order.sort((a, b) => Number(cooling(pool[a].id)) - Number(cooling(pool[b].id)));
@@ -276,8 +286,9 @@ export function WatchView({ params, route, onCleanup }) {
       return out;
     };
 
-    /* Japanese subtitles are the floor: the one track a Solvn with nothing added
-       to it can always answer. Already on it, the other chance is English. */
+    /* Japanese subtitles are the floor: a server that declared nothing is asked
+       for `sub`, because that is what a `{audio}` template answers by default.
+       Already on it, the other chance is English. */
     let steps = lap([audio, audio === 'sub' ? 'dub' : 'sub']);
     if (!steps.length) steps = lap(['sub', 'dub']);
     if (!steps.length) steps = order.map((i) => ({ i, track: 'sub' }));
@@ -293,10 +304,10 @@ export function WatchView({ params, route, onCleanup }) {
 
   /* ---- the airing lock ---------------------------------------------------
      AniList names the episode that has *not* aired yet, so Solvn knows which
-     numbers on the rail are fiction. A frame aimed at one of those answers with
-     somebody else's error page — a cross-origin player cannot be told what to
-     hide, and its own "not aired" notice carries its own branding. So the frame
-     is never aimed there: the ladder stops, the overlay says what is true in
+     numbers on the rail are fiction. A source aimed at one of those answers with
+     an error page — a framed player cannot be told what to hide, and its own
+     "not aired" notice carries its own branding — and a file simply is not there.
+     So the ladder is never aimed there: it stops, the overlay says what is true in
      Solvn's words, and the viewer is handed the last episode that really is out.
      ------------------------------------------------------------------------ */
   function nextUnaired() {
@@ -311,19 +322,35 @@ export function WatchView({ params, route, onCleanup }) {
     return at * 1000 > Date.now() ? Math.max(1, next - 1) : next;
   }
 
-  /** Show Solvn's own notice and take the provider's page back out of the frame. */
+  /** Nothing configured, so nothing to walk. The player names what is missing and
+      hands over the route that fixes it, rather than framing a stranger to fill
+      the silence — Solvn plays what its operator points it at, and nothing else. */
+  function showUnconfigured() {
+    clearTimeout(watchdog);
+    watchdog = null;
+    dropStage();
+    bootSpin.classList.add('hide');
+    boot.classList.remove('is-gone');
+    bootLast.forEach((b) => b.classList.add('hide'));
+    /* Both of these promise a next rung that does not exist. */
+    bootRetry.classList.add('hide');
+    bootSwap.classList.add('hide');
+    bootMsg.textContent = t('No video source is configured yet.');
+    bootWhen.classList.remove('hide');
+    bootWhen.textContent = t('Add one in Settings ▸ Streaming servers and this player uses it.');
+    bootServers.classList.remove('hide');
+    bootList.classList.remove('hide');
+  }
+
+  /** Show Solvn's own notice and take the source's picture out of the player box. */
   function showLocked() {
     clearTimeout(watchdog);
     watchdog = null;
-    /* A frame that was already pointed at this episode before the catalogue
-       answered is replaced with an empty one: leaving it loaded would keep the
-       other site's error page — and anything still playing out of it — behind our
-       own notice. */
-    if (frame.getAttribute('src')) {
-      const blank = makeFrame();
-      frameBox.replaceChild(blank, frame);
-      frame = blank;
-    }
+    /* A stage that was already pointed at this episode before the catalogue
+       answered is taken out of the box: leaving it loaded would keep the other
+       site's error page — and anything still playing out of it — behind our own
+       notice. */
+    dropStage();
     const last = latestAired();
     bootSpin.classList.add('hide');
     boot.classList.remove('is-gone');
@@ -344,43 +371,69 @@ export function WatchView({ params, route, onCleanup }) {
   }
 
   function hideBoot() {
-    /* News from a frame the viewer should never have been shown is not news: if
+    /* News from a source the viewer should never have been shown is not news: if
        the catalogue has since told us this episode is not out, the notice stands. */
     const next = nextUnaired();
     if (next && ep >= next) return showLocked();
     clearTimeout(watchdog);
     watchdog = null;
-    /* The document arrived. That is the only good news a cross-origin frame can
-       give, so it is the news the ladder runs on: it lifts the earlier ban and
+    /* Something arrived: a document for a framed player, frames of video for our
+       own. That is the good news the ladder runs on — it lifts the earlier ban and
        keeps this server at the front next time. */
     markServer(pool[serverIdx] && pool[serverIdx].id, true);
     boot.classList.add('is-gone');
     bootSpin.classList.remove('hide');
     bootLast.forEach((b) => b.classList.add('hide'));
     bootMsg.textContent = t('Warming up the player…');
+    /* A manifest reports its renditions only once it has been read, which is
+       after this chip was first drawn — so the list is refreshed here rather than
+       left showing the preference nobody is using any more. */
+    paintQuality();
   }
 
   /**
-   * Point the frame at `src` — and make sure it actually loads it.
+   * Point the player at `url` — and make sure it actually loads it.
    *
-   * An iframe that already holds this exact address ignores the assignment, so
-   * "Retry" on a one-server install would redraw the same frozen 0:00 poster.
-   * Replacing the element is the one reload a cross-origin frame can be given
-   * from outside, and it costs nothing: no state of ours lives inside it.
+   * An element that already holds this exact address ignores the assignment, so
+   * "Retry" would redraw the same frozen 0:00 poster, and a source that changed
+   * shape (a player page becoming a file) needs a different element outright.
+   * Both cases rebuild the node, which costs nothing: no state of ours lives
+   * inside a frame, and a video's only state is the address we just gave it.
    */
-  function loadFrame(src) {
-    if (frame.getAttribute('src') === src) {
-      const next = makeFrame();
-      frameBox.replaceChild(next, frame);
-      frame = next;
+  function loadStage(url) {
+    /* An address that did not resolve to anything is the empty pool wearing a
+       different name. It must never reach `src`: an iframe pointed at '' loads the
+       page it is standing in, and the site would be framing itself. */
+    if (!url) return showUnconfigured();
+    /* The registry refuses these addresses before they can join the pool. Checked
+       again at the one place a picture is mounted, so a device holding a template
+       written by an older build — or typed straight into its own settings — still
+       cannot put it on screen. */
+    if (isBlockedUrl(url)) return advance(false);
+    const kind = isMediaUrl(url) ? 'media' : 'embed';
+    if (!stage || stage.kind !== kind || stage.heldSrc() === url) {
+      dropStage();
+      stage = createStage({
+        kind,
+        title: stageTitle(),
+        onReady: hideBoot,
+        /* A `<video>` can say it will never play, which is one signal a frame is
+           not allowed to send. Either way this server is treated as silent and the
+           ladder moves on — no waiting out the clock on a known dead source. */
+        onDead: () => advance(false),
+        labels: { auto: t('Auto') },
+      });
+      frameBox.insertBefore(stage.node, boot);
     }
-    frame.src = src;
+    stage.src(url);
+    stage.node.title = stageTitle();
   }
 
-  /** Point the frame at the current rung of the ladder and restart the clock. */
+  /** Point the player at the current rung of the ladder and restart the clock. */
   function play(msg) {
     const next = nextUnaired();
     if (next && ep >= next) return showLocked();
+    if (!pool.length) return showUnconfigured();
     boot.classList.remove('is-gone');
     bootSpin.classList.remove('hide');
     bootLast.forEach((b) => b.classList.add('hide'));
@@ -388,17 +441,18 @@ export function WatchView({ params, route, onCleanup }) {
     bootSwap.classList.remove('hide');
     bootWhen.classList.add('hide');
     bootMsg.textContent = msg || t('Warming up the player…');
-    loadFrame(frameUrl());
-    frame.title = `${title(media)} — ${t('Episode {n}', { n: ep })} (${trackName(audio)})`;
+    loadStage(frameUrl());
     arm();
   }
 
-  /* A cross-origin frame cannot report a failed video, so silence is the only
-     automatic signal there is: no `load` inside the failover window counts that
-     server dead and the next rung is loaded into the same frame — no error page,
-     no leaving the site. A viewer who presses "Switch server" while a frame is
-     sitting on 0:00 is the second signal, and it is treated the same way: that
-     server is dropped to the back of the queue for the rest of the cooldown. */
+  /* Silence is the signal the ladder runs on. A framed page cannot report a
+     failed video at all, so no `load` inside the failover window counts that
+     server dead; a video Solvn owns can, and says so immediately instead of
+     making the viewer wait out the clock. Either way the next rung is loaded into
+     the same box — no error page, no leaving the site. A viewer who presses
+     "Switch server" while a picture is sitting on 0:00 is the second signal, and
+     it is treated the same way: that server goes to the back of the queue for the
+     rest of the cooldown. */
   function advance(manual) {
     /* A locked episode is not a dead server, so hopping must not blame one: the
        notice replaces the ladder instead of walking it. */
@@ -408,6 +462,7 @@ export function WatchView({ params, route, onCleanup }) {
     watchdog = null;
     markServer(pool[serverIdx] && pool[serverIdx].id, false);
     if (!run.length) startRun();
+    if (!run.length) return showUnconfigured(); // and nothing to restart it with
     pos += 1;
     if (pos >= run.length) {
       if (!manual) return giveUp();
@@ -417,15 +472,14 @@ export function WatchView({ params, route, onCleanup }) {
     const step = run[pos];
     if (step.track !== audio) setTrack(step.track);
     serverIdx = step.i;
-    serverChip.replaceChildren(icon('cast'), h('span', {}, serverName(pool[step.i])));
+    serverChip.replaceChildren(icon('cast'), h('span', {}, serverLabel()));
     if (pos > 0) {
       bootMsg.textContent =
         step.track !== run[0].track
           ? t('Trying the {a} source instead.', { a: trackName(step.track) })
           : t('Trying {name}…', { name: serverName(pool[step.i]) });
     }
-    loadFrame(frameUrl());
-    frame.title = `${title(media)} — ${t('Episode {n}', { n: ep })} (${trackName(audio)})`;
+    loadStage(frameUrl());
     arm();
   }
 
@@ -468,6 +522,14 @@ export function WatchView({ params, route, onCleanup }) {
   /** Manual choice from the sheet: that server first, the rest as the ladder. */
   function chooseServer(picked) {
     const all = servers();
+    /* Nothing to choose from: the sheet showed its Settings route and this is
+       where picking it lands. Say the same thing the player says on its own. */
+    if (!all.length) {
+      startRun();
+      showUnconfigured();
+      paintBar();
+      return;
+    }
     const head = picked && all.includes(picked) ? picked : all[0];
     startRun([head, ...all.filter((s) => s !== head)], true);
     serverIdx = 0;
@@ -482,8 +544,8 @@ export function WatchView({ params, route, onCleanup }) {
      language a configured server declares. The Arabic chip is on the bar because
      it is the language this site's viewers ask for, and it is honest because a
      press on a track nothing here carries answers with words and a route, not
-     with a black frame: the built-in player only ever spoke sub and dub, so
-     `audio=ar` is a real request to a real server the viewer has to add. */
+     with a black box: `{audio}` is a real request to a real server, and a server
+     that never declared Arabic is not going to answer in Arabic. */
   const audioSeg = h('div.seg.seg--tracks', { role: 'group', 'aria-label': t('Audio track') });
   function paintTrackSeg() {
     audioSeg.replaceChildren(
@@ -502,16 +564,19 @@ export function WatchView({ params, route, onCleanup }) {
   paintTrackSeg();
 
   /* Which server is on screen right now, and a way to pick another one without
-     waiting for the silence clock. */
+     waiting for the silence clock. With nothing configured the chip says so and
+     opens the sheet that has the Settings route in it — a chip that read "Solvn
+     Stream 1" over an empty box would be the one lie the bar could tell. */
+  const serverLabel = () => (pool.length ? serverName(pool[serverIdx] || pool[0]) : t('No source yet'));
   const serverChip = h('button.btn.btn--sm.btn--glass.q-chip', {
     'aria-label': t('Streaming server'),
     onclick: () => openServerSheet(),
-  }, icon('cast'), h('span', {}, serverName(pool[serverIdx])));
+  }, icon('cast'), h('span', {}, serverLabel()));
 
-  /* A frame can load its page and still show nothing but 0:00, and a
-     cross-origin player cannot tell us that happened. So the viewer says it
-     instead: one tap here drops the current server to the back of the queue and
-     loads the same episode from the next one, inside this frame. */
+  /* A source can load and still show nothing but 0:00. A framed player cannot
+     tell us that happened, so the viewer says it instead: one tap here drops the
+     current server to the back of the queue and loads the same episode from the
+     next one, inside the same box. */
   const hopBtn = h('button.btn.btn--sm.btn--glass', {
     'aria-label': t('Not playing? Switch to another server'),
     onclick: () => advance(true),
@@ -523,21 +588,26 @@ export function WatchView({ params, route, onCleanup }) {
    * `wanted` is the track a chip asked for and nothing carried — naming it here
    * is what lets the sheet say which of these addresses would answer it instead
    * of listing servers that all play the same two languages. Each row prints the
-   * tracks its server actually declares, so a server that speaks Arabic is
-   * recognisable before it is picked rather than after it fails.
+   * tracks its server actually declares and how it is mounted, so a server that
+   * speaks Arabic is recognisable before it is picked rather than after it fails,
+   * and the difference between our own player and a framed page is visible too.
    */
   function openServerSheet(wanted) {
     const ask = isTrack(wanted) ? wanted : null;
     const pick = h('div.stack');
     const paint = () => {
       /* A server can be added in Settings while this page sits open. Rebuilding
-         the queue around whatever is already on screen keeps the tick, the frame
-         and the ladder pointing at the same thing — and reloads nothing under
-         the viewer's feet. */
-      const onScreen = pool[serverIdx] || pool[0];
+         the queue around whatever is already on screen keeps the tick, the stage
+         and the ladder pointing at the same thing — and reloads nothing under the
+         viewer's feet. */
       const all = servers();
-      startRun([onScreen, ...all.filter((s) => s !== onScreen)], true);
-      serverIdx = 0;
+      if (all.length) {
+        const onScreen = pool[serverIdx] || pool[0];
+        startRun([onScreen, ...all.filter((s) => s !== onScreen)], true);
+        serverIdx = 0;
+      } else {
+        startRun();
+      }
       pick.replaceChildren(
         ...pool.map((s, i) => {
           const carried = serverTracks(s);
@@ -553,11 +623,15 @@ export function WatchView({ params, route, onCleanup }) {
           },
             i === serverIdx ? icon('check') : null,
             h('span.grow', { style: { textAlign: 'start' } }, serverName(s)),
+            h('span.badge', { style: { fontSize: '10.5px' } }, serverKind(s) === 'media' ? t('In-house player') : t('Framed page')),
             h('span.muted', {
               style: { fontSize: '11.5px', letterSpacing: '0.04em', color: answers ? null : 'var(--warn)' },
             }, carried.map(trackChip).join(' · ')),
           );
         }),
+        all.length
+          ? null
+          : h('p.muted', { style: { fontSize: '13px', lineHeight: '1.6' } }, t('No video source is configured yet.')),
         h('a.btn.btn--sm', { href: '#/settings' }, icon('sliders'), t('Add another server in Settings')),
       );
     };
@@ -620,20 +694,22 @@ export function WatchView({ params, route, onCleanup }) {
     fsBtn.replaceChildren(icon(on ? 'shrink' : 'expand'));
   }
 
-  /* A provider's own full-screen button takes only its frame into the top layer,
-     and the brand chip sits beside that frame rather than inside it, so the
-     corner goes blank on the one screen where it is biggest. Ask for the shell
-     instead: the same picture at the same size, with Solvn still wearing it.
-     A request the browser will not honour outside a gesture leaves the viewer
-     in the full screen they chose, which is the better failure. */
+  /* Whatever is on screen has a full-screen button of its own — a provider's page
+     inside the frame, the browser's control strip on our own video — and both
+     take only *that element* into the top layer. The brand chip is a child of the
+     player box, not of the picture, so the corner goes blank on the one screen
+     where it is biggest. Ask for the shell instead: the same picture at the same
+     size, with Solvn still wearing it. A request the browser will not honour
+     outside a gesture leaves the viewer in the full screen they chose, which is
+     the better failure. */
   function keepBrandInFullscreen() {
     const el = document.fullscreenElement || document.webkitFullscreenElement;
-    if (!el || el.tagName !== 'IFRAME' || !frameBox.contains(el)) return;
+    if (!el || el === playerShell || !frameBox.contains(el)) return;
     const request = playerShell.requestFullscreen || playerShell.webkitRequestFullscreen;
     if (!request) return;
     try {
       Promise.resolve(request.call(playerShell, { navigationUI: 'hide' })).catch(() => {});
-    } catch { /* the frame keeps its own full screen */ }
+    } catch { /* the source keeps its own full screen */ }
   }
 
   if (fsSupported) {
@@ -668,25 +744,41 @@ export function WatchView({ params, route, onCleanup }) {
   paintTheater(Boolean(settings.get('theater')));
   onCleanup(() => document.documentElement.classList.remove('theater'));
 
-  /* ---------------- quality target ---------------- */
-  // The framed player picks the stream, so this is a stated preference it aims
-  // for — not a switch that can force 2160p. The sheet says so in plain words.
+  /* ---------------- quality ---------------- */
+  /* Two different things share this button, and the sheet says which one it is
+     showing: a stream Solvn plays itself reports the renditions it really has, so
+     the list is a switch. A framed page decides its own bitrate and cannot be
+     told, so the same list is the preference Solvn hands along as a hint. */
+  const qualityText = () => {
+    const ls = stage ? stage.levels() : [];
+    if (!ls.length) return qualityLabel(settings.get('quality'));
+    const now = stage.level();
+    if (now === 'auto') return t('Auto');
+    return ls.find((l) => l.id === now)?.label || qualityLabel(settings.get('quality'));
+  };
+  function paintQuality() {
+    qChip.replaceChildren(icon('sliders'), h('span', {}, qualityText()));
+  }
   const qChip = h('button.btn.btn--sm.btn--glass.q-chip', { 'aria-label': t('Player settings'), onclick: openPlayerSheet }, icon('sliders'), h('span', {}, qualityLabel(settings.get('quality'))));
 
   function openPlayerSheet() {
     const grid = h('div.q-grid');
+    const levels = stage ? stage.levels() : [];
+    const rows = levels.length ? [{ id: 'auto', label: t('Auto') }, ...levels] : QUALITIES;
+    const chosen = () => (levels.length ? stage.level() : settings.get('quality'));
     const paint = () => {
-      const cur = settings.get('quality');
+      const cur = chosen();
       grid.replaceChildren(
-        ...QUALITIES.map((q) =>
+        ...rows.map((q) =>
           h(`button.check${q.id === cur ? '.is-on' : ''}`, {
             type: 'button',
             'aria-pressed': String(q.id === cur),
             onclick: () => {
-              settings.set('quality', q.id);
+              if (levels.length) stage.setLevel(q.id);
+              else settings.set('quality', q.id);
               paint();
-              qChip.replaceChildren(icon('sliders'), h('span', {}, qualityLabel(q.id)));
-              toast(t('Saved as {label}', { label: q.label }), { tone: 'ok', iconName: 'check' });
+              paintQuality();
+              toast(levels.length ? t('Switched to {label}', { label: q.label }) : t('Saved as {label}', { label: q.label }), { tone: 'ok', iconName: 'check' });
             },
           }, q.id === cur ? icon('check') : null, h('span', {}, q.label), q.id === '2160p' ? h('span.badge.badge--4k', {}, t('4K')) : null),
         ),
@@ -700,10 +792,14 @@ export function WatchView({ params, route, onCleanup }) {
       render: () =>
         h('div.stack', {},
           h('p', { style: { fontSize: '13.5px', color: 'var(--text-dim)', lineHeight: '1.6' } },
-            t('The player streams what its source actually has, so this is the quality it aims for rather than a guarantee. Most anime caps out at 1080p and 4K is rare.')),
+            levels.length
+              ? t('These are the resolutions this stream actually carries. Picking one changes it right away; Auto lets the player choose for your connection.')
+              : t('The player streams what its source actually has, so this is the quality it aims for rather than a guarantee. Most anime caps out at 1080p and 4K is rare.')),
           grid,
           h('p.faint', { style: { fontSize: '12.5px', lineHeight: '1.55' } },
-            t('Your choice is remembered and used for every episode you open.')),
+            levels.length
+              ? t('A framed player page picks its own stream, so this list appears only for sources Solvn plays itself.')
+              : t('Your choice is remembered and used for every episode you open.')),
         ),
     });
   }
@@ -953,6 +1049,13 @@ export function WatchView({ params, route, onCleanup }) {
   startRun();
   play();
   onCleanup(() => clearTimeout(watchdog));
+  /* Leaving for another route stops the picture properly: a video kept alive out
+     of the DOM goes on playing in the dark, and an hls.js instance holds its
+     buffers, workers and listeners with it. */
+  onCleanup(() => {
+    if (stage) stage.destroy();
+    stage = null;
+  });
 
   /* ---------------- metadata ---------------- */
   /* The catalogue answer is decoration, not a gate. Title, synopsis, episode

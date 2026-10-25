@@ -1146,7 +1146,8 @@
   container-type: inline-size;
   container-name: player;
 }
-.player-frame iframe {
+.player-frame iframe,
+.player-video {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1154,8 +1155,16 @@
   border: 0;
   display: block;
 }
-/* Solvn's own corner chip: it covers the provider watermark the frame draws in
-   the same spot. Clicks pass through, so nothing underneath loses a button. */
+/* A video Solvn owns is the whole picture: it fills the box without cropping, on
+   a black bed, and its control strip stays the browser's own — reliable on every
+   phone — while the episode controls below the frame stay ours. */
+.player-video {
+  object-fit: contain;
+  background: var(--void);
+}
+/* Solvn's own corner mark. It is drawn by this site on the player box, so a
+   framed page cannot hide it and a stream Solvn plays itself has no other brand
+   to compete with. Clicks pass through, so nothing underneath loses a button. */
 .player-brand {
   position: absolute;
   top: 10px;

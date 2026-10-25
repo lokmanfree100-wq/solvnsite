@@ -115,7 +115,6 @@ const ui = {
   'All Saved': 'Tout sauvegardé',
   'Also mentioned': 'Aussi mentionné',
   'Alternative setting': 'Univers alternatif',
-  'Always tried first. Part of Solvn.': 'Toujours essayé en premier. Fait partie de Solvn.',
   Any: 'Tous',
   'Any format': 'Tous les formats',
   'Any season': 'Toutes les saisons',
@@ -138,7 +137,6 @@ const ui = {
   'Browse anime': 'Parcourir les animés',
   'Browse by genre': 'Parcourir par genre',
   'Browse the catalogue': 'Parcourir le catalogue',
-  'Built in': 'Intégré',
   'Cache cleared — data will refetch': 'Cache vidé — les données seront rechargées',
   Cancel: 'Annuler',
   Cancelled: 'Annulé',
@@ -223,7 +221,6 @@ const ui = {
     'Elle doit utiliser au moins l’un de {anilist}, {episode}, {audio}.',
   'just now': 'à l’instant',
   Keyword: 'Mot-clé',
-  'Solvn Stream': 'Flux Solvn',
   "Not playing?": "Aucune lecture ?",
   "Not playing? Switch to another server": "Aucune lecture ? Changer de serveur",
   Optional: 'Facultatif',
@@ -863,6 +860,24 @@ const ui = {
   'Titles, artwork and episode lists come from a public anime catalogue. Episodes are played from third-party sources: Solvn hosts no video and stores nothing on its own servers.':
     'Titres, illustrations et listes d’épisodes proviennent d’un catalogue d’anime public. Les épisodes sont lus depuis des sources tierces : Solvn n’héberge aucune vidéo et ne stocke rien sur ses propres serveurs.',
   /* ---- failover player, discussion, continue watching, report modal ---- */
+  'A framed player page picks its own stream, so this list appears only for sources Solvn plays itself.':
+    'Une page de lecteur externe choisit elle-même son flux ; cette liste n’apparaît donc que pour les sources que Solvn lit lui-même.',
+  'Add one in Settings ▸ Streaming servers and this player uses it.':
+    'Ajoutez-en une dans Paramètres ▸ Serveurs de lecture, et ce lecteur l’utilisera.',
+  Auto: 'Auto',
+  'Framed page': 'Page encadrée',
+  'In-house player': 'Lecteur Solvn',
+  'No source configured yet': 'Aucune source configurée',
+  'No source yet': 'Aucune source',
+  'No video source is configured yet.': 'Aucune source vidéo n’est configurée pour l’instant.',
+  'Solvn will not play from {host}.': 'Solvn ne lira rien venant de {host}.',
+  'Switched to {label}': 'Passé en {label}',
+  'These are the resolutions this stream actually carries. Picking one changes it right away; Auto lets the player choose for your connection.':
+    'Ce sont les résolutions réellement disponibles pour ce flux. En choisir une change la lecture aussitôt ; Auto laisse le lecteur s’adapter à votre connexion.',
+  'The player has nothing to play until an address is added below.':
+    'Le lecteur n’a rien à lire tant qu’une adresse n’est pas ajoutée ci-dessous.',
+  'Two addresses work: a player page — {embed} — or the file itself, an `.m3u8` or `.mp4`, which Solvn plays in its own player — {file}.':
+    'Deux adresses fonctionnent : une page de lecteur — {embed} — ou le fichier lui-même, un `.m3u8` ou `.mp4`, que Solvn lit dans son propre lecteur — {file}.',
   '{n} min left': 'reste {n} min',
   'Catalogue cache': 'Cache du catalogue',
   Contact: 'Contact',
