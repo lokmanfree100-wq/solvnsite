@@ -56,6 +56,21 @@ const ADMIN_EMAILS = new Set(['fakelokman36@gmail.com']);
 const ADMIN_SALT = '7c1f9a2b64d08e35a91c4f60b2d7e8a3';
 const ADMIN_HASH_STRONG = '0f2772ad7c105135c59e449db77cd8a4fa73aa0bf1331e802f543a8c81d27fd9';
 const ADMIN_HASH_FALLBACK = 'e284fe2ac62ad341';
+/* ---- gifts, the mailbox and the pulse --------------------------------
+   The same numbers the served copy keeps: a gift note, an envelope shelf,
+   the art a studio card may carry, and the heartbeat that separates two
+   page views from one. */
+const ONLINE_MS = 5 * 60 * 1000;
+const PULSE_MS = 45 * 1000;
+const ANALYTICS_DAYS = 60;
+const VISITOR_KEEP = 20000;
+const GIFT_NOTE_MAX = 180;
+const GIFT_KEEP = 800;
+const GIFT_ART_MAX = 120 * 1024;
+const CARD_SHAPES = new Set(['portrait', 'rounded', 'hex', 'blade', 'ticket', 'capsule']);
+const CARD_ANIMATIONS = new Set(['none', 'pulse', 'float', 'drift', 'shine', 'flicker', 'aura', 'orbit']);
+const GIFT_COLORS = /^#[0-9a-f]{6}$/i;
+const PIC_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif']);
 const REPORT_STATES = ['open', 'resolved', 'dismissed'];
 const CARD_LV_MAX = 25;
 const CARD_POWER_MAX = 9999;
@@ -174,6 +189,8 @@ function blank() {
     watches: {},
     notes: {},
     airing: {},
+    gifts: {},
+    analytics: {},
     seeded: false,
   };
 }
@@ -194,7 +211,7 @@ function normalise(raw) {
   if (!raw || typeof raw !== 'object') return base;
   for (const key of [
     'users', 'byEmail', 'byName', 'dms', 'friendship', 'friendReqs', 'playlists', 'reports', 'comments',
-    'trades', 'duels', 'rooms', 'watches', 'notes', 'airing',
+    'trades', 'duels', 'rooms', 'watches', 'notes', 'airing', 'gifts', 'analytics',
   ]) {
     base[key] = raw[key] && typeof raw[key] === 'object' ? raw[key] : {};
   }
@@ -255,6 +272,11 @@ function purgeLegacyHouse(target) {
   }
   for (const [id, room] of Object.entries(target.rooms)) {
     if (room.host === gone || room.members?.[gone]) delete target.rooms[id];
+  }
+  for (const [uid, list] of Object.entries(target.gifts)) {
+    const kept = (list || []).filter((g) => g.from !== gone);
+    if (uid === gone || !kept.length) delete target.gifts[uid];
+    else target.gifts[uid] = kept;
   }
   delete target.watches[gone];
   delete target.notes[gone];
@@ -1240,6 +1262,130 @@ function playlistsOf(target, ownerId, viewerId) {
     .map((p) => publicPlaylist(p, viewerId));
 }
 
+/* ---- handmade cards, the mailbox and the pulse ------------------------
+   The studio's card is a real card on the receiver's plate: a name, four
+   sub-scores, an overall and a tier it borrows its frame from. Every field
+   is checked because the record is rendered on somebody else's screen. */
+const clampStat = (value, max) => Math.max(0, Math.min(max, Math.round(Number(value) || 0)));
+const bounded = (value, max, min = 0, int = false) => {
+  const n = Number(value);
+  const capped = Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : min;
+  return int ? Math.round(capped) : capped;
+};
+
+function giftPicture(value) {
+  if (value == null || value === '') return null;
+  if (typeof value !== 'string' || !value.startsWith('data:image/')) {
+    fail(400, 'That file is not a picture Solvn can store.');
+  }
+  const mime = /^data:([^;,]*)/i.exec(value)?.[1] || '';
+  if (!PIC_MIMES.has(mime.toLowerCase())) fail(400, 'Use a PNG, JPEG, WebP, GIF or AVIF image.');
+  if (value.length > GIFT_ART_MAX) fail(400, 'That picture is too large. Pick a smaller file.');
+  return value;
+}
+
+function giftCardOf(raw) {
+  if (raw == null) return null;
+  if (typeof raw !== 'object') fail(400, 'A gift card needs a name and a portrait.');
+  const name = text(raw.name, 40, { required: true });
+  const lv = raw.lv == null || raw.lv === '' ? 15 : bounded(raw.lv, 16, 1, true);
+  const stats = {
+    power: clampStat(raw.stats?.power ?? raw.power, 99999),
+    speed: clampStat(raw.stats?.speed ?? raw.speed, 999),
+    technique: clampStat(raw.stats?.technique ?? raw.technique, 999),
+    aura: clampStat(raw.stats?.aura ?? raw.aura, 999),
+    overall: clampStat(raw.stats?.overall ?? raw.overall, 99999),
+  };
+  const shape = CARD_SHAPES.has(raw.shape) ? raw.shape : 'portrait';
+  const animation = CARD_ANIMATIONS.has(raw.animation) ? raw.animation : 'shine';
+  const color = (value, fallback) => (GIFT_COLORS.test(String(value || '')) ? String(value) : fallback);
+  const art =
+    typeof raw.image === 'string' && raw.image.startsWith('data:')
+      ? giftPicture(raw.image)
+      : typeof raw.image === 'string' && /^https:\/\/[^\s]+\.[^\s]{2,}$/i.test(raw.image.trim()) && raw.image.length <= 500
+        ? raw.image.trim()
+        : null;
+  return {
+    name,
+    lv,
+    shape,
+    animation,
+    a: color(raw.a, '#2f9cff'),
+    b: color(raw.b, '#0a1f6b'),
+    glow: color(raw.glow, '#2f9cff'),
+    image: art,
+    mediaTitle: text(raw.mediaTitle, 60) || 'Solvn Studio',
+    stats,
+    /* So a received card is recognizable in the binder and on a profile. */
+    custom: true,
+  };
+}
+
+function giftBundleOf(raw) {
+  if (raw == null) return null;
+  if (typeof raw !== 'object') fail(400, 'A bundle needs packs or XP.');
+  const packs = bounded(raw.packs || 0, 50, 0, true);
+  const xp = bounded(raw.xp || 0, 5000, 0, true);
+  if (!packs && !xp) fail(400, 'A bundle needs at least one pack or some XP.');
+  return { packs, xp };
+}
+
+/** What a recipient is allowed to see of a gift — never the sender's address. */
+function publicGift(gift, fromUser) {
+  return {
+    id: gift.id,
+    kind: gift.kind,
+    card: gift.card || null,
+    bundle: gift.bundle || null,
+    note: gift.note || '',
+    from: fromUser
+      ? { id: fromUser.id, username: fromUser.username, displayName: fromUser.displayName || fromUser.username }
+      : null,
+    at: Number(gift.at) || 0,
+    claimedAt: Number(gift.claimedAt) || 0,
+  };
+}
+
+/* The analytics record, created on first use so an old file needs no
+   migration. On a static copy every visitor is this browser — the numbers
+   are the local copy's own story, and the dashboard says so. */
+function analyticsOf(target) {
+  const base = target.analytics && typeof target.analytics === 'object' ? target.analytics : {};
+  if (!base.days || typeof base.days !== 'object') base.days = {};
+  if (!base.visitors || typeof base.visitors !== 'object') base.visitors = {};
+  if (!base.members || typeof base.members !== 'object') base.members = {};
+  base.visits = Number(base.visits) || 0;
+  base.unique = Number(base.unique) || 0;
+  target.analytics = base;
+  return base;
+}
+
+const dayKey = (at = Date.now()) => {
+  const d = new Date(at);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+function trimAnalytics(a) {
+  const days = Object.keys(a.days).sort();
+  const overflow = days.length - ANALYTICS_DAYS;
+  if (overflow > 0) for (const key of days.slice(0, overflow)) delete a.days[key];
+  const visitors = Object.entries(a.visitors);
+  const drop = visitors.length - VISITOR_KEEP;
+  if (drop > 0) {
+    for (const [key] of visitors.sort((x, y) => x[1] - y[1]).slice(0, drop)) delete a.visitors[key];
+  }
+}
+
+/** How recently a member was here, in the words the dashboard prints. */
+function activityOf(lastSeen) {
+  const age = Date.now() - (Number(lastSeen) || 0);
+  if (!lastSeen || age > 30 * 24 * 60 * 60 * 1000) return 'dormant';
+  if (age < ONLINE_MS) return 'online';
+  if (age < 24 * 60 * 60 * 1000) return 'today';
+  if (age < 7 * 24 * 60 * 60 * 1000) return 'week';
+  return 'quiet';
+}
+
 /* ---- the router ------------------------------------------------------- */
 /**
  * Answer one path. `viewer` is the account layer's current user (a cloud
@@ -1779,20 +1925,44 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
   if (seg[0] === 'admin' && seg[1] === 'users' && !seg[2] && method === 'GET') {
     const me = needStaff(target, viewer, allowSession);
     const reports = Object.values(target.reports);
+    const a = analyticsOf(target);
+    const now = Date.now();
     const members = Object.values(target.users)
       /* A mirror of a cloud profile has no local password but is a real member;
          one that claims a staff handle yet was never actually admitted is not
          edited from this desk. */
       .filter((u) => u === me || u.hash || u.mirror || !isAdmin(u))
-      .map((u) => ({
-        ...publicUser(u),
-        muted: !!u.muted,
-        playlists: Object.values(target.playlists).filter((p) => p.ownerId === u.id).length,
-        reports: reports.filter((r) => r.kind === 'user' && r.target === u.id && r.status === 'open').length,
-      }))
-      .sort((a, b) => b.stats.hours - a.stats.hours || a.username.localeCompare(b.username));
+      .map((u) => {
+        const pulse = a.members[u.id] || {};
+        return {
+          ...publicUser(u),
+          muted: !!u.muted,
+          online: !!pulse.lastSeen && now - pulse.lastSeen < ONLINE_MS,
+          lastSeen: Number(pulse.lastSeen) || 0,
+          lastPath: pulse.path || '',
+          visits: Number(pulse.visits) || 0,
+          activity: activityOf(pulse.lastSeen),
+          playlists: Object.values(target.playlists).filter((p) => p.ownerId === u.id).length,
+          reports: reports.filter((r) => r.kind === 'user' && r.target === u.id && r.status === 'open').length,
+        };
+      })
+      .sort((a, b) => b.visits - a.visits || b.lastSeen - a.lastSeen || a.username.localeCompare(b.username));
+    const days = [];
+    for (let i = 13; i >= 0; i -= 1) {
+      const key = dayKey(now - i * 24 * 60 * 60 * 1000);
+      const bucket = a.days[key] || {};
+      days.push({ day: key, visits: Number(bucket.visits) || 0, unique: Number(bucket.unique) || 0 });
+    }
     return {
       members,
+      analytics: {
+        visits: a.visits,
+        unique: a.unique,
+        today: Number(a.days[dayKey(now)]?.visits) || 0,
+        online: members.filter((m) => m.online).length,
+        browsers: Object.values(a.visitors).filter((t) => now - t < ONLINE_MS).length,
+        days,
+      },
       totals: {
         members: members.length,
         hours: Math.round(members.reduce((n, u) => n + (u.stats?.hours || 0), 0) * 10) / 10,
@@ -2390,6 +2560,97 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     target.notes[user.id] = [];
     persist();
     return { notes: [], unread: 0 };
+  }
+
+  /* -- the pulse --------------------------------------------------------
+     The heartbeat every page sends. A static copy is its own little world —
+     one browser, one story — so the counters below are this device's own
+     ledger, and the dashboard says so rather than pretending otherwise. */
+  if (seg[0] === 'pulse' && !seg[1] && method === 'POST') {
+    const a = analyticsOf(target);
+    const now = Date.now();
+    const visitor = text(body?.visitor, 64);
+    const path = text(body?.path, 120) || '/';
+    const last = visitor ? Number(a.visitors[visitor]) || 0 : 0;
+    const fresh = !visitor || now - last > PULSE_MS;
+    if (visitor) a.visitors[visitor] = now;
+    if (fresh) {
+      a.visits += 1;
+      if (visitor && !last) a.unique += 1;
+      const bucket = a.days[dayKey(now)] || { visits: 0, unique: 0 };
+      bucket.visits += 1;
+      if (visitor && !last) bucket.unique += 1;
+      a.days[dayKey(now)] = bucket;
+    }
+    const me = openSession(target, viewer, allowSession);
+    if (me) {
+      const rec = a.members[me.id] || { visits: 0 };
+      rec.lastSeen = now;
+      rec.path = path;
+      if (fresh) rec.visits = (Number(rec.visits) || 0) + 1;
+      a.members[me.id] = rec;
+    }
+    trimAnalytics(a);
+    persist();
+    return { ok: true, counted: fresh };
+  }
+
+  /* -- the mailbox --------------------------------------------------------
+     A gift is a local record that carries a card or a bundle. The binder never
+     leaves this device, so claiming is what turns a delivered card into a local
+     one: the envelope is marked open and the same card is handed back for the
+     page to add. */
+  if (seg[0] === 'mailbox' && !seg[1] && method === 'GET') {
+    const user = need(target, viewer, allowSession);
+    const list = (target.gifts[user.id] || []).map((g) => publicGift(g, target.users[g.from]));
+    return {
+      gifts: list.sort((a, b) => b.at - a.at),
+      unread: list.filter((g) => !g.claimedAt).length,
+    };
+  }
+
+  if (seg[0] === 'mailbox' && seg[1] && seg[2] === 'claim' && method === 'POST') {
+    const user = need(target, viewer, allowSession);
+    const list = target.gifts[user.id] || [];
+    const gift = list.find((g) => g.id === seg[1]);
+    if (!gift) fail(404, 'That gift is not in your mailbox.');
+    if (!gift.claimedAt) {
+      gift.claimedAt = Date.now();
+      persist();
+    }
+    return { gift: publicGift(gift, target.users[gift.from]) };
+  }
+
+  /* -- the Card Studio ------------------------------------------------------
+     A handmade card, or a bundle, delivered to one member's mailbox. The
+     recipient is named by account id because that is what the dashboard lists;
+     the card itself passes the same reader every envelope is read with, so a
+     malformed one is refused before it is stored. */
+  if (seg[0] === 'admin' && seg[1] === 'gifts' && !seg[2] && method === 'POST') {
+    const admin = needStaff(target, viewer, allowSession);
+    const recipient = findUser(target, body?.to);
+    if (!recipient) fail(404, 'Pick a member to send this to. Reload the list and try again.');
+    const hasCard = body?.card != null;
+    const hasBundle = body?.bundle != null;
+    if (!hasCard && !hasBundle) fail(400, 'A gift needs a card, a bundle or both.');
+    const card = hasCard ? giftCardOf(body.card) : null;
+    const bundle = hasBundle ? giftBundleOf(body.bundle) : null;
+    if (!card && !bundle) fail(400, 'A gift needs a card, a bundle or both.');
+    const gift = {
+      id: newId(),
+      kind: card && bundle ? 'both' : card ? 'card' : 'bundle',
+      card,
+      bundle,
+      note: text(body?.note, GIFT_NOTE_MAX),
+      from: admin.id,
+      at: Date.now(),
+      claimedAt: 0,
+    };
+    const list = target.gifts[recipient.id] || [];
+    list.push(gift);
+    target.gifts[recipient.id] = list.length > GIFT_KEEP ? list.slice(list.length - GIFT_KEEP) : list;
+    persist();
+    return { ok: true, gift: publicGift(gift, admin), to: { id: recipient.id, username: recipient.username } };
   }
 
   fail(404, 'That is not the right method.', 'no-route');

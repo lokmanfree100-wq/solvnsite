@@ -214,6 +214,7 @@ export const ICONS = {
   /* Two arrows going opposite ways: one list for the other, and one coming back.
      `share` already means "send this out", which is the wrong shape for a trade. */
   swap: I(['M4 8.5h13.4', 'M14.4 5.3l3 3.2-3 3.2', 'M20 15.5H6.6', 'M9.6 12.3l-3 3.2 3 3.2']),
+  gift: I(['M20 12v10H4V12', 'M2 7h20v5H2z', 'M12 22V7', 'M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z', 'M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z']),
   /* The three moves of a fight, drawn so the action bar reads without labels:
      a blade for the strike, a ward for the brace, a processing die for the CPU. */
   sword: I(['M14.6 3.4 20.6 9.4 9.4 20.6H3.4v-6L14.6 3.4Z', 'M12.4 10.6 17 15.2', 'M7.5 15.5l2 2']),

@@ -101,7 +101,22 @@ const printedBanner = (card, r) =>
  * owned. What a pull has not decided, the page does not pretend to know.
  */
 export function gachaCard(card, { variant = 'full', count = 1, onClick = null, eager = true } = {}) {
-  const r = rarityOf(card.lv);
+  const base = rarityOf(card.lv);
+  /* A studio card keeps the tier's frame but wears the colours the studio
+     picked, reads its own real numbers instead of the roll table's grade, and
+     can never be mistaken for the one-of-one — a handmade Lv 16 is still
+     handmade, so the ultimate's crown and INFINITY are not on it. */
+  const r = card.custom
+    ? {
+        lv: Math.max(1, Math.min(16, Number(card.lv) || 1)),
+        id: 'studio',
+        label: 'Studio',
+        a: card.a || base.a,
+        b: card.b || base.b,
+        glow: card.glow || base.glow,
+      }
+    : base;
+  const custom = Boolean(card.custom);
   const form = formOf(r.lv);
   const live = isLive(card);
   const locked = Boolean(card.locked);
@@ -221,7 +236,8 @@ export function gachaCard(card, { variant = 'full', count = 1, onClick = null, e
                 'div.g-rar',
                 {},
                 h('span.g-rar-label', {}, t(r.label)),
-                variant === 'full' ? h('span.g-rar-rate.tnum', {}, dropRate(r.lv).label) : null,
+                /* A studio plate has no drop rate to quote: it was not rolled. */
+                variant === 'full' && !custom ? h('span.g-rar-rate.tnum', {}, dropRate(r.lv).label) : null,
               ),
           variant === 'full'
             ? h(

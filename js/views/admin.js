@@ -9,13 +9,14 @@
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
-import { account, isStaff, adminUsers, adminPatchUser, adminReports, adminPatchReport, adminComments, removeComment } from '../lib/account.js';
+import { account, isStaff, adminUsers, adminPatchUser, adminReports, adminPatchReport, adminComments, removeComment, adminGift } from '../lib/account.js';
 import { BADGES, rankOf } from '../lib/ranks.js';
 import { statsLocked, setStatsLock } from '../lib/store.js';
 import { avatar, say, statTile } from '../components/account.js';
 import { emptyState, errorState } from '../components/media.js';
 import { intlDate, relativeTime } from '../lib/util.js';
 import { presence, activity } from '../lib/presence.js';
+import { gachaCard } from '../components/gacha.js';
 
 const badgeNode = (b) =>
   h('span.badge', { title: `${t(b.label)} — ${t(b.hint)}` }, icon(b.icon), h('span.badge-name', {}, t(b.label)));
@@ -89,6 +90,251 @@ function badgeSheet(user, onSaved) {
       return h('div.stack', {}, preview, chips, h('div.auth-foot', {}, save));
     },
   });
+  paintPreview();
+}
+
+/* ---- the Card Studio ------------------------------------------------------
+   The admin's workbench: name a recipient, draw a plate or pack a bundle, and
+   the gift lands in their mailbox. Every field here matches the limits the
+   backend enforces — the sheet refuses nothing the server would accept, and the
+   server refuses nothing the sheet lets through. */
+const STUDIO_SHAPES = ['portrait', 'rounded', 'hex', 'blade', 'ticket', 'capsule'];
+const STUDIO_ANIMATIONS = ['none', 'pulse', 'float', 'drift', 'shine', 'flicker', 'aura', 'orbit'];
+
+function studioSheet(members, onSent) {
+  let dismiss = () => {};
+  let portrait = null;
+
+  const state = {
+    to: members[0]?.id || '',
+    name: '',
+    lv: 15,
+    power: 620,
+    speed: 200,
+    technique: 200,
+    aura: 200,
+    overall: 1220,
+    shape: 'portrait',
+    animation: 'shine',
+    a: '#2f9cff',
+    b: '#0a1f6b',
+    glow: '#2f9cff',
+    mediaTitle: 'Solvn Studio',
+    packs: 5,
+    xp: 250,
+    note: '',
+    withCard: true,
+    withBundle: false,
+  };
+
+  const numOf = (v, fallback, max) => Math.max(0, Math.min(max, Math.round(Number(v) || fallback)));
+
+  const preview = h('div.st-preview');
+
+  const cardOf = () => ({
+    name: state.name,
+    lv: numOf(state.lv, 15, 16),
+    shape: state.shape,
+    animation: state.animation,
+    a: state.a, b: state.b, glow: state.glow,
+    image: portrait,
+    mediaTitle: state.mediaTitle,
+    stats: {
+      power: numOf(state.power, 0, 99999),
+      speed: numOf(state.speed, 0, 999),
+      technique: numOf(state.technique, 0, 999),
+      aura: numOf(state.aura, 0, 999),
+      overall: numOf(state.overall, 0, 99999),
+    },
+    custom: true,
+  });
+
+  function paintPreview() {
+    if (!state.withCard) {
+      preview.replaceChildren(h('p.muted', {}, t('No card in this gift.')));
+      return;
+    }
+    preview.replaceChildren(
+      gachaCard({ ...cardOf(), serial: 'STUDIO' }, { variant: 'full', eager: true }),
+    );
+  }
+
+  const field = (label, control, wide = false) =>
+    h(`label.st-field${wide ? '.is-wide' : ''}`, {}, h('span', {}, label), control);
+
+  const input = (value, oninput, attrs = {}) =>
+    h('input.input', { type: 'text', value: String(value ?? ''), oninput: (e) => oninput(e.target.value), ...attrs });
+
+  const num = (value, oninput, max, min = 0) =>
+    h('input.input.tnum', {
+      type: 'number', min: String(min), max: String(max), value: String(value ?? 0),
+      oninput: (e) => oninput(e.target.value),
+    });
+
+  const select = (options, value, onchange) =>
+    h(
+      'select.input',
+      { value: String(value), onchange: (e) => onchange(e.target.value) },
+      ...options.map((o) => h('option', { value: o.value ?? o }, t(o.label ?? o))),
+    );
+
+  const colorInput = (value, oninput) =>
+    h('div.st-color', {}, h('input', { type: 'color', value, oninput: (e) => oninput(e.target.value) }), h('code.tnum', {}, String(value).toUpperCase()));
+
+  const picDrop = h(
+    'div.st-pic-drop',
+    { role: 'button', tabindex: '0', 'aria-label': t('Choose a portrait') },
+    icon('user'),
+    h('span', {}, t('Choose a portrait image — PNG, JPEG, WebP, GIF or AVIF, up to 120 KB')),
+  );
+  const pickFile = () => {
+    const file = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/gif,image/avif' });
+    file.addEventListener('change', () => {
+      const f = file.files?.[0];
+      if (!f) return;
+      if (f.size > 120 * 1024) {
+        toast(t('That picture is too large. Pick a smaller file.'), { tone: 'err', iconName: 'alert' });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        portrait = String(reader.result || '');
+        picDrop.classList.add('has-art');
+        picDrop.lastChild.textContent = t('Portrait chosen. Pick another to replace it.');
+        paintPreview();
+      };
+      reader.readAsDataURL(f);
+    });
+    file.click();
+  };
+  picDrop.addEventListener('click', pickFile);
+  picDrop.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      pickFile();
+    }
+  });
+
+  const cardBox = h('div.st-grid');
+  const bundleBox = h('div.st-grid');
+
+  function paintBoxes() {
+    cardBox.hidden = !state.withCard;
+    bundleBox.hidden = !state.withBundle;
+  }
+
+  const toggle = (label, key) =>
+    h(
+      'label.vis',
+      {},
+      h('input', { type: 'checkbox', checked: state[key], onchange: (e) => { state[key] = e.target.checked; paintBoxes(); paintPreview(); } }),
+      h('span', {}, label),
+    );
+
+  function paintFields() {
+    cardBox.replaceChildren(
+      field(t('Card name'), input(state.name, (v) => { state.name = v; paintPreview(); }, { maxlength: '40' }), true),
+      field(t('Level (1–16)'), num(state.lv, (v) => { state.lv = v; paintPreview(); }, 16, 1)),
+      field(t('Power (0–99999)'), num(state.power, (v) => { state.power = v; paintPreview(); }, 99999)),
+      field(t('Speed (0–999)'), num(state.speed, (v) => { state.speed = v; paintPreview(); }, 999)),
+      field(t('Technique (0–999)'), num(state.technique, (v) => { state.technique = v; paintPreview(); }, 999)),
+      field(t('Aura (0–999)'), num(state.aura, (v) => { state.aura = v; paintPreview(); }, 999)),
+      field(t('Overall (0–99999)'), num(state.overall, (v) => { state.overall = v; paintPreview(); }, 99999)),
+      field(t('Shape'), select(STUDIO_SHAPES, state.shape, (v) => { state.shape = v; })),
+      field(t('Animation'), select(STUDIO_ANIMATIONS, state.animation, (v) => { state.animation = v; })),
+      field(t('Frame colour'), colorInput(state.a, (v) => { state.a = v; paintPreview(); })),
+      field(t('Frame shade'), colorInput(state.b, (v) => { state.b = v; paintPreview(); })),
+      field(t('Glow'), colorInput(state.glow, (v) => { state.glow = v; paintPreview(); })),
+      field(t('Plate title'), input(state.mediaTitle, (v) => { state.mediaTitle = v; paintPreview(); }, { maxlength: '60' }), true),
+      field(t('Portrait'), picDrop, true),
+    );
+    bundleBox.replaceChildren(
+      field(t('Packs (0–50)'), num(state.packs, (v) => { state.packs = v; }, 50)),
+      field(t('XP (0–5000)'), num(state.xp, (v) => { state.xp = v; }, 5000)),
+    );
+  }
+
+  const note = h('textarea.input', {
+    rows: '3',
+    maxlength: '180',
+    placeholder: t('A note that arrives with the gift (up to 180 characters)'),
+    oninput: (e) => { state.note = e.target.value; },
+  });
+
+  const send = h(
+    'button.btn.btn--primary',
+    {
+      type: 'button',
+      onclick: async () => {
+        if (!state.to) {
+          toast(t('Pick a member to send this to. Reload the list and try again.'), { tone: 'err', iconName: 'alert' });
+          return;
+        }
+        if (!state.withCard && !state.withBundle) {
+          toast(t('A gift needs a card, a bundle or both.'), { tone: 'err', iconName: 'alert' });
+          return;
+        }
+        const card = state.withCard ? cardOf() : null;
+        const bundle = state.withBundle
+          ? { packs: numOf(state.packs, 0, 50), xp: numOf(state.xp, 0, 5000) }
+          : null;
+        if (state.withCard && !state.name.trim()) {
+          toast(t('A gift card needs a name and a portrait.'), { tone: 'err', iconName: 'alert' });
+          return;
+        }
+        if (state.withBundle && !bundle.packs && !bundle.xp) {
+          toast(t('A bundle needs at least one pack or some XP.'), { tone: 'err', iconName: 'alert' });
+          return;
+        }
+        send.disabled = true;
+        try {
+          await adminGift({ to: state.to, card, bundle, note: state.note.trim() });
+          toast(t('Sent to the mailbox.'), { tone: 'ok', iconName: 'gift' });
+          dismiss();
+          onSent?.();
+        } catch (err) {
+          toast(say(err), { tone: 'err', iconName: 'alert' });
+          send.disabled = false;
+        }
+      },
+    },
+    icon('gift'),
+    h('span', {}, t('Send gift')),
+  );
+
+  sheet({
+    heading: t('Card Studio'),
+    sub: t('Draw a card or pack a bundle and send it to one member\'s mailbox.'),
+    width: 640,
+    render: (api) => {
+      dismiss = api.close;
+      return h(
+        'div.st-sheet',
+        {},
+        field(
+          t('Send to'),
+          h(
+            'select.input',
+            { value: state.to, onchange: (e) => { state.to = e.target.value; } },
+            ...members.map((m) => h('option', { value: m.id }, `${m.displayName || m.username}${m.id === account().user?.id ? ` (${t('you')})` : ''}`)),
+          ),
+          true,
+        ),
+        h('div.st-grid', {},
+          toggle(t('Send a card'), 'withCard'),
+          toggle(t('Send a bundle'), 'withBundle'),
+        ),
+        cardBox,
+        bundleBox,
+        field(t('Note'), note, true),
+        h('p.st-note', {}, t('The card joins the receiver\'s binder when they claim it. A bundle hands over its packs and XP the same way.')),
+        preview,
+        h('div.auth-foot', {}, h('button.btn.btn--ghost', { type: 'button', onclick: () => dismiss() }, t('Cancel')), send),
+      );
+    },
+  });
+  paintBoxes();
+  paintFields();
   paintPreview();
 }
 
@@ -180,6 +426,8 @@ function memberRow(member, isMe, onSaved) {
       'p.ad-meta.faint',
       {},
       t('{n} playlists', { n: member.playlists || 0 }),
+      member.visits != null ? ` · ${t('{n} visits', { n: member.visits })}` : '',
+      member.online ? ` · ${t('online now')}` : member.lastSeen ? ` · ${t('seen {when}', { when: relativeTime(member.lastSeen) })}` : '',
       ' · ',
       intlDate(member.createdAt, { year: 'numeric', month: 'short', day: 'numeric' }),
     ),
@@ -378,6 +626,8 @@ export async function AdminView({ onCleanup } = {}) {
   );
 
   const totals = h('div.metric-grid');
+  const analyticsBox = h('section.ad-analytics.glass');
+  const studio = h('section.ad-studio.glass');
   const pulseBox = h('section.ad-pulse.glass');
   const hold = h('div.ad-hold');
   const roster = h('div.ad-roster');
@@ -400,6 +650,60 @@ export async function AdminView({ onCleanup } = {}) {
         },
         icon(on ? 'lock' : 'ghost'),
         h('span', {}, t('Hold my numbers on this device')),
+      ),
+    );
+  }
+
+  function paintAnalytics(users) {
+    const a = users.analytics;
+    if (!a) {
+      analyticsBox.replaceChildren();
+      return;
+    }
+    const max = Math.max(1, ...(a.days || []).map((d) => Number(d.visits) || 0));
+    analyticsBox.replaceChildren(
+      h('h2.panel-title', {}, icon('trending'), t('Traffic')),
+      h(
+        'div.metric-grid',
+        {},
+        statTile({ iconName: 'eye', value: String(a.visits), label: t('Visits') }),
+        statTile({ iconName: 'users', value: String(a.unique), label: t('Unique visitors') }),
+        statTile({ iconName: 'clock', value: String(a.today), label: t('Today') }),
+        statTile({ iconName: 'globe', value: String(a.browsers), label: t('Browsers now') }),
+      ),
+      h(
+        'div.an-days',
+        { role: 'img', 'aria-label': t('Visits over the last 14 days') },
+        ...(a.days || []).map((d) =>
+          h(
+            'div.an-day',
+            { title: `${d.day}: ${d.visits}` },
+            h('b.tnum', {}, String(d.visits)),
+            h('div.an-bar', { style: { height: `${Math.max(3, Math.round((Number(d.visits) / max) * 64))}px` } }),
+            h('span.tnum', {}, String(d.day).slice(5)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  function paintStudio(users) {
+    studio.replaceChildren(
+      h('h2.panel-title', {}, icon('sparkles'), t('Card Studio')),
+      h(
+        'p.ad-pulse-note.faint',
+        {},
+        t('Draw a card or pack a bundle and send it to one member — it lands in their mailbox.'),
+      ),
+      h(
+        'div.ad-studio-bar',
+        {},
+        h(
+          'button.btn.btn--primary',
+          { type: 'button', onclick: () => studioSheet(users.members, fill) },
+          icon('gift'),
+          h('span', {}, t('Open the studio')),
+        ),
       ),
     );
   }
@@ -458,6 +762,9 @@ export async function AdminView({ onCleanup } = {}) {
        stops that push. */
     paintHold();
 
+    paintAnalytics(users);
+    paintStudio(users);
+
     roster.replaceChildren(
       h('h2.panel-title', {}, icon('users'), t('Members')),
       ...(users.members.length
@@ -484,7 +791,7 @@ export async function AdminView({ onCleanup } = {}) {
     paintPulse();
   }
 
-  wrap.append(head, totals, pulseBox, hold, roster, reportBox, commentBox);
+  wrap.append(head, totals, analyticsBox, studio, pulseBox, hold, roster, reportBox, commentBox);
   paintHold();
   await fill();
   const pulseTimer = setInterval(paintPulse, 15_000);

@@ -25,6 +25,7 @@ import { ProfileView } from './views/profile.js';
 import { CollectionView } from './views/collection.js';
 import { LeaderboardView } from './views/leaderboard.js';
 import { MessagesView } from './views/messages.js';
+import { MailboxView } from './views/mailbox.js';
 import { TradesView } from './views/trades.js';
 import { ArenaView } from './views/arena.js';
 import { SpinView } from './views/spin.js';
@@ -47,6 +48,7 @@ const ROUTES = [
   { match: /^\/packs$/, view: CollectionView, nav: true },
   { match: /^\/leaderboard$/, view: LeaderboardView, nav: true },
   { match: /^\/messages$/, view: MessagesView, nav: true },
+  { match: /^\/mailbox$/, view: MailboxView, nav: true },
   { match: /^\/trades$/, view: TradesView, nav: true },
   { match: /^\/arena$/, view: ArenaView, nav: true },
   { match: /^\/spin$/, view: SpinView, nav: true },
@@ -202,6 +204,7 @@ const PAGE_TITLES = {
   packs: 'Card Binder — Solvn',
   leaderboard: 'Leaderboard — Solvn',
   messages: 'Messages — Solvn',
+  mailbox: 'Mailbox — Solvn',
   trades: 'Trades — Solvn',
   arena: 'Arena — Solvn',
   spin: 'Fortune Wheel — Solvn',

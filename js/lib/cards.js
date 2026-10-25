@@ -451,7 +451,10 @@ function collapseTiers(owned) {
   let moved = false;
   for (const key of Object.keys(owned)) {
     const entry = owned[key];
-    if (!entry || entry.ultimate || Number(entry.lv) <= TOP_LV) continue;
+    /* A studio card is a one-off, not a pull: its tier is whatever the studio
+       stamped, and rebuilding it at the top of the set would forge a rainbow
+       plate out of a hand-made one. */
+    if (!entry || entry.ultimate || entry.custom || Number(entry.lv) <= TOP_LV) continue;
     const cid = String(key).slice(0, String(key).lastIndexOf(':'));
     const card = build(
       {
@@ -482,7 +485,9 @@ const SCORE_VERSION = 2;
 function rescore(owned) {
   let moved = false;
   for (const entry of Object.values(owned)) {
-    if (!entry || entry.ultimate) continue;
+    /* A studio card's numbers were chosen by hand, not rolled from the bands;
+       re-grading it would overwrite the exact plate the studio signed. */
+    if (!entry || entry.ultimate || entry.custom) continue;
     const fresh = statsFor(entry.cid, entry.serial, Number(entry.lv) || 1, Boolean(entry.evolved));
     if (!entry.stats || entry.stats.power !== fresh.power || entry.stats.overall !== fresh.overall) {
       entry.stats = fresh;
@@ -832,6 +837,58 @@ export function grantCopies(cid, lv, count) {
   return given;
 }
 
+/**
+ * Put a card from the Card Studio into this binder.
+ *
+ * The mailbox is the delivery van: the claim hands the same record back here,
+ * and this is the door into the collection. The key is the gift's own id, so a
+ * claim is idempotent — a second claim of the same envelope cannot grow a second
+ * copy of the same plate. A studio card is not a pull, so it costs nothing from
+ * the day's packs and counts nothing toward the streak; it simply joins the
+ * binder, tier frame and all, marked `custom` so the migrations leave its
+ * hand-picked numbers alone.
+ */
+export function importGiftCard(giftId, card) {
+  if (!card || typeof card !== 'object') return { ok: false, dupe: false, key: null };
+  const key = `gift:${String(giftId)}`;
+  const next = coll();
+  const entry = {
+    key,
+    cid: key,
+    name: String(card.name || '').slice(0, 60) || 'Solvn Studio',
+    native: '',
+    image: card.image || null,
+    mediaId: null,
+    mediaTitle: String(card.mediaTitle || 'Solvn Studio').slice(0, 200),
+    mediaYear: null,
+    mediaGenres: [],
+    cover: null,
+    lv: Math.max(1, Math.min(16, Number(card.lv) || 15)),
+    serial: 'STUDIO',
+    evolved: false,
+    stats: {
+      power: Number(card.stats?.power) || 0,
+      speed: Number(card.stats?.speed) || 0,
+      technique: Number(card.stats?.technique) || 0,
+      aura: Number(card.stats?.aura) || 0,
+      overall: Number(card.stats?.overall) || 0,
+    },
+    shape: card.shape || 'portrait',
+    animation: card.animation || 'shine',
+    a: card.a, b: card.b, glow: card.glow,
+    custom: true,
+    at: Date.now(),
+  };
+  /* A second claim of the same envelope is the same plate, not a second copy —
+     the gift's id is the whole identity, so an already-imported one is kept as
+     it was rather than counted up like a fused duplicate. */
+  if (next.owned[key]) return { ok: false, dupe: true, key };
+  next.owned[key] = { ...entry, count: 1 };
+  next.best = Math.max(next.best, entry.lv);
+  save(next);
+  return { ok: true, dupe: false, key };
+}
+
 /** Force a hand at a chosen tier. Debug only, and gated twice: the toolbar is
     drawn for the tester account alone, and this returns nothing for anybody
     else. What it banks is exactly what a pack banks — same serials, same
@@ -909,12 +966,14 @@ export function mergeCost(lv) {
 }
 
 export const canMerge = (entry) =>
-  Boolean(entry) && entry.lv < TOP_LV && (Number(entry.count) || 1) >= mergeCost(entry.lv);
+  Boolean(entry) && !entry.custom && entry.lv < TOP_LV && (Number(entry.count) || 1) >= mergeCost(entry.lv);
 
 export function merge(key) {
   const next = coll();
   const entry = next.owned[key];
-  if (!entry || entry.lv >= TOP_LV) return null;
+  /* A studio card is a finished object, not a stack of copies: fusing it would
+     rebuild the plate from the roll table and replace the hand-made numbers. */
+  if (!entry || entry.custom || entry.lv >= TOP_LV) return null;
   const cost = mergeCost(entry.lv);
   if ((Number(entry.count) || 1) < cost) return null;
 
@@ -1379,11 +1438,14 @@ export function ultimateCard() {
   };
 }
 
-/** Which of the rollable tiers this binder holds at least one copy of. */
+/** Which of the rollable tiers this binder holds at least one copy of. A studio
+    card does not count: the master is earned by pulling the set, and a
+    hand-made plate at a tier's level must not stand in for a rolled one. */
 function tiersHeld() {
   const held = new Set();
   for (const e of Object.values(coll().owned)) {
     const lv = Number(e?.lv);
+    if (e?.custom) continue;
     if (lv >= 1 && lv <= TOP_LV) held.add(lv);
   }
   return held;

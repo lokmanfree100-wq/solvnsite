@@ -32,7 +32,7 @@ function tabFor(path) {
   if (path.startsWith('/search') || path.startsWith('/top')) return 'discover';
   if (path.startsWith('/anime') || path.startsWith('/watch')) return null;
   const seg = path.split('/')[1];
-  if (seg === 'settings' || seg === 'updates' || seg === 'packs' || seg === 'leaderboard' || seg === 'messages' || seg === 'trades' || seg === 'arena' || seg === 'spin') return 'profile';
+  if (seg === 'settings' || seg === 'updates' || seg === 'packs' || seg === 'leaderboard' || seg === 'messages' || seg === 'mailbox' || seg === 'trades' || seg === 'arena' || seg === 'spin') return 'profile';
   return NAV.some((n) => n.id === seg) ? seg : null;
 }
 
@@ -245,6 +245,9 @@ function moreSheet() {
           inboxUsable()
             ? row(api, { href: '/messages', iconName: 'chat', label: t('Messages & friends'), on: onPath('/messages') })
             : null,
+          inboxUsable()
+            ? row(api, { href: '/mailbox', iconName: 'gift', label: t('Mailbox'), on: onPath('/mailbox') })
+            : null,
           tradeUsable()
             ? row(api, { href: '/trades', iconName: 'swap', label: t('Trades'), on: onPath('/trades') })
             : null,
@@ -385,6 +388,7 @@ export function renderNav() {
        would otherwise open a page whose only honest answer is that it has no
        inbox to show. */
     inboxUsable() ? inboxLink(path === '/messages') : null,
+    inboxUsable() ? sideLink({ label: t('Mailbox'), path: '/mailbox', iconName: 'gift', active: path === '/mailbox' }) : null,
     /* A deal is written on the server that runs this site, for the same reason a
        message is — so the link appears and disappears with the same capability. */
     tradeUsable() ? sideLink({ label: t('Trades'), path: '/trades', iconName: 'swap', active: path === '/trades' }) : null,
