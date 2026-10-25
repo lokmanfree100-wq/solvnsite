@@ -35,7 +35,11 @@ let engine = null;
 /** Resolved once, shared by every stage: one 560 KB module, never refetched. */
 function hlsEngine() {
   if (engine) return engine;
-  engine = import('../vendor/hls.mjs')
+  /* Two levels up: this module is `js/lib/playback.js` and the engine ships at
+     the site root, `vendor/hls.mjs`. Written as one `../` the browser asks for
+     `js/vendor/hls.mjs`, gets a 404, and every manifest on a browser without
+     native HLS (Chrome, Firefox, Android) reports itself dead before it starts. */
+  engine = import('../../vendor/hls.mjs')
     .then((mod) => mod.default)
     .catch(() => null);
   return engine;
