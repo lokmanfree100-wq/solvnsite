@@ -219,7 +219,9 @@ export function WatchView({ params, route, onCleanup }) {
     return elt;
   };
   let frame = makeFrame();
-  const frameBox = h('div.player-frame', {}, frame, boot);
+  /* The provider's own corner watermark lives inside its cross-origin frame and
+     cannot be removed from here, so Solvn's brand chip covers the same spot. */
+  const frameBox = h('div.player-frame', {}, frame, boot, h('div.player-brand', { 'aria-hidden': 'true' }, 'solvn.site'));
 
   /* A frame quieter than this is treated as a dead server. The number comes
      from Settings so a viewer on a fast line can demand three seconds; the
