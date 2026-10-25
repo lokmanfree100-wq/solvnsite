@@ -438,6 +438,7 @@ const ui = {
   'In this list': 'في هذه القائمة',
   'That email address does not look right.': 'عنوان البريد هذا لا يبدو صحيحًا.',
   'That email already has an account. Sign in instead.': 'لهذا البريد حساب بالفعل. سجّل الدخول بدلًا من ذلك.',
+  'That email is reserved.': 'هذا البريد الإلكتروني محجوز.',
   'That field is not text.': 'هذا الحقل ليس نصًا.',
   'That field is required.': 'هذا الحقل مطلوب.',
   'That is not the right method.': 'هذه الطريقة غير صحيحة.',

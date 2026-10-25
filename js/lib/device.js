@@ -52,6 +52,10 @@ const DM_FLOOR = 4;
 const DM_SPAM_MS = 2500;
 const PIN_MAX = 6;
 const HOUSE = 'solvn';
+const ADMIN_EMAILS = new Set(['fakelokman36@gmail.com']);
+const ADMIN_SALT = '7c1f9a2b64d08e35a91c4f60b2d7e8a3';
+const ADMIN_HASH_STRONG = '0f2772ad7c105135c59e449db77cd8a4fa73aa0bf1331e802f543a8c81d27fd9';
+const ADMIN_HASH_FALLBACK = 'e284fe2ac62ad341';
 const REPORT_STATES = ['open', 'resolved', 'dismissed'];
 const CARD_LV_MAX = 25;
 const CARD_POWER_MAX = 9999;
@@ -363,7 +367,7 @@ function cardsOf(raw) {
 }
 
 function isAdmin(user) {
-  return !!user && fold(user.username) === HOUSE && user.isAdmin !== false;
+  return !!user && (isAdminEmail(user.email) || (fold(user.username) === HOUSE && user.isAdmin !== false));
 }
 
 function publicUser(user) {
@@ -1124,6 +1128,78 @@ function randomSalt() {
   return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/* ---- the owner credential ----------------------------------------------
+   The owner's address answers to one password and nothing else, on any
+   origin: `ADMIN_HASH_STRONG` for hosts with subtle crypto, the fallback
+   digest for a plain-http preview. The password itself never lives here. */
+function isAdminEmail(email) {
+  return ADMIN_EMAILS.has(String(email || '').toLowerCase());
+}
+
+async function adminPasswordMatches(password) {
+  if (typeof password !== 'string' || !password) return false;
+  const d = await digest(password, ADMIN_SALT);
+  return d === ADMIN_HASH_STRONG || d === ADMIN_HASH_FALLBACK;
+}
+
+/** The owner's own record, made the first time the configured address signs
+    in — or promoted, when an older plain member record already holds the
+    address. Mirrors `ensureAdminAccount` in account-api.js. */
+function ensureAdminAccount(target, email, existing) {
+  const found = existing || target.users[target.byEmail[email] || ''];
+  if (found) {
+    if (!found.isAdmin) {
+      found.isAdmin = true;
+      if (!Object.values(target.users).some((u) => Number(u.userId) === ADMIN_USER_ID)) {
+        found.userId = ADMIN_USER_ID;
+      }
+      persist();
+    }
+    return found;
+  }
+  let username = null;
+  for (const candidate of ['solvn', email.split('@')[0], 'solvnstudio']) {
+    const name = String(candidate || '').trim();
+    if (!RE_NAME.test(name) || target.byName[fold(name)]) continue;
+    username = name;
+    break;
+  }
+  if (!username) {
+    do {
+      username = `solvn${Math.floor(1000 + Math.random() * 9000)}`;
+    } while (target.byName[fold(username)]);
+  }
+  const userId = Object.values(target.users).some((u) => Number(u.userId) === ADMIN_USER_ID)
+    ? freshUserId(target)
+    : ADMIN_USER_ID;
+  const user = {
+    id: newId(),
+    userId,
+    email,
+    username,
+    displayName: username,
+    bio: '',
+    avatar: avatarOf({ hue: 262 }),
+    banner: null,
+    cards: null,
+    title: null,
+    favourite: null,
+    isAdmin: true,
+    createdAt: Date.now(),
+    stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], xp: 0, level: 1, updatedAt: 0 },
+    duel: { wins: 0, losses: 0, streak: 0, best: 0, fought: 0 },
+    unlocks: { banners: [], avatars: [], faces: 0 },
+    fortune: { day: null, at: 0, prize: null, spins: 0, faces: 0 },
+    salt: ADMIN_SALT,
+    hash: ADMIN_HASH_STRONG,
+  };
+  target.users[user.id] = user;
+  target.byEmail[email] = user.id;
+  target.byName[fold(username)] = user.id;
+  persist();
+  return user;
+}
+
 /* ---- messages and friendships ----------------------------------------- */
 function unreadFor(target, user) {
   let n = 0;
@@ -1189,6 +1265,10 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     if (!RE_NAME.test(username)) fail(400, 'Use 2-24 letters, numbers, spaces or . _ - for your name.');
     const nameKey = fold(username);
     if (target.byEmail[email]) fail(409, 'That email already has an account. Sign in instead.');
+    /* The owner's address cannot be claimed by a stranger: only the owner
+       credential opens it. */
+    const owner = isAdminEmail(email);
+    if (owner && !(await adminPasswordMatches(password))) fail(409, 'That email is reserved.');
     /* The admin handle is a name, not a seeded record: the account is created
        here, with this person's own password, a level-1 ladder and an empty
        binder. Whoever registers @solvn on a device with no cloud project holds
@@ -1196,10 +1276,12 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     if (target.byName[nameKey]) fail(409, 'That name is taken.');
 
     const salt = randomSalt();
-    const staff = nameKey === HOUSE;
+    const staff = owner || nameKey === HOUSE;
     const user = {
       id: newId(),
-      userId: staff ? ADMIN_USER_ID : freshUserId(target),
+      userId: staff
+        ? (Object.values(target.users).some((u) => Number(u.userId) === ADMIN_USER_ID) ? freshUserId(target) : ADMIN_USER_ID)
+        : freshUserId(target),
       email,
       username,
       displayName: username,
@@ -1229,13 +1311,19 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
   if (seg[0] === 'account' && seg[1] === 'login' && method === 'POST') {
     const email = text(body?.email, 254, { required: true }).toLowerCase();
     const password = typeof body?.password === 'string' ? body.password : '';
+    const owner = isAdminEmail(email);
     const user = target.users[target.byEmail[email] || ''];
-    if (!user || !user.salt || !user.hash || (await digest(password, user.salt)) !== user.hash) {
-      fail(401, 'Email or password is wrong.');
-    }
-    target.session = user.id;
+    /* The owner's address answers to the owner credential and nothing else,
+       whether the record exists yet or not. A record that predates this rule
+       is promoted on the spot — and only after the credential is accepted. */
+    const ok = owner
+      ? await adminPasswordMatches(password)
+      : user && user.salt && user.hash && (await digest(password, user.salt)) === user.hash;
+    if (!ok) fail(401, 'Email or password is wrong.');
+    const account = owner ? ensureAdminAccount(target, email, user) : user;
+    target.session = account.id;
     persist();
-    return { user: publicUser(user) };
+    return { user: publicUser(account) };
   }
 
   if (seg[0] === 'account' && seg[1] === 'logout' && method === 'POST') {

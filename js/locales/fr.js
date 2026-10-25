@@ -449,6 +449,7 @@ const ui = {
   'That email address does not look right.': 'Cette adresse e-mail ne semble pas valide.',
   'That email already has an account. Sign in instead.':
     'Un compte existe déjà pour cet e-mail. Connectez-vous.',
+  'That email is reserved.': 'Cette adresse e-mail est réservée.',
   'That field is not text.': 'Ce champ n’est pas du texte.',
   'That field is required.': 'Ce champ est obligatoire.',
   'That is not the right method.': 'Méthode non reconnue.',
