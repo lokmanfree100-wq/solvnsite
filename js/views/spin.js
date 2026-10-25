@@ -24,18 +24,18 @@
  *
  * Every prize is also drawn, not only spelled: a card shows as a plate in its own
  * tier's two hues, a band shows as the animation itself, a face shows as faces.
- * Nothing is invented for the picture — a band chip only wears a theme this
- * account can still win, and a landing only wears the one the server named.
+ * Nothing is invented for the picture: a stored banner win from before the shelf
+ * opened still wears the theme the server named.
  */
 
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
-import { isSignedIn, isStaff, currentUser, fortuneUsable, setAvatar } from '../lib/account.js';
+import { isSignedIn, fortuneUsable, setAvatar } from '../lib/account.js';
 import { rarityOf } from '../lib/cards.js';
 import { loadFortune, pickFace, spin, spinInMs, fortuneState, DAILY_SPINS, spinsLeft, spinDayKey } from '../lib/fortune.js';
 import { faces, matchFaces } from '../lib/faces.js';
-import { bannerLabel, bannerRows } from '../lib/ranks.js';
+import { bannerLabel, bannerMotion, bannerRows } from '../lib/ranks.js';
 import { loadingGrid, emptyState } from '../components/media.js';
 import { authSheet, say } from '../components/account.js';
 import { sfx } from '../lib/sounds.js';
@@ -72,7 +72,7 @@ function prizeWhere(p) {
   if (p.kind === 'pack') return t('Banked for the card binder.');
   if (p.kind === 'card') return t('Drawn at that tier and put in your binder.');
   if (p.kind === 'avatar') return t('A face to spend, from the button beside the wheel.');
-  if (p.kind === 'banner') return t('Chosen from the themes still locked on your profile.');
+  if (p.kind === 'banner') return t('Every band is open — wear it from your profile.');
   return '';
 }
 
@@ -100,16 +100,23 @@ function tierPlate(n, { level = false } = {}) {
   );
 }
 
-const bandPlate = (theme) => h('span.fw-band', { 'aria-hidden': 'true' }, h('span.bk', { dataset: { theme } }));
+function bandPlate(theme) {
+  const motion = bannerMotion(theme);
+  return h(
+    'span.fw-band',
+    { 'aria-hidden': 'true' },
+    h(
+      'span.bk',
+      { dataset: { theme, motion } },
+      motion === 'lightning' ? h('span.bk-bolt', { 'aria-hidden': 'true' }) : null,
+    ),
+  );
+}
 
-/* The bands still shut on this account, which is exactly what the slice pays out.
-   A member who can already wear nearly all of them gets the shelf's front three
-   instead: an empty chip would read as a broken wheel, and the row's own caption
-   already says how many are still locked. */
+/* Every band is free, so a banner slice shows the front of the shelf rather than
+   pretending a locked one is coming. */
 function bandSample(count) {
-  const rows = bannerRows(currentUser(), isStaff());
-  const shut = rows.filter((row) => !row.open);
-  return (shut.length >= count ? shut : rows).slice(0, count).map((row) => bandPlate(row.key));
+  return bannerRows().slice(0, count).map((row) => bandPlate(row.key));
 }
 
 function faceChips({ library, count }) {
@@ -388,7 +395,7 @@ export function SpinView({ onCleanup }) {
               prizeArt(p, { library }),
               h('b', {}, prizeName(p)),
             ),
-            h('span.fw-odds-where', {}, p.kind === 'banner' && p.lockedOnly ? t('{n} themes still locked', { n: p.lockedOnly }) : prizeWhere(p)),
+            h('span.fw-odds-where', {}, prizeWhere(p)),
             h(
               'span.fw-odds-rate.tnum',
               {},
@@ -426,7 +433,7 @@ export function SpinView({ onCleanup }) {
           'div.fw-prize-copy',
           {},
           h('h3', {}, t('You won {name}', { name })),
-          h('p.faint', {}, p.kind === 'banner' && p.theme ? t('Wear it from Settings, or leave the shelf empty.') : prizeWhere(p)),
+          h('p.faint', {}, p.kind === 'banner' && p.theme ? t('Wear it from your profile.') : prizeWhere(p)),
         ),
       ),
     );

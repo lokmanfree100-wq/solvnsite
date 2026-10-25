@@ -3,7 +3,9 @@
  *
  * The replay stage in `views/arena.js` plays a fight that has already happened.
  * This one is the fight itself: two lines of cards, a ninety-second clock, and
- * three buttons that are only live on your turn. Every press is applied locally
+ * four buttons that are only live on your turn — a strike, a brace, and the two
+ * moves of the card in front, whose names are written onto the buttons each time
+ * a fighter steps forward. Every press is applied locally
  * and, in an online match, handed to `lib/live-arena.js`; the other screen applies
  * the same step to its own copy of the same seed. Nothing here decides a winner
  * on its own — `lib/battle.js` does, and `finish()` only prints the answer.
@@ -24,6 +26,8 @@ import {
   activeOf,
   botAction,
   finishByTime,
+  skillReady,
+  skillWait,
   scoreOf,
   timeLeft,
 } from '../lib/battle.js';
@@ -48,6 +52,20 @@ const ABILITY_LABEL = {
 };
 const ABILITY_ICON = { overdrive: 'flame', blitz: 'bolt', focus: 'sparkles', guard: 'star' };
 
+/** The school move each build brings. These are the player's own buttons, so the
+    label is the move, not the stat that chose it. */
+const SKILL_LABEL = {
+  quake: () => t('Ground Quake'),
+  flurry: () => t('Gale Flurry'),
+  spike: () => t('Piercing Spike'),
+  mend: () => t('Vital Mend'),
+};
+const SKILL_ICON = { quake: 'flame', flurry: 'bolt', spike: 'sparkles', mend: 'star' };
+
+/* Speed is a CPU-only convenience: a live match runs on a shared ninety-second
+   clock, so one side cannot fast-forward the other. */
+const SPEEDS = [1, 2, 4, 8];
+
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const modalRoot = () => document.querySelector('#modal-root');
 
@@ -62,20 +80,23 @@ const seedNumber = (text) => {
   return Math.abs(n);
 };
 
-function sparks(layer, x, y, strong) {
+/** A spark burst. `scale` is 1 / match speed, so a fast CPU fight throws fewer
+    dots and clears them sooner — the phone never holds a pile of dead nodes. */
+function sparks(layer, x, y, strong, scale = 1) {
   if (reduced()) return;
+  const count = scale < 0.4 ? 4 : strong ? 9 : 6;
   const bits = h('div.ar-sparks');
   bits.style.left = `${x}%`;
   bits.style.top = `${y}%`;
-  for (let i = 0; i < (strong ? 10 : 6); i += 1) {
+  for (let i = 0; i < count; i += 1) {
     const bit = h('i.ar-spark');
     bit.style.setProperty('--dx', `${Math.round((Math.random() - 0.5) * 120)}px`);
     bit.style.setProperty('--dy', `${Math.round((Math.random() - 0.5) * 120)}px`);
-    bit.style.animationDelay = `${Math.round(Math.random() * 90)}ms`;
+    bit.style.animationDelay = `${Math.round(Math.random() * 90 * scale)}ms`;
     bits.append(bit);
   }
   layer.append(bits);
-  setTimeout(() => bits.remove(), 640);
+  setTimeout(() => bits.remove(), Math.round(640 * Math.max(0.35, scale)));
 }
 
 /** Where a tile sits inside the spark field, as a percentage pair. */
@@ -93,23 +114,23 @@ function pointIn(layer, el) {
 /** The number a hit prints: it lifts off the card and fades, so a glance at the
     board carries the damage without reading the call sheet. `aria-hidden`
     because the same figure is already in the log for a screen reader. */
-function damagePop(layer, at, text, { strong = false, heal = false } = {}) {
+function damagePop(layer, at, text, { strong = false, heal = false, scale = 1 } = {}) {
   if (reduced() || !at) return;
   const tag = h(`span.bt-dmg${strong ? '.is-strong' : ''}${heal ? '.is-heal' : ''}`, { 'aria-hidden': 'true' }, text);
   tag.style.left = `${at.x}%`;
   tag.style.top = `${at.y}%`;
   layer.append(tag);
-  setTimeout(() => tag.remove(), 900);
+  setTimeout(() => tag.remove(), Math.round(900 * Math.max(0.35, scale)));
 }
 
 /** The crossing slash where the blade met the card. */
-function clashBurst(layer, at, strong) {
+function clashBurst(layer, at, strong, scale = 1) {
   if (reduced() || !at) return;
   const burst = h(`span.bt-clash${strong ? '.is-strong' : ''}`, { 'aria-hidden': 'true' });
   burst.style.left = `${at.x}%`;
   burst.style.top = `${at.y}%`;
   layer.append(burst);
-  setTimeout(() => burst.remove(), 520);
+  setTimeout(() => burst.remove(), Math.round(520 * Math.max(0.35, scale)));
 }
 
 let liveStage = null;
@@ -140,7 +161,7 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     const tile = h(
       'div.ar-fighter.bt-fighter',
       { 'data-id': f.id },
-      h('div.ar-fighter-card', {}, gachaCard(shown, { variant: 'tile', eager: false })),
+      h('div.bt-body', {}, h('div.ar-fighter-card', {}, gachaCard(shown, { variant: 'tile', eager: false }))),
       shield,
       h('div.ar-hp', { role: 'presentation' }, ghost, bar),
       num,
@@ -172,6 +193,7 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
 
   const mineLine = line('mine');
   const rivalLine = line('rival');
+  const board = h('div.ar-board.bt-board', {}, h('div.bt-floor', { 'aria-hidden': 'true' }), mineLine, layer, rivalLine);
 
   const panel = h(
     'div.ar-stage.bt-stage',
@@ -195,16 +217,77 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
       ),
       h('div.bt-head-end', {}, clock, closeBtn),
     ),
-    h('div.ar-board.bt-board', {}, h('div.bt-floor', { 'aria-hidden': 'true' }), mineLine, layer, rivalLine),
+    board,
     h('div.bt-feed', {}, log, turnLine),
     result,
   );
 
-  const strikeBtn = h('button.btn.bt-action', { type: 'button', 'data-sfx': 'none' }, icon('sword'), h('span', {}, t('Strike')));
-  const braceBtn = h('button.btn.bt-action', { type: 'button', 'data-sfx': 'none' }, icon('shield'), h('span', {}, t('Brace')));
-  const abilityBtn = h('button.btn.bt-action', { type: 'button', 'data-sfx': 'none' }, icon('bolt'), h('span', {}, t('Ability')));
-  const actions = h('div.bt-actions', {}, strikeBtn, braceBtn, abilityBtn);
+  /* ---- the kit bar ------------------------------------------------------ */
+  /* Every move is a card of its own: icon, name, one line of state, and the
+     number key that presses it. The two character moves are repainted from the
+     card in front, so the bar always reads as that fighter's kit rather than a
+     generic menu. */
+  let speed = 1;
+  const animScale = () => Math.max(0.14, 1 / speed);
+
+  function actionBtn(iconName, cls, label, press) {
+    const iconBox = h('span.bt-action-icon', {}, icon(iconName));
+    const name = h('b', {}, label);
+    const note = h('em');
+    const key = h('span.bt-action-key', { 'aria-hidden': 'true' });
+    const btn = h(
+      `button.btn.bt-action${cls}`,
+      { type: 'button', 'data-sfx': 'none', onclick: () => press() },
+      iconBox,
+      h('span.bt-action-txt', {}, name, note),
+      key,
+    );
+    return { btn, iconBox, iconName, name, note, key };
+  }
+
+  const strikeA = actionBtn('sword', '.is-strike', t('Strike'), () => doAct('mine', 'strike'));
+  const braceA = actionBtn('shield', '.is-brace', t('Brace'), () => doAct('mine', 'brace'));
+  const skillA = actionBtn('bolt', '.is-skill', t('Skill'), () => doAct('mine', 'skill'));
+  const sigA = actionBtn('flame', '.is-sig', t('Signature'), () => doAct('mine', 'ability'));
+  strikeA.key.textContent = '1';
+  braceA.key.textContent = '2';
+  skillA.key.textContent = '3';
+  sigA.key.textContent = '4';
+  strikeA.note.textContent = t('Basic');
+  braceA.note.textContent = t('Halves the next hit');
+  const strikeBtn = strikeA.btn;
+  const braceBtn = braceA.btn;
+  const skillBtn = skillA.btn;
+  const sigBtn = sigA.btn;
+  const actions = h('div.bt-actions', {}, strikeBtn, braceBtn, skillBtn, sigBtn);
+
+  const kitName = h('b');
+  const kitMeta = h('span');
+  const kitLine = h(
+    'p.bt-kit',
+    {},
+    icon('sparkles'),
+    h('span.bt-kit-txt', {}, kitName, kitMeta),
+  );
+
+  const speedChips = SPEEDS.map((n) =>
+    h(
+      'button.bt-speed-chip',
+      { type: 'button', 'aria-pressed': n === 1 ? 'true' : 'false', 'aria-label': t('Match speed: {n}×', { n }), onclick: () => setSpeed(n) },
+      `${n}×`,
+    ),
+  );
+  const speedRow = h(
+    'div.bt-speed',
+    { hidden: mode !== 'cpu' },
+    h('span.bt-speed-label', {}, icon('bolt'), h('span', {}, t('Speed'))),
+    h('div.bt-speed-chips', {}, ...speedChips),
+  );
+  const kitRow = h('div.bt-kitrow', {}, kitLine, speedRow);
+
+  panel.insertBefore(kitRow, result);
   panel.insertBefore(actions, result);
+  panel.style.setProperty('--bt-anim', '1');
 
   const taunt = seedNumber(battle.seed);
   const introSide = (side, index) => {
@@ -220,7 +303,14 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
         h('b', {}, battle.sides[side].name),
         h('span.faint', {}, battle.sides[side].handle || (side === 'rival' && mode === 'cpu' ? t('Arena CPU') : '')),
       ),
-      card ? h('span.ar-ability', {}, icon(ABILITY_ICON[card.ability]), h('span', {}, ABILITY_LABEL[card.ability]())) : null,
+      card
+        ? h(
+            'div.ar-kit-chips',
+            {},
+            h('span.ar-ability', {}, icon(ABILITY_ICON[card.ability]), h('span', {}, ABILITY_LABEL[card.ability]())),
+            h('span.ar-ability.is-skill', {}, icon(SKILL_ICON[card.skill]), h('span', {}, SKILL_LABEL[card.skill]())),
+          )
+        : null,
       h('div.bt-bubble', {}, h('p.ar-taunt', {}, lineText)),
     );
   };
@@ -294,10 +384,27 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     onClose?.();
   }
 
+  /** CPU-only pace. `--bt-anim` is the one multiplier the stylesheet reads, and
+      the script's own holds divide by the same number. */
+  function setSpeed(next) {
+    speed = SPEEDS.includes(next) ? next : 1;
+    panel.style.setProperty('--bt-anim', String(Math.max(0.14, 1 / speed)));
+    for (const [i, chip] of speedChips.entries()) {
+      chip.setAttribute('aria-pressed', SPEEDS[i] === speed ? 'true' : 'false');
+    }
+  }
+
   const onKey = (e) => {
     if (e.key === 'Escape') {
       e.preventDefault();
       close();
+      return;
+    }
+    const slot = Number(e.key) - 1;
+    const btns = [strikeBtn, braceBtn, skillBtn, sigBtn];
+    if (Number.isInteger(slot) && slot >= 0 && slot < btns.length && !btns[slot].disabled) {
+      e.preventDefault();
+      btns[slot].click();
     }
   };
   document.addEventListener('keydown', onKey);
@@ -322,7 +429,7 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
         { transform: `translate(${-Math.round(d / 2)}px, 0)` },
         { transform: 'translate(0, 0)' },
       ],
-      { duration: strong ? 320 : 220, easing: 'cubic-bezier(.2,.7,.3,1)' },
+      { duration: Math.round((strong ? 320 : 220) * Math.max(0.4, animScale())), easing: 'cubic-bezier(.2,.7,.3,1)' },
     );
   }
 
@@ -347,21 +454,49 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     }
   }
 
+  function setIcon(a, name) {
+    if (a.iconName === name) return;
+    a.iconName = name;
+    a.iconBox.replaceChildren(icon(name));
+  }
+
+  /** The bar belongs to the card in front. Its two character moves, their state
+      and the name above them are rewritten on every turn, so a knock-out that
+      brings the reserve forward changes the whole kit in the same frame. */
+  function paintActions() {
+    const active = activeOf(battle, 'mine');
+    const mine = started && !ended && live && battle.turn === 'mine';
+    strikeBtn.disabled = !mine;
+    braceBtn.disabled = !mine;
+    if (!active) {
+      kitName.textContent = '';
+      kitMeta.textContent = '';
+      skillBtn.disabled = true;
+      sigBtn.disabled = true;
+      return;
+    }
+    kitName.textContent = active.name;
+    kitMeta.textContent = `${ABILITY_LABEL[active.ability]()} · ${SKILL_LABEL[active.skill]()}`;
+
+    setIcon(sigA, ABILITY_ICON[active.ability]);
+    sigA.name.textContent = ABILITY_LABEL[active.ability]();
+    sigA.note.textContent = active.used ? t('Ability spent') : t('Once a match');
+    sigBtn.disabled = !mine || active.used;
+
+    setIcon(skillA, SKILL_ICON[active.skill]);
+    skillA.name.textContent = SKILL_LABEL[active.skill]();
+    const ready = skillReady(active, battle.n);
+    skillA.note.textContent = ready ? t('Ready') : t('Cooling — {n}', { n: skillWait(active, battle.n) });
+    skillBtn.disabled = !mine || !ready;
+    skillBtn.classList.toggle('is-cooling', !ready);
+  }
+
   function paintTurn() {
     const active = activeOf(battle, 'mine');
-    const theirs = activeOf(battle, 'rival');
     const mine = started && !ended && live && battle.turn === 'mine';
-    for (const btn of [strikeBtn, braceBtn]) btn.disabled = !mine;
+    paintActions();
     mineLine.classList.toggle('is-turn', mine);
     rivalLine.classList.toggle('is-turn', started && !ended && live && battle.turn === 'rival');
-    const target = battle.turn === 'mine' ? active : theirs;
-    if (target) {
-      abilityBtn.replaceChildren(
-        icon(ABILITY_ICON[target.ability]),
-        h('span', {}, target.used ? t('Ability spent') : ABILITY_LABEL[target.ability]()),
-      );
-    }
-    abilityBtn.disabled = !mine || !target || target.used;
 
     if (ended) return;
     if (!started) {
@@ -386,13 +521,49 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     while (log.childElementCount > 5) log.lastElementChild.remove();
   }
 
+  /* ---- the cinematic layer ----------------------------------------------
+     A signature or school move does not just land: the screen cuts to the move.
+     Each of these is one element that adds and removes itself, transform and
+     opacity only, so the cheapest phone can carry the spectacle. */
+
+  /** The anime cut-in: the fighter's name and the move, slammed across the board
+      over diagonal speed lines. */
+  function cutIn(byName, moveLabel, school = 'ability') {
+    if (reduced()) return;
+    const banner = h(
+      `div.bt-cutin.is-${school}`,
+      { 'aria-hidden': 'true' },
+      h('span.bt-cutin-side', {}, byName),
+      h('strong', {}, moveLabel),
+    );
+    board.append(banner);
+    setTimeout(() => banner.remove(), Math.round(820 * animScale()));
+  }
+
+  /** One white frame over the whole stage, like the shutter of a camera. */
+  function impactFlash(strong) {
+    if (reduced()) return;
+    const flash = h(`span.bt-flash${strong ? '.is-strong' : ''}`, { 'aria-hidden': 'true' });
+    board.append(flash);
+    setTimeout(() => flash.remove(), Math.round(300 * animScale()));
+  }
+
+  /** The K.O. stamp that ends the match — the only text on the board that is not
+      a log line. */
+  function koBurst() {
+    if (reduced()) return;
+    const ko = h('span.bt-ko', { 'aria-hidden': 'true' }, 'K.O.');
+    board.append(ko);
+    setTimeout(() => ko.remove(), Math.round(900 * animScale()));
+  }
+
   function paintEvent(ev, auto = false) {
     if (!ev || ev.kind === 'end') return;
     if (ev.kind === 'brace') {
       const actor = tiles.get(ev.by);
       if (actor) {
         actor.classList.add('is-bracing');
-        setTimeout(() => actor.classList.remove('is-bracing'), 460);
+        setTimeout(() => actor.classList.remove('is-bracing'), Math.round(460 * animScale()));
       }
       if (!auto && !reduced()) sfx.brace();
       writeLog([icon('shield'), h('span', {}, t('{name} braces for the next hit.', { name: ev.byName }))]);
@@ -402,35 +573,61 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
       const actor = tiles.get(ev.by);
       if (actor) {
         actor.classList.add('is-healing');
-        setTimeout(() => actor.classList.remove('is-healing'), 560);
+        setTimeout(() => actor.classList.remove('is-healing'), Math.round(560 * animScale()));
       }
-      if (ev.healed > 0) damagePop(layer, pointIn(layer, actor), `+${ev.healed}`, { heal: true });
-      if (!auto && !reduced()) sfx.guard();      writeLog(
+      if (ev.healed > 0) damagePop(layer, pointIn(layer, actor), `+${ev.healed}`, { heal: true, scale: animScale() });
+      if (!auto && !reduced()) sfx.guard();
+      writeLog(
         [icon(ABILITY_ICON.guard), h('span', {}, t('Guard — {name} recovers {n}.', { name: ev.byName, n: ev.healed }))],
         'is-ability',
       );
       return;
     }
-    const strong = Boolean(ev.crit || ev.kind === 'ability');
+    if (ev.kind === 'mend') {
+      const actor = tiles.get(ev.by);
+      if (actor) {
+        actor.classList.add('is-healing');
+        setTimeout(() => actor.classList.remove('is-healing'), Math.round(560 * animScale()));
+      }
+      if (ev.healed > 0) damagePop(layer, pointIn(layer, actor), `+${ev.healed}`, { heal: true, scale: animScale() });
+      if (!auto && !reduced()) sfx.guard();
+      cutIn(ev.byName, SKILL_LABEL[ev.skill](), 'skill');
+      writeLog(
+        [icon(SKILL_ICON[ev.skill]), h('span', {}, t('{skill} — {name} recovers {n}.', { skill: SKILL_LABEL[ev.skill](), name: ev.byName, n: ev.healed }))],
+        'is-ability',
+      );
+      return;
+    }
+    const heavy = ev.kind === 'ability' || ev.kind === 'skill';
+    const strong = Boolean(ev.crit || heavy);
     const actor = tiles.get(ev.by);
     actor?.classList.add('is-lunge');
-    setTimeout(() => actor?.classList.remove('is-lunge'), 260);
+    setTimeout(() => actor?.classList.remove('is-lunge'), Math.round(260 * animScale()));
+    if (heavy) {
+      actor?.classList.add('is-channeling');
+      setTimeout(() => actor?.classList.remove('is-channeling'), Math.round(380 * animScale()));
+    }
 
     const victim = tiles.get(ev.to);
     const at = pointIn(layer, victim);
     if (victim) {
       if (at) {
-        sparks(layer, at.x, at.y, strong);
-        clashBurst(layer, at, strong);
+        sparks(layer, at.x, at.y, strong, animScale());
+        clashBurst(layer, at, strong, animScale());
       }
       victim.classList.add('is-hit');
-      setTimeout(() => victim.classList.remove('is-hit'), 300);
+      setTimeout(() => victim.classList.remove('is-hit'), Math.round(300 * animScale()));
     }
-    damagePop(layer, at, `-${ev.dmg}`, { strong });
+    damagePop(layer, at, `-${ev.dmg}`, { strong, scale: animScale() });
     shakeStage(strong);
+    if (strong) impactFlash(strong);
+    if (heavy) {
+      cutIn(ev.byName, ev.kind === 'ability' ? ABILITY_LABEL[ev.ability]() : SKILL_LABEL[ev.skill](), ev.kind);
+    }
 
     if (!auto && !reduced()) {
       if (ev.kind === 'ability') sfx.ability();
+      else if (ev.kind === 'skill') sfx.strike(true);
       else sfx.strike(strong);
     }
     if (ev.kind === 'ability') {
@@ -441,14 +638,32 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
         ],
         'is-ability',
       );
+    } else if (ev.kind === 'skill') {
+      writeLog(
+        [
+          icon(SKILL_ICON[ev.skill]),
+          h(
+            'span',
+            {},
+            ev.hits > 1
+              ? t('{skill} — {name} lands {n} in {hits} cuts.', { skill: SKILL_LABEL[ev.skill](), name: ev.byName, n: ev.dmg, hits: ev.hits })
+              : t('{skill} — {name} lands {n}.', { skill: SKILL_LABEL[ev.skill](), name: ev.byName, n: ev.dmg }),
+          ),
+        ],
+        'is-ability',
+      );
     } else if (ev.crit) {
       writeLog([icon('sparkles'), h('span', {}, t('Critical — {name} lands {n}.', { name: ev.byName, n: ev.dmg }))], 'is-crit');
     } else {
       writeLog([h('span', {}, t('{name} strikes for {n}.', { name: ev.byName, n: ev.dmg }))]);
     }
+    if (ev.broken) {
+      writeLog([icon('shield'), h('span', {}, t('{name} breaks the brace.', { name: ev.byName }))], 'is-crit');
+    }
     if (ev.down) {
       writeLog([icon('x'), h('span', {}, t('{name} is out.', { name: ev.toName }))], 'is-down');
     }
+    if (ev.end) koBurst();
   }
 
   /* ---- turn order ------------------------------------------------------- */
@@ -468,7 +683,7 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
         const kind = botAction(battle);
         if (kind) doAct('rival', kind);
         else onTurn();
-      }, 850 + Math.round(Math.random() * 450));
+      }, Math.max(130, Math.round((850 + Math.round(Math.random() * 450)) / speed)));
     }
   }
 
@@ -481,12 +696,13 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     paintFighters();
     if (auto) writeLog([icon('clock'), h('span', {}, t('The clock took your strike.'))]);
     paintEvent(ev, auto);
+    const hold = reduced() ? 0 : Math.max(90, Math.round(520 / speed));
     if (ev.kind === 'end') {
-      setTimeout(() => finish(ev.winner, ev.reason, { broadcast: side === 'mine' }), reduced() ? 0 : 520);
+      setTimeout(() => finish(ev.winner, ev.reason, { broadcast: side === 'mine' }), hold);
       return;
     }
     if (ev.end) {
-      setTimeout(() => finish(ev.end.winner, ev.end.reason, { broadcast: side === 'mine' }), reduced() ? 0 : 520);
+      setTimeout(() => finish(ev.end.winner, ev.end.reason, { broadcast: side === 'mine' }), hold);
       return;
     }
     onTurn();
@@ -544,7 +760,8 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     panel.classList.add(won ? 'is-win' : 'is-loss');
     strikeBtn.disabled = true;
     braceBtn.disabled = true;
-    abilityBtn.disabled = true;
+    skillBtn.disabled = true;
+    sigBtn.disabled = true;
     intro.remove();
 
     if (broadcast && match) {
@@ -624,7 +841,8 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     turnLine.replaceChildren(icon('offline'), h('span', {}, t('The match never started.')));
     strikeBtn.disabled = true;
     braceBtn.disabled = true;
-    abilityBtn.disabled = true;
+    skillBtn.disabled = true;
+    sigBtn.disabled = true;
   }
 
   /**
@@ -645,7 +863,8 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
     turnLine.replaceChildren(icon('offline'), h('span', {}, t('The match was cut off.')));
     strikeBtn.disabled = true;
     braceBtn.disabled = true;
-    abilityBtn.disabled = true;
+    skillBtn.disabled = true;
+    sigBtn.disabled = true;
   }
 
   function applyRemote(move) {
@@ -694,9 +913,8 @@ export function openBattle({ battle, mode, rival, online = null, onClose, onRema
   }
 
   /* ---- the buttons ------------------------------------------------------ */
-  strikeBtn.addEventListener('click', () => doAct('mine', 'strike'));
-  braceBtn.addEventListener('click', () => doAct('mine', 'brace'));
-  abilityBtn.addEventListener('click', () => doAct('mine', 'ability'));
+  /* Each button carries its own press in its props; the keyboard numbers call
+     `.click()` on the same element, so there is exactly one path into doAct. */
 
   paintFighters();
   paintTurn();

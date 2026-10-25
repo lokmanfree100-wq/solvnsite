@@ -9,12 +9,19 @@
  *
  * The rules are the ones the arena already prints. Power is the hit and the
  * health, Speed opens the clash, Technique is the critical, Aura is the soak, and
- * a card fights the way its strongest stat does. On top of that each card may use
- * its ability once: Overdrive is one heavy blow, Blitz strikes harder and crits
+ * a card fights the way its strongest stat does. On top of that each card carries
+ * its own kit: a signature it may spend once, and a school move that runs on a
+ * four-step cooldown. Overdrive is one heavy blow, Blitz strikes harder and crits
  * more often, Focus trades raw force for a critical that pierces a brace, and
  * Guard gives back health and a shield. Brace is the free move — it halves the
  * next hit and ends the turn, which is what makes a turn a decision rather than a
  * coin flip.
+ *
+ * The school move is read from the same dominant stat: Power gets Ground Quake
+ * (the blow that breaks a brace), Speed gets Gale Flurry (two cuts in one turn),
+ * Technique gets Piercing Spike (a critical that ignores a guard), and Aura gets
+ * Vital Mend (health and a ward). Both clients run this same table, so a skill is
+ * one step like any other and an online match never needs a referee for it.
  *
  * The clock is ninety seconds of real time, and it is the one thing that is not a
  * step: both screens read the same `at`, so both call time on the same state.
@@ -37,7 +44,21 @@ export const ABILITIES = {
   guard: { label: 'Guard', icon: 'star' },
 };
 
-export const ACTIONS = ['strike', 'brace', 'ability'];
+/**
+ * The school move of each build. It is the second button a card brings to the
+ * stage, and unlike the signature it comes back: `SKILL_COOLDOWN` steps (two of
+ * that card's own turns) buys another use.
+ */
+export const SKILLS = {
+  quake: { label: 'Ground Quake', icon: 'flame' },
+  flurry: { label: 'Gale Flurry', icon: 'bolt' },
+  spike: { label: 'Piercing Spike', icon: 'sparkles' },
+  mend: { label: 'Vital Mend', icon: 'star' },
+};
+
+export const SKILL_COOLDOWN = 4;
+
+export const ACTIONS = ['strike', 'brace', 'ability', 'skill'];
 
 const num = (value) => Number(value) || 0;
 
@@ -74,13 +95,17 @@ function abilityFor(power, speed, technique, aura) {
   return marks.reduce((best, row) => (row[1] > best[1] ? row : best))[0];
 }
 
-/** One card as the battle sees it: health, hit, and the ability it may spend. */
+/** The school move that pairs with each signature. */
+const KIT = { overdrive: 'quake', blitz: 'flurry', focus: 'spike', guard: 'mend' };
+
+/** One card as the battle sees it: health, hit, and the kit it may spend. */
 function fighter(card, side, slot) {
   const power = num(card?.power ?? card?.stats?.power);
   const speed = num(card?.speed ?? card?.stats?.speed);
   const technique = num(card?.technique ?? card?.stats?.technique);
   const aura = num(card?.aura ?? card?.stats?.aura);
   const maxHp = Math.round(140 + power * 0.55);
+  const ability = abilityFor(power, speed, technique, aura);
   return {
     id: `${side}-${slot}`,
     key: card?.key || '',
@@ -97,12 +122,22 @@ function fighter(card, side, slot) {
     maxHp,
     hp: maxHp,
     atk: 16 + power * 0.12,
-    ability: abilityFor(power, speed, technique, aura),
+    ability,
+    skill: KIT[ability],
+    skillReadyAt: 0,
     used: false,
     shield: false,
     struck: false,
   };
 }
+
+/** Is a card's school move off cooldown at step `n`? Both screens count the same
+    `n`, so neither can press a skill the other believes is still cooling. */
+export const skillReady = (f, n) => Boolean(f) && (f.skillReadyAt || 0) <= Number(n || 0);
+
+/** Turns left on a school move, one per own turn — what the button prints. */
+export const skillWait = (f, n) =>
+  Math.max(0, Math.ceil(((f?.skillReadyAt || 0) - Number(n || 0)) / 2));
 
 const sideOf = (state, side) => state.sides[side];
 const other = (side) => (side === 'mine' ? 'rival' : 'mine');
@@ -183,38 +218,64 @@ export function makeBattle({ seed, at = Date.now(), mine, rival, opener = 'mine'
   return state;
 }
 
+/* How each move lands. The signature and the school move share one table so the
+   engine has a single place to read a blow from; `strike` is the plain one. */
+const PROFILES = {
+  strike: { boost: 1, critMul: 1.6, chance: 0, hits: 1 },
+  overdrive: { boost: 1.75, critMul: 1.6, chance: 0, hits: 1 },
+  blitz: { boost: 1.25, critMul: 1.6, chance: 0.12, hits: 1 },
+  focus: { boost: 1.55, critMul: 1.9, chance: 0, hits: 1, pierce: true },
+  quake: { boost: 1.45, critMul: 1.7, chance: 0.05, hits: 1, breakShield: true },
+  flurry: { boost: 0.72, critMul: 1.5, chance: 0.14, hits: 2 },
+  spike: { boost: 1.5, critMul: 2, chance: 0.08, hits: 1, pierce: true },
+};
+
 /**
  * One blow.
  *
  * `shield` is the reason a brace is worth a turn: it halves one incoming hit and
- * then is spent. Focus ignores it, which is the trade that keeps Guard from being
- * an automatic answer to everything.
+ * then is spent. Focus and Piercing Spike ignore it, Ground Quake breaks it, and
+ * Gale Flurry spends it on its first cut — that is the trade that keeps Brace
+ * from being an automatic answer to everything.
  */
 function hit(state, actor, target, kind) {
+  const prof = PROFILES[kind === 'ability' ? actor.ability : kind === 'skill' ? actor.skill : 'strike'];
   const rand = state.rand;
   const chance = Math.min(
-    0.6,
-    actor.technique / Math.max(1, actor.technique + target.technique) + (actor.ability === 'blitz' ? 0.12 : 0),
+    0.7,
+    actor.technique / Math.max(1, actor.technique + target.technique) + (prof.chance || 0),
   );
-  const crit = rand() < chance;
-  const roll = 0.9 + rand() * 0.2;
-  const soak = Math.min(target.ability === 'guard' ? 0.45 : 0.3, target.aura / (target.aura + 700));
-  const boost =
-    kind === 'ability'
-      ? actor.ability === 'blitz'
-        ? 1.25
-        : actor.ability === 'focus'
-          ? 1.55
-          : 1.75
-      : 1;
-  const critMul = actor.ability === 'focus' ? 1.9 : 1.6;
-  let dmg = Math.max(1, Math.round(actor.atk * roll * boost * (crit ? critMul : 1) * (1 - soak)));
-  const through = target.shield && actor.ability !== 'focus';
-  if (through) dmg = Math.max(1, Math.round(dmg * 0.45));
-  target.shield = false;
-  target.hp = Math.max(0, target.hp - dmg);
+  const hadShield = target.shield;
+  const parts = [];
+  let crit = false;
+  let through = false;
+  for (let i = 0; i < (prof.hits || 1); i += 1) {
+    const rolled = rand() < chance;
+    const roll = 0.9 + rand() * 0.2;
+    const soak = Math.min(target.ability === 'guard' ? 0.45 : 0.3, target.aura / (target.aura + 700));
+    let dmg = Math.max(1, Math.round(actor.atk * roll * prof.boost * (rolled ? prof.critMul : 1) * (1 - soak)));
+    const braced = target.shield && !prof.pierce && !prof.breakShield;
+    if (braced) {
+      dmg = Math.max(1, Math.round(dmg * 0.45));
+      through = true;
+    }
+    target.shield = false;
+    target.hp = Math.max(0, target.hp - dmg);
+    parts.push(dmg);
+    crit = crit || rolled;
+  }
   actor.struck = true;
-  return { dmg, crit, through, boost: kind === 'ability', ability: kind === 'ability' ? actor.ability : null };
+  return {
+    dmg: parts.reduce((n, v) => n + v, 0),
+    crit,
+    through,
+    broken: Boolean(prof.breakShield && hadShield),
+    boost: kind !== 'strike',
+    ability: kind === 'ability' ? actor.ability : null,
+    skill: kind === 'skill' ? actor.skill : null,
+    hits: prof.hits || 1,
+    parts,
+  };
 }
 
 function pushLog(state, event) {
@@ -258,6 +319,7 @@ export function act(state, kind, side = state.turn, now = Date.now()) {
   const target = activeOf(state, foeSide);
   if (!actor || !target) return finish(state, actor ? side : foeSide, 'down');
   if (kind === 'ability' && actor.used) return { error: 'used' };
+  if (kind === 'skill' && !skillReady(actor, state.n)) return { error: 'cooldown' };
 
   state.n += 1;
   const base = {
@@ -271,6 +333,7 @@ export function act(state, kind, side = state.turn, now = Date.now()) {
     to: target.id,
     toName: target.name,
     ability: actor.ability,
+    skill: actor.skill,
   };
 
   if (kind === 'brace') {
@@ -294,13 +357,29 @@ export function act(state, kind, side = state.turn, now = Date.now()) {
     }
   }
 
+  if (kind === 'skill') {
+    actor.skillReadyAt = state.n + SKILL_COOLDOWN;
+    if (actor.skill === 'mend') {
+      const before = actor.hp;
+      actor.hp = Math.min(actor.maxHp, actor.hp + Math.round(actor.maxHp * 0.14));
+      actor.shield = true;
+      const event = { ...base, kind: 'mend', healed: actor.hp - before, left: actor.hp };
+      pushLog(state, event);
+      state.turn = foeSide;
+      return event;
+    }
+  }
+
   const shot = hit(state, actor, target, kind);
   const event = {
     ...base,
-    kind: kind === 'ability' ? 'ability' : 'strike',
+    kind: kind === 'ability' ? 'ability' : kind === 'skill' ? 'skill' : 'strike',
     dmg: shot.dmg,
     crit: shot.crit,
     through: shot.through,
+    broken: shot.broken,
+    hits: shot.hits,
+    skill: shot.skill,
     left: target.hp,
     down: target.hp <= 0,
   };
@@ -338,11 +417,12 @@ export function finishByTime(state, now = Date.now()) {
 /**
  * What a CPU does with its turn.
  *
- * It is not a random button: it spends its ability when the blow would land near
- * a kill or when it is behind, braces when it is one hit from falling, and
- * otherwise strikes. The `rand` it uses belongs to the match, so the same seed
- * and the same board produce the same CPU — a demo that differs each replay
- * cannot be reasoned about.
+ * It is not a random button: it spends its signature on a kill or on a losing
+ * board, spends its school move when that move would finish the front card or
+ * keep it standing, braces when it is one hit from falling, and otherwise
+ * strikes. The `rand` it uses belongs to the match, so the same seed and the same
+ * board produce the same CPU — a demo that differs each replay cannot be reasoned
+ * about.
  */
 export function botAction(state) {
   if (!state || state.over) return null;
@@ -352,14 +432,20 @@ export function botAction(state) {
 
   const incoming = Math.round(target.atk * 1.1);
   const canKill = actor.atk * (actor.ability === 'overdrive' ? 1.75 : 1.25) >= target.hp;
+  const skillMul = actor.skill === 'flurry' ? 1.44 : actor.skill === 'quake' ? 1.45 : 1.5;
+  const ready = skillReady(actor, state.n);
+  const canSkillKill = ready && actor.skill !== 'mend' && actor.atk * skillMul >= target.hp;
   const endangered = actor.hp <= incoming * 1.15;
   const behind = totalHp(state, 'rival') < totalHp(state, 'mine');
   const roll = state.rand();
 
+  if (canSkillKill) return 'skill';
+  if (ready && endangered && actor.skill === 'mend') return 'skill';
   if (!actor.used && (canKill || (endangered && actor.ability === 'guard') || (behind && roll < 0.55))) {
     return 'ability';
   }
   if (endangered && roll < 0.6) return 'brace';
+  if (ready && behind && roll < 0.32) return 'skill';
   if (!actor.used && roll < 0.18) return 'ability';
   return 'strike';
 }

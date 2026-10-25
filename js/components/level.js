@@ -19,7 +19,7 @@ import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
 import { duelsUsable, fortuneUsable } from '../lib/account.js';
 import { MAX_LEVEL, collectQuests, levelFromXp, levelReward, levelState, questRows, xpAtLevel } from '../lib/level.js';
-import { BANNER_FREE, BANNER_THEMES, badgeById, bannerLevel } from '../lib/ranks.js';
+import { badgeById } from '../lib/ranks.js';
 import { nextResetAt, quota } from '../lib/cards.js';
 import { todayTally } from '../lib/duels.js';
 import { spinsToday } from '../lib/fortune.js';
@@ -122,20 +122,12 @@ export function levelBar(user, { mine = false, figures = true } = {}) {
 }
 
 /* ---- what a level pays ------------------------------------------------
-   The two things a step hands over are on the sheet before it is reached, so a
-   member can see what they are climbing toward. Bands are listed here too,
-   because a banner that only ever appears in the picker is a reward nobody
-   knows exists until they are standing in the picker. */
-const BANDS_BY_LEVEL = BANNER_THEMES.reduce((map, [key, label], index) => {
-  if (index < BANNER_FREE) return map;
-  const at = bannerLevel(index);
-  return { ...map, [at]: [...(map[at] || []), label] };
-}, {});
-
+   The packs and badges a step hands over are on the sheet before the level is
+   reached, so a member can see what they are climbing toward. Bands are not on
+   this list any more: the whole shelf is free, so a band is not a reward. */
 function payRow(level) {
   const r = levelReward(level);
   const badge = r.badge ? badgeById(r.badge) : null;
-  const bands = BANDS_BY_LEVEL[level] || [];
   return h(
     'div.lv-pay',
     {},
@@ -143,7 +135,6 @@ function payRow(level) {
     h('span.lv-pay-copy', {},
       h('span', {}, icon('grid'), t('{n} packs', { n: r.packs })),
       badge ? h('span', {}, icon(badge.icon), t(badge.label)) : null,
-      ...bands.map((name) => h('span', {}, icon('palette'), t(name))),
     ),
   );
 }
@@ -160,7 +151,7 @@ function payLadder(level) {
     'div.lv-pays',
     {},
     rows,
-    h('p.lv-note', {}, t('Every level pays packs into your bank, a badge every tenth, and the bands appear as they come due.')),
+    h('p.lv-note', {}, t('Every level pays packs into your bank, and a badge every tenth.')),
   );
 }
 

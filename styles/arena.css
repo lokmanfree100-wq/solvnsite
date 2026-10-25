@@ -785,13 +785,13 @@
   filter: grayscale(1);
   transform: translateY(6px) rotate(-2deg);
 }
-.ar-fighter.is-lunge > .ar-fighter-card {
+.ar-fighter.is-lunge .ar-fighter-card {
   animation: ar-lunge-r 220ms var(--ease) both;
 }
-.ar-line:last-child .ar-fighter.is-lunge > .ar-fighter-card {
+.ar-line:last-child .ar-fighter.is-lunge .ar-fighter-card {
   animation-name: ar-lunge-l;
 }
-.ar-fighter.is-hit > .ar-fighter-card {
+.ar-fighter.is-hit .ar-fighter-card {
   animation: ar-shake 240ms var(--ease) both;
 }
 
@@ -995,10 +995,10 @@
     flex: 1 1 0;
     min-width: 0;
   }
-  .ar-fighter.is-lunge > .ar-fighter-card {
+  .ar-fighter.is-lunge .ar-fighter-card {
     animation-name: ar-lunge-l;
   }
-  .ar-line:last-child .ar-fighter.is-lunge > .ar-fighter-card {
+  .ar-line:last-child .ar-fighter.is-lunge .ar-fighter-card {
     animation-name: ar-lunge-r;
   }
   .ar-stage-head {
@@ -1060,8 +1060,8 @@
   .ar-who-names b {
     transition: none;
   }
-  .ar-fighter.is-lunge > .ar-fighter-card,
-  .ar-fighter.is-hit > .ar-fighter-card {
+  .ar-fighter.is-lunge .ar-fighter-card,
+  .ar-fighter.is-hit .ar-fighter-card {
     animation: none;
   }
 }
@@ -1141,7 +1141,7 @@
   opacity: 1;
   transform: none;
 }
-.bt-line.is-turn .bt-fighter.is-active > .ar-fighter-card {
+.bt-line.is-turn .bt-fighter.is-active .ar-fighter-card {
   border-radius: var(--r-md);
   box-shadow:
     0 0 0 1px var(--accent-line),
@@ -1207,10 +1207,10 @@
   flex: none;
 }
 
-/* ---- the three moves ---------------------------------------------------- */
+/* ---- the four moves ----------------------------------------------------- */
 .bt-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--sp-2);
 }
 .bt-action {
@@ -1432,7 +1432,7 @@
 @media (prefers-reduced-motion: reduce) {
   .bt-result,
   .bt-shield,
-  .bt-line.is-turn .bt-fighter.is-active > .ar-fighter-card {
+  .bt-line.is-turn .bt-fighter.is-active .ar-fighter-card {
     animation: none;
     transition: none;
   }
@@ -1633,7 +1633,7 @@
 }
 
 /* The victim takes the blow away from the strike, then settles. */
-.bt-fighter.is-hit > .ar-fighter-card {
+.bt-fighter.is-hit .ar-fighter-card {
   animation: bt-hit 320ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 @keyframes bt-hit {
@@ -1894,7 +1894,7 @@
   .bt-result {
     animation: none;
   }
-  .bt-fighter.is-hit > .ar-fighter-card,
+  .bt-fighter.is-hit .ar-fighter-card,
   .bt-fighter.is-bracing .ar-fighter-card,
   .bt-fighter.is-healing .ar-fighter-card {
     animation: none;
@@ -1903,6 +1903,444 @@
     transition: none;
   }
   .bt-action {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   The kit bar, the speed dial and the cinematic layer.
+
+   The four move buttons are a character sheet, not a generic menu: the two
+   middle buttons are repainted from the card in front, so the bar reads as
+   that fighter's kit. `--bt-anim` is the one multiplier every timed effect
+   reads — the CPU-only speed dial writes it, and the stylesheet divides the
+   same durations the script's holds divide, so nothing drifts out of step.
+   Every frame of every effect is transform, opacity or filter: a phone that
+   can scroll a poster can run this fight.
+   ========================================================================== */
+
+.bt-stage {
+  --bt-anim: 1;
+}
+
+/* ---- the kit bar -------------------------------------------------------- */
+.bt-kitrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.bt-kit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+}
+.bt-kit > svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--accent-text);
+}
+.bt-kit-txt {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.bt-kit-txt b {
+  font-size: 13px;
+  font-weight: 700;
+}
+.bt-kit-txt span {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* ---- the speed dial ------------------------------------------------------ */
+/* CPU matches only: the row exists behind `hidden` in every other mode, and
+   the chips are 44px targets like everything a thumb can reach. */
+.bt-speed {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.bt-speed[hidden] {
+  display: none;
+}
+.bt-speed-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.bt-speed-label svg {
+  width: 12px;
+  height: 12px;
+  color: var(--accent-text);
+}
+.bt-speed-chips {
+  display: flex;
+  gap: 4px;
+}
+.bt-speed-chip {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: rgb(255 255 255 / 0.035);
+  color: var(--text-dim);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  touch-action: manipulation;
+  transition:
+    color 140ms var(--ease),
+    border-color 140ms var(--ease),
+    box-shadow 140ms var(--ease);
+}
+.bt-speed-chip[aria-pressed='true'] {
+  border-color: var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent-text);
+  box-shadow: 0 0 16px -8px var(--accent-glow);
+}
+.bt-speed-chip:active {
+  transform: translateY(1px);
+}
+@media (hover: hover) {
+  .bt-speed-chip:not([aria-pressed='true']):hover {
+    border-color: var(--accent-line);
+    color: var(--text);
+  }
+}
+
+/* ---- the four moves ------------------------------------------------------ */
+/* One button per move: icon tile, name, one line of state, and the number key
+   that presses it. The signature wears gold and the school move wears green,
+   so the character's kit reads at a glance instead of a plain row of verbs. */
+.bt-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  min-height: 52px;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+.bt-action-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 1px solid var(--hairline);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.06);
+  color: var(--text);
+}
+.bt-action-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.bt-action-txt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+}
+.bt-action-txt b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.bt-action-txt em {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-style: normal;
+  color: var(--text-faint);
+}
+.bt-action-key {
+  position: absolute;
+  top: 4px;
+  inset-inline-end: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  background: rgb(255 255 255 / 0.04);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 15px;
+  color: var(--text-faint);
+}
+.bt-action.is-sig {
+  border-color: color-mix(in srgb, #ffd76a 42%, var(--line-strong));
+}
+.bt-action.is-sig .bt-action-icon {
+  border-color: rgb(255 215 106 / 0.4);
+  background: rgb(255 180 70 / 0.13);
+  color: #ffd76a;
+}
+.bt-action.is-skill .bt-action-icon {
+  border-color: rgb(127 240 182 / 0.38);
+  background: rgb(127 240 182 / 0.12);
+  color: #7ff0b6;
+}
+/* A cooling skill keeps its button lit but tells the truth in its state line. */
+.bt-action.is-cooling .bt-action-txt em {
+  color: var(--danger);
+}
+
+/* ---- the fighter loop ---------------------------------------------------- */
+/* The card in front breathes on one transform-only loop; the moment a heavy
+   move is charged, the loop is replaced by a single glow pulse that rides on
+   the wrapper, so the lunge's own animation on the card is never overridden. */
+.bt-body {
+  position: relative;
+  border-radius: var(--r-md);
+}
+.bt-fighter.is-active .bt-body {
+  animation: bt-breathe 3.4s ease-in-out infinite;
+}
+.bt-fighter.is-channeling .bt-body {
+  animation: bt-channel calc(380ms * var(--bt-anim, 1)) var(--ease) both;
+}
+@keyframes bt-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes bt-channel {
+  0% {
+    filter: brightness(1);
+  }
+  45% {
+    filter: brightness(1.55) saturate(1.25);
+    box-shadow:
+      0 0 30px -6px var(--accent-glow),
+      0 0 0 1px var(--accent-line);
+  }
+  100% {
+    filter: brightness(1.12);
+  }
+}
+
+/* ---- the cut-in, the flash and the K.O. ---------------------------------- */
+/* Three self-removing banners over the board: the name-and-move cut-in that
+   slams across the field, the one-frame shutter flash, and the K.O. stamp.
+   All are single elements, so the layer never accumulates. */
+.bt-cutin {
+  position: absolute;
+  z-index: 6;
+  inset-inline: 0;
+  top: 32%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 0 12px;
+  pointer-events: none;
+  border-block: 1px solid var(--accent-line);
+  background:
+    repeating-linear-gradient(-28deg, rgb(255 255 255 / 0.07) 0 1px, transparent 1px 12px),
+    linear-gradient(90deg, transparent, rgb(6 5 12 / 0.78) 22%, rgb(6 5 12 / 0.78) 78%, transparent);
+  box-shadow: 0 0 34px -14px var(--accent-glow);
+  animation: bt-cutin calc(820ms * var(--bt-anim, 1)) cubic-bezier(0.16, 0.8, 0.3, 1) both;
+}
+.bt-cutin-side {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.bt-cutin strong {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 5vw, 34px);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow:
+    0 2px 0 rgb(0 0 0 / 0.7),
+    0 0 24px var(--accent-glow);
+}
+.bt-cutin.is-skill {
+  border-block-color: rgb(127 240 182 / 0.55);
+}
+.bt-cutin.is-skill strong {
+  text-shadow:
+    0 2px 0 rgb(0 30 14 / 0.8),
+    0 0 24px rgb(90 209 154 / 0.6);
+}
+@keyframes bt-cutin {
+  0% {
+    opacity: 0;
+    transform: skewY(-3deg) translateY(-18px) scaleX(0.55);
+  }
+  16% {
+    opacity: 1;
+    transform: skewY(-3deg) translateY(0) scaleX(1);
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: skewY(-3deg) translateY(12px) scaleX(1);
+  }
+}
+
+.bt-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border-radius: inherit;
+  pointer-events: none;
+  background: rgb(255 255 255 / 0.18);
+  animation: bt-flash calc(300ms * var(--bt-anim, 1)) ease-out both;
+}
+.bt-flash.is-strong {
+  background: rgb(255 236 200 / 0.32);
+}
+@keyframes bt-flash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.bt-ko {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  font-family: var(--font-display);
+  font-size: clamp(56px, 16vw, 120px);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow:
+    0 4px 0 rgb(140 18 24 / 0.9),
+    0 0 46px rgb(255 90 70 / 0.6),
+    0 0 90px rgb(255 120 60 / 0.4);
+  animation: bt-ko calc(900ms * var(--bt-anim, 1)) cubic-bezier(0.18, 0.8, 0.3, 1) both;
+}
+@keyframes bt-ko {
+  0% {
+    opacity: 0;
+    transform: rotate(-5deg) scale(2.8);
+  }
+  22% {
+    opacity: 1;
+    transform: rotate(-5deg) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(-5deg) scale(0.96) translateY(14px);
+  }
+}
+
+/* ---- the speed dial divides every timed effect ---------------------------- */
+.bt-fighter.is-lunge .ar-fighter-card {
+  animation-duration: calc(220ms * var(--bt-anim, 1));
+}
+.bt-fighter.is-hit .ar-fighter-card {
+  animation-duration: calc(320ms * var(--bt-anim, 1));
+}
+.bt-fighter.is-bracing .ar-fighter-card {
+  animation-duration: calc(460ms * var(--bt-anim, 1));
+}
+.bt-fighter.is-healing .ar-fighter-card {
+  animation-duration: calc(560ms * var(--bt-anim, 1));
+}
+.bt-dmg {
+  animation-duration: calc(900ms * var(--bt-anim, 1));
+}
+.bt-clash {
+  animation-duration: calc(460ms * var(--bt-anim, 1));
+}
+.bt-board .ar-spark {
+  animation-duration: calc(560ms * var(--bt-anim, 1));
+}
+.bt-hp-ghost {
+  transition-duration: calc(520ms * var(--bt-anim, 1));
+}
+
+/* ---- the kit chips on the introduction ----------------------------------- */
+.ar-kit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 7px;
+}
+.ar-ability.is-skill {
+  border-color: rgb(127 240 182 / 0.42);
+  background: rgb(127 240 182 / 0.1);
+  color: #7ff0b6;
+}
+
+/* ---- shapes ------------------------------------------------------------- */
+@media (max-width: 620px) {
+  /* Four verbs side by side do not fit a phone; two rows of two do. */
+  .bt-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .bt-kitrow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .bt-speed {
+    justify-content: space-between;
+  }
+  .bt-cutin {
+    top: 38%;
+  }
+  .bt-cutin-side {
+    display: none;
+  }
+  .bt-ko {
+    font-size: clamp(48px, 18vw, 84px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bt-fighter.is-active .bt-body,
+  .bt-fighter.is-channeling .bt-body,
+  .bt-cutin,
+  .bt-flash,
+  .bt-ko {
+    animation: none;
+  }
+  .bt-speed-chip {
     transition: none;
   }
 }

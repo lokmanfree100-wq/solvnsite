@@ -5,7 +5,7 @@
  */
 
 import { localStats, AVATAR_UPLOAD, BANNER_UPLOAD } from './ranks.js';
-import { statsLocked } from './store.js';
+import { statsLocked, storage } from './store.js';
 import {
   authReady,
   captureFromRedirect,
@@ -70,6 +70,10 @@ const handleKey = (text) => String(text || '').toLowerCase().replace(/\s+/g, '')
 export const holdsStaffHandle = (username) => STAFF_HANDLES.includes(handleKey(username));
 export function isStaff(user = currentUser()) {
   if (!isSignedIn() || !user) return false;
+  /* The account record is the authority the server already wrote: the owner's
+     address carries `isAdmin` from the API, and its handle has no reason to be
+     `solvn`. A record that says `false` stays a veto, exactly as before. */
+  if (user.isAdmin === true) return true;
   if (user.isAdmin === false) return false;
   return holdsStaffHandle(user.username);
 }
@@ -125,6 +129,16 @@ const wrapCloud = async (path, opts) => {
   }
 };
 
+/* ---- the owner's door -------------------------------------------------
+   The master account is addressed by email, not by handle, and it is answered
+   by this site's own backend — never by a connected cloud project. The flag
+   below remembers that choice for the session so every later account call
+   (restore, the profile, the dashboard) asks the same backend the sign-in did. */
+export const OWNER_EMAIL = 'fakelokman36@gmail.com';
+export const isOwnerEmail = (email) => String(email || '').trim().toLowerCase() === OWNER_EMAIL;
+const localSession = () => storage.read('localSession', false) === true;
+const setLocalSession = (on) => storage.write('localSession', Boolean(on));
+
 const wrapDevice = async (path, opts) => {
   try {
     return await deviceApi(path, opts, state.status === 'signedin' ? state.user : null, !authReady());
@@ -134,20 +148,25 @@ const wrapDevice = async (path, opts) => {
   }
 };
 
-async function api(path, { method = 'GET', body } = {}) {
+async function api(path, { method = 'GET', body, local = false } = {}) {
   const opts = { method, body };
+  /* The owner's account belongs to this site's own backend, not to a connected
+     cloud project: the master login, the dashboard and the mailbox all live in
+     the server's file (or this browser's, on a static copy), so that identity
+     keeps using it even when a Supabase project is configured here. */
+  const forceLocal = local || localSession();
   /* Without a server the browser is the backend. A verified cloud project still
      keeps the account fields it owns, but the social pages beside them belong to
      this device — a folder on a plain host has no other place to keep a chat. */
   if (staticHost()) {
     const route = path.split('?')[0];
-    if ((cloudActive() && CLOUD_OWN.test(route)) || (authReady() && AUTH_ROUTE.test(route))) {
+    if (!forceLocal && ((cloudActive() && CLOUD_OWN.test(route)) || (authReady() && AUTH_ROUTE.test(route)))) {
       return wrapCloud(path, opts);
     }
     return wrapDevice(path, opts);
   }
-  const authOnly = authReady() && (AUTH_ROUTE.test(path) || path === 'account/me');
-  if (cloudActive() || authOnly) return wrapCloud(path, opts);
+  const authOnly = !forceLocal && authReady() && (AUTH_ROUTE.test(path) || path === 'account/me');
+  if (!forceLocal && (cloudActive() || authOnly)) return wrapCloud(path, opts);
   let res;
   try {
     res = await fetch(`/api/${path}`, {
@@ -233,7 +252,14 @@ export function takeRecovery() {
 }
 
 export async function login(email, password) {
-  await api('account/login', { method: 'POST', body: { email, password } });
+  const local = isOwnerEmail(email);
+  if (local) setLocalSession(true);
+  try {
+    await api('account/login', { method: 'POST', body: { email, password }, local });
+  } catch (err) {
+    if (local) setLocalSession(false);
+    throw err;
+  }
   await refresh();
   await pushStats(true);
   return state.user;
@@ -277,6 +303,7 @@ export async function logout() {
   try {
     await api('account/logout', { method: 'POST' });
   } finally {
+    setLocalSession(false);
     set({ status: 'signedout', user: null, playlists: [] });
   }
 }
@@ -531,6 +558,49 @@ export const adminPatchUser = (id, patch) => api(`admin/users/${id}`, { method: 
 export const adminReports = () => api('admin/reports');
 export const adminPatchReport = (id, status) => api(`admin/reports/${id}`, { method: 'PATCH', body: { status } });
 export const adminComments = () => api('admin/comments');
+/** A card or a bundle, handed to one member by the studio. */
+export const adminGift = (body) => api('admin/gifts', { method: 'POST', body });
+
+/* ---- the mailbox ------------------------------------------------------
+   A gift is a server record that carries the card it describes. The binder is
+   this device's, so the envelope is opened here and the card is added on this
+   side — the server never holds a collection. */
+export const mailbox = () => api('mailbox');
+export const claimGift = (id) => api(`mailbox/${encodeURIComponent(id)}/claim`, { method: 'POST' });
+
+/* ---- the pulse --------------------------------------------------------
+   One page view per route, counted by whichever backend is behind this copy.
+   The visitor id is a random string kept on this device: it is what lets the
+   dashboard count return visits without ever storing an address. */
+const VISITOR_KEY = 'visitor';
+
+function visitorId() {
+  const saved = storage.read(VISITOR_KEY, '');
+  if (typeof saved === 'string' && /^[a-z0-9]{8,40}$/i.test(saved)) return saved;
+  const bytes = globalThis.crypto?.getRandomValues?.(new Uint8Array(12));
+  const id = bytes
+    ? Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  storage.write(VISITOR_KEY, id);
+  return id;
+}
+
+export function pulse(path) {
+  const body = { visitor: visitorId(), path: String(path || '/').slice(0, 120) };
+  /* The count lives with the backend that owns the session: this browser when
+     there is no server, our own API when there is one. A verified cloud project
+     has no view counter, so it is never asked for one. */
+  if (staticHost()) {
+    wrapDevice('pulse', { method: 'POST', body }).catch(() => {});
+    return;
+  }
+  fetch('/api/pulse', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).catch(() => { /* a route change is not the place for an error */ });
+}
 
 /* ---- comments ------------------------------------------------------- */
 /* Threads are per episode on this server only. A Supabase project has no

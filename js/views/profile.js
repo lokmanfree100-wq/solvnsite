@@ -18,7 +18,7 @@ import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
 import { account, answerFriend, askFriend, authUsable, duelsUsable, fortuneUsable, isSignedIn, isStaff, publicProfile, patchMe, setAvatar, setBanner, setFavourite, setTitle, shownName, tradesUsable } from '../lib/account.js';
 import { intlDate } from '../lib/util.js';
-import { BANNER_FREE, BANNER_KEYS, BANNER_UPLOAD, TITLES, bannerFromImageFile, bannerRows, titleUnlocked } from '../lib/ranks.js';
+import { BANNER_KEYS, BANNER_UPLOAD, TITLES, bannerFromImageFile, bannerMotion, bannerRows, titleUnlocked } from '../lib/ranks.js';
 import { search } from '../lib/anilist.js';
 import { PIN_MAX, displayCard, isPinned, ownedEntries, pins, publish, togglePin } from '../lib/cards.js';
 import { FACES_PER_QUEST, faceAccess, faceQuestAt, faceQuestRows, faces, matchFaces } from '../lib/faces.js';
@@ -576,8 +576,15 @@ const BK_TABS = [
   ['link', 'Link'],
 ];
 
-/** One animated band: the theme key is the only thing CSS needs to draw it. */
-const bkNode = (theme) => h('span.bk', { dataset: { theme } });
+/** One animated band: the theme key picks the palette, `data-motion` the move. */
+const bkNode = (theme) => {
+  const motion = bannerMotion(theme);
+  return h(
+    'span.bk',
+    { dataset: { theme, motion } },
+    motion === 'lightning' ? h('span.bk-bolt', { 'aria-hidden': 'true' }) : null,
+  );
+};
 
 /** What the band shows: a picture beats a theme, and the newest picture wins. */
 const bandSource = (b) => b?.url || b?.file || b?.photo || null;
@@ -588,6 +595,7 @@ function bannerSheet(user, onDone) {
   let pending = null;
   let busy = false;
   let tab = BK_TABS[0][0];
+  let tilesSeen = null;
 
   const held = user?.banner || {};
   const hadBackdrop = Boolean(bandSource(held) || held.theme);
@@ -682,57 +690,49 @@ function bannerSheet(user, onDone) {
   }
 
   /* ---- the gallery --------------------------------------------------
-     Three bands are free, the rest are lifted by the level ladder or by a spin
-     that landed on one, and @solvn wears the whole shelf. `bannerRows` is the
-     same reading the ladder prints, so a band cannot be open here and shut
-     there. A locked band is not a button: it has nothing to do but say what
-     would unlock it.
+     Every band is open, so the shelf is a wardrobe: one press wears the theme
+     and there is nothing to earn first. The forty-six tiles all move at once,
+     which is why the grid only lets the ones on screen stay in motion — a
+     band scrolled past is a band that is not costing a frame.
      ------------------------------------------------------------------------ */
   function themePanel() {
-    const staff = isStaff(user);
+    const grid = h(
+      'div.bk-grid',
+      {},
+      ...bannerRows().map((row) => {
+        const worn = !bandSource(held) && held.theme === row.key;
+        return h(
+          'button.bk-tile',
+          {
+            type: 'button',
+            /* Worn is marked with a check as well as a ring, so the state does
+               not live on colour alone. */
+            'aria-pressed': String(worn),
+            'aria-label': t('Wear {name}', { name: t(row.label) }),
+            onclick: () => apply({ theme: row.key }, t('Background updated.')),
+          },
+          bkNode(row.key),
+          bkFrame(),
+          worn ? h('span.bk-tile-worn', { 'aria-hidden': 'true' }, icon('check')) : null,
+          h('span.bk-tile-name', {}, t(row.label)),
+        );
+      }),
+    );
+
+    tilesSeen = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) entry.target.classList.toggle('is-live', entry.isIntersecting);
+      },
+      { rootMargin: '160px' },
+    );
+    for (const tile of grid.children) tilesSeen.observe(tile);
+
     return h(
       'div.stack',
       {},
       h('p.av-count.muted', {}, t('Animated bands, drawn by Solvn itself. Tap one to wear it.')),
-      h(
-        'p.av-note.muted',
-        {},
-        staff
-          ? t('Every band is open on this account.')
-          : t('The first {n} are free. The rest come with your level, or from the fortune wheel.', { n: BANNER_FREE }),
-      ),
-      h(
-        'div.bk-grid',
-        {},
-        ...bannerRows(user, staff).map((row) => {
-          const worn = !bandSource(held) && held.theme === row.key;
-          if (!row.open) {
-            return h(
-              'div.bk-tile.is-locked',
-              { 'aria-label': t('{name} — unlocks at level {n}', { name: t(row.label), n: row.need }) },
-              bkNode(row.key),
-              h('span.bk-tile-name', {}, t(row.label)),
-              h('span.bk-tile-lock', {}, icon('lock'), h('b.tnum', {}, String(row.need))),
-            );
-          }
-          return h(
-            'button.bk-tile',
-            {
-              type: 'button',
-              /* Worn is marked with a check as well as a ring, so the state does
-                 not live on colour alone. */
-              'aria-pressed': String(worn),
-              'aria-label': t('Wear {name}', { name: t(row.label) }),
-              onclick: () => apply({ theme: row.key }, t('Background updated.')),
-            },
-            bkNode(row.key),
-            bkFrame(),
-            worn ? h('span.bk-tile-worn', { 'aria-hidden': 'true' }, icon('check')) : null,
-            row.won ? h('span.bk-tile-mark', { 'aria-hidden': 'true' }, icon('sparkles')) : null,
-            h('span.bk-tile-name', {}, t(row.label)),
-          );
-        }),
-      ),
+      h('p.av-note.muted', {}, t('Every band is open on this account.')),
+      grid,
     );
   }
 
@@ -831,6 +831,8 @@ function bannerSheet(user, onDone) {
 
   function paintPanel() {
     flag('');
+    tilesSeen?.disconnect();
+    tilesSeen = null;
     paintPreview();
     syncTabs();
     panel.replaceChildren(tab === 'theme' ? themePanel() : tab === 'upload' ? uploadPanel() : linkPanel());
@@ -844,6 +846,10 @@ function bannerSheet(user, onDone) {
     sub: t('Wear an animated band, put up a wallpaper of your own, or point at a picture you keep elsewhere.'),
     width: 720,
     render: () => h('div.stack', {}, preview, tabs, panel, actions, error),
+  });
+  opened.onClose(() => {
+    tilesSeen?.disconnect();
+    tilesSeen = null;
   });
 
   return opened;

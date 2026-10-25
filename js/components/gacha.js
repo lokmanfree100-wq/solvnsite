@@ -378,11 +378,12 @@ function shell(panel, onEscape) {
  */
 export function openPackFlow(cards, { onDone, preview = false } = {}) {
   let index = -1;
+  let torn = false;
   const best = cards.reduce((lv, c) => Math.max(lv, c.lv), 0);
 
   const tray = h('div.g-tray');
   const counter = h('span.g-flow-count.tnum', {}, `0 / ${cards.length}`);
-  const hint = h('p.g-flow-hint', {}, t('Tap the stage to draw the first card.'));
+  const hint = h('p.g-flow-hint', {}, t('Tap the pack to tear it open.'));
 
   const revealAll = h(
     'button.btn.btn--ghost',
@@ -390,6 +391,9 @@ export function openPackFlow(cards, { onDone, preview = false } = {}) {
       type: 'button',
       onclick: () => {
         index = cards.length - 1;
+        torn = true;
+        stage.classList.remove('is-tearing');
+        stage.classList.add('is-open');
         tray.replaceChildren(...cards.map((c, i) => drawnCard(c, i, false)));
         counter.textContent = `${cards.length} / ${cards.length}`;
         /* One press, one cue — and it is the cue of the best card in the hand,
@@ -414,15 +418,67 @@ export function openPackFlow(cards, { onDone, preview = false } = {}) {
   );
   doneBtn.hidden = true;
 
+  /* The pack itself: a pastel foil envelope with a seam across its throat. It
+     is a real object in the scene — the pointer tips it, the tear opens the top
+     strip, and only then does the first card come out. */
+  const booster = h(
+    'div.g-booster',
+    { 'aria-hidden': 'true' },
+    h('div.g-booster-halo'),
+    h(
+      'div.g-booster-body',
+      {},
+      h('div.g-booster-foil'),
+      h('div.g-booster-seam'),
+      h('div.g-booster-flap'),
+      h(
+        'div.g-booster-crest',
+        {},
+        icon('sparkles', { cls: 'g-booster-glyph' }),
+        h('b', {}, t('Solvn booster')),
+        h('span', {}, t('{n} cards', { n: String(cards.length) })),
+      ),
+    ),
+  );
+
+  if (!reduced()) {
+    booster.addEventListener('pointermove', (e) => {
+      const rect = booster.getBoundingClientRect();
+      const dx = (e.clientX - rect.left) / rect.width - 0.5;
+      const dy = (e.clientY - rect.top) / rect.height - 0.5;
+      booster.style.setProperty('--ry', `${(dx * 18).toFixed(1)}deg`);
+      booster.style.setProperty('--rx', `${(-dy * 14).toFixed(1)}deg`);
+    });
+    booster.addEventListener('pointerleave', () => {
+      booster.style.setProperty('--ry', '0deg');
+      booster.style.setProperty('--rx', '0deg');
+    });
+  }
+
   const stage = h(
     'div.g-stage',
     {
+      role: 'button',
+      tabindex: '0',
+      'aria-label': t('Open the pack'),
       onclick: (e) => {
         if (e.target.closest('button')) return;
         next();
       },
+      onkeydown: (e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        next();
+      },
     },
-    h('div.g-node', {}, h('div.g-node-art', {}, icon('sparkles', { cls: 'g-node-glyph' })), h('h3', {}, t('Your pack is sealed')), hint),
+    h(
+      'div.g-node.is-booster',
+      {},
+      booster,
+      h('h3', {}, t('Your pack is sealed')),
+      hint,
+    ),
     tray,
   );
 
@@ -436,7 +492,29 @@ export function openPackFlow(cards, { onDone, preview = false } = {}) {
   shell(panel, () => onDone?.(cards));
   sfx.pack();
 
+  /* The tear: the strip lifts, the seam parts, light comes out of the throat.
+     The first card follows once the pack has actually opened, never on top of
+     it. Under reduced motion the tear is instant and the card is simply there. */
+  function tear() {
+    if (torn) return;
+    torn = true;
+    stage.classList.add('is-tearing');
+    window.setTimeout(() => {
+      /* The flow can be closed mid-tear (Escape, a route change): a stage that
+         has left the document must not draw a card or cue anything. */
+      if (!stage.isConnected) return;
+      stage.classList.remove('is-tearing');
+      stage.classList.add('is-open');
+      if (index < 0) next();
+    }, reduced() ? 0 : 640);
+  }
+
   function next() {
+    if (stage.classList.contains('is-tearing')) return;
+    if (!torn) {
+      tear();
+      return;
+    }
     if (index >= cards.length) return;
     index += 1;
     if (index >= cards.length) {
@@ -451,31 +529,56 @@ export function openPackFlow(cards, { onDone, preview = false } = {}) {
     tray.append(drawnCard(card, index, true));
     counter.textContent = `${index + 1} / ${cards.length}`;
     stage.classList.add('is-open');
+    stage.setAttribute('aria-label', t('Tap to draw the next card.'));
     hint.textContent = index === cards.length - 1 ? t('That is the whole pack.') : t('Tap to draw the next card.');
     if (r.holo) toast(t('{rarity}! {name}', { rarity: t(r.label), name: card.name }), { iconName: 'sparkles', timeout: 3600 });
     if (index === cards.length - 1) finish();
   }
 
   function finish() {
-    stage.classList.add('is-open');
+    stage.classList.add('is-open', 'is-settled');
+    stage.removeAttribute('role');
+    stage.tabIndex = -1;
     revealAll.hidden = true;
     doneBtn.hidden = false;
     doneBtn.focus?.({ preventScroll: true });
-    stage.classList.add('is-settled');
     hint.textContent = preview ? t('A preview: nothing was rolled and nothing was banked.') : t('Every card is already in your binder.');
   }
 
   return { close: teardown };
 }
 
-/** One card as it enters the tray; `fresh` gets the arrival animation. */
+/**
+ * One card as it comes out of the pack. Every fresh card is a two-faced object:
+ * a pastel foil back turns over in 3D to the card itself, then one white band
+ * crosses the plate. The tier's own shine, ring and weather are already on the
+ * card, so the flip only has to hand over to them.
+ */
 function drawnCard(card, i, fresh) {
   const el = gachaCard(card, { variant: 'full' });
+  const r = rarityOf(card.lv);
+  const flip = h(
+    'div.g-flip',
+    {
+      class: [r.holo && 'is-holo', r.ultimate && 'is-ultimate'],
+    },
+    h(
+      'div.g-flip-inner',
+      {},
+      h(
+        'div.g-flip-back',
+        { 'aria-hidden': 'true' },
+        h('div.g-flip-emblem', {}, icon('sparkles', { cls: 'g-flip-glyph' })),
+        h('span.g-flip-mark', {}, t('Solvn')),
+      ),
+      el,
+    ),
+  );
   if (fresh && !reduced()) {
-    el.classList.add('is-landing');
-    el.style.setProperty('--d', `${i * 45}ms`);
+    flip.classList.add('is-drawing');
+    flip.style.setProperty('--d', `${Math.min(i, 4) * 70}ms`);
   }
-  return el;
+  return flip;
 }
 
 /* ---- evolution --------------------------------------------------------- */

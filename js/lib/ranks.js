@@ -501,12 +501,10 @@ export async function bannerFromImageFile(file) {
    `BANNER_THEMES` in account-api.js — each one is drawn in CSS by `.bk` in
    profile.css, so a name outside the list renders nothing and the server
    refuses it. Labels reach t() through the extractor's indirect list.
-   The order is the server's order as well, because `BANNER_FREE` is the front of
-   this shelf: the first three are what every account starts with, and everything
-   behind them is earned by level or won on the wheel. Forty-six of them, in the
-   order the shelf shows them: the founding twenty-four, the eighteen soft neon
-   bands, then the four showcase pieces — inferno, rose, thunder and tide — whose
-   layered fire, glow, lightning and swell are the reason the picker exists. */
+   Every band on the shelf is free: there are no levels to clear and nothing to
+   win, so the picker is a wardrobe rather than a ladder. Forty-six of them, in
+   the order the shelf shows them: the founding twenty-four, the eighteen soft
+   neon bands, then the four showcase pieces — inferno, rose, thunder and tide. */
 export const BANNER_THEMES = [
   ['aurora', 'Aurora'],
   ['neon', 'Neon grid'],
@@ -558,55 +556,76 @@ export const BANNER_THEMES = [
 
 export const BANNER_KEYS = BANNER_THEMES.map(([key]) => key);
 
-/** What every account wears without earning it — the front of the shelf. */
-export const BANNER_FREE = 3;
+/**
+ * The animation each band is drawn with.
+ *
+ * Motion is shared: thirteen archetypes cover all forty-six keys, and the theme
+ * block in profile.css supplies only the palette. That keeps the stylesheet a
+ * colour table rather than forty-six bespoke animations, and it means every
+ * archetype is written once with the same rule — transform and opacity only,
+ * so the compositor keeps the whole shelf at frame rate.
+ *
+ * `lightning` is the one archetype that also adds a child node: a jagged bolt
+ * cannot be drawn with two pseudo-elements alone.
+ */
+export const BANNER_MOTION = {
+  aurora: 'drift',
+  neon: 'grid',
+  ocean: 'waves',
+  ember: 'rise',
+  matrix: 'rain',
+  violet: 'spin',
+  spectrum: 'sweep',
+  gold: 'sweep',
+  sakura: 'fall',
+  storm: 'lightning',
+  sunset: 'drift',
+  glacier: 'waves',
+  lava: 'rise',
+  forest: 'drift',
+  retro: 'grid',
+  glitch: 'glitch',
+  cyber: 'scan',
+  toxic: 'lift',
+  ink: 'drift',
+  chrome: 'sweep',
+  cosmos: 'spin',
+  eclipse: 'spin',
+  fireworks: 'burst',
+  bubbles: 'lift',
+  mint: 'drift',
+  lilac: 'drift',
+  peach: 'drift',
+  ice: 'waves',
+  mango: 'waves',
+  lotus: 'ripple',
+  polar: 'drift',
+  siren: 'waves',
+  dusk: 'drift',
+  cotton: 'drift',
+  honey: 'sweep',
+  ripple: 'ripple',
+  pulse: 'pulse',
+  veil: 'sweep',
+  beam: 'sweep',
+  horizon: 'grid',
+  koi: 'waves',
+  crystal: 'scan',
+  inferno: 'rise',
+  rose: 'pulse',
+  thunder: 'lightning',
+  tide: 'waves',
+};
+
+export const bannerMotion = (key) => BANNER_MOTION[key] || 'drift';
 
 /**
- * The level a band needs.
- *
- * A step of about two levels a theme, starting after the free three: the fourth
- * band is a weekend of showing up and the last of the forty-two original ones is
- * a long season, Lv 76 of a hundred. That spread is the point — a shelf where
- * everything unlocks by level 6 is a shelf with no bottom. The wheel can hand
- * one over early, which is why `held` is checked as well.
- *
- * The four showcase bands at the end carry their own rungs instead of the
- * shelf's arithmetic. They are the most expensive pieces to draw, and asking
- * Lv 84 for the first of them would hide the whole set behind a season of
- * watching; a fixed ladder keeps each one a visible goal.
+ * The shelf. Every band is open, so this is the list itself plus the flag the
+ * picker reads — kept apart from `BANNER_THEMES` so a caller never has to know
+ * that the two happen to agree today.
  */
-const BANNER_NEED = { inferno: 16, rose: 24, thunder: 32, tide: 40 };
-
-export function bannerLevel(index) {
-  if (index < BANNER_FREE) return 1;
-  const key = BANNER_THEMES[index]?.[0];
-  const fixed = key ? BANNER_NEED[key] : 0;
-  if (fixed) return fixed;
-  return Math.max(2, Math.round((index - 1) * 1.9));
-}
-
-/**
- * The shelf, with what this member may wear.
- *
- * Two halves read together: the list the server wrote (`unlocks.banners`, which is
- * the wheel's output and nothing else) and the level the device published. Only
- * the first is the server's to vouch for, and only the second can be checked
- * against a number nobody can talk themselves into wearing twice.
- */
-export function bannerRows(user, staff = false) {
-  const level = Math.max(1, Number(user?.stats?.level) || 1);
-  const won = Array.isArray(user?.unlocks?.banners) ? user.unlocks.banners : [];
-  return BANNER_THEMES.map(([key, label], index) => {
-    const need = bannerLevel(index);
-    return {
-      key,
-      label,
-      index,
-      need,
-      won: won.includes(key),
-      open: staff || index < BANNER_FREE || won.includes(key) || level >= need,
-    };
-  });
+export function bannerRows() {
+  return BANNER_THEMES.map(([key, label], index) => ({ key, label, index, open: true }));
 }
 
 /** The name a wheel result or a profile prints for one theme key. */

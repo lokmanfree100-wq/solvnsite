@@ -27,7 +27,7 @@
  * vault: anything running on this page can read the same storage.
  */
 
-import { BANNER_THEMES, BANNER_FREE } from './ranks.js';
+import { BANNER_THEMES } from './ranks.js';
 
 const KEY = 'kitsune:device';
 const GLYPHS = ['fox', 'moon', 'star', 'flame', 'ghost', 'bolt'];
@@ -92,7 +92,7 @@ const SPIN_PRIZES = [
   { id: 'pack-3', kind: 'pack', amount: 3, weight: 7000 },
   { id: 'card-9', kind: 'card', amount: 9, weight: 4200 },
   { id: 'avatar', kind: 'avatar', amount: 1, weight: 3800 },
-  { id: 'banner', kind: 'banner', amount: 1, weight: 1000 },
+  { id: 'xp-120', kind: 'xp', amount: 120, weight: 1000 },
   { id: 'card-11', kind: 'card', amount: 11, weight: 700 },
   { id: 'card-13', kind: 'card', amount: 13, weight: 250 },
   { id: 'card-15', kind: 'card', amount: 15, weight: 50 },
@@ -749,18 +749,16 @@ function rollPrize() {
   return { prize: SPIN_PRIZES[SPIN_PRIZES.length - 1], at: SPIN_PRIZES.length - 1 };
 }
 
-function bannerHeldBy(user) {
-  const earned = Array.isArray(user?.unlocks?.banners) ? user.unlocks.banners : [];
-  const list = isAdmin(user) ? BANNER_KEYS : [...BANNER_KEYS.slice(0, BANNER_FREE), ...earned];
-  return new Set(list.filter((theme) => BANNER_KEYS.includes(theme)));
+/* Every band is free, so the whole shelf is held. */
+function bannerHeldBy() {
+  return new Set(BANNER_KEYS);
 }
 
 function faceBank(user) {
   return Math.max(0, Math.min(SPIN_FACE_BANK, Number(user?.fortune?.faces) || 0));
 }
 
-function prizeTable(user) {
-  const held = bannerHeldBy(user);
+function prizeTable() {
   return SPIN_PRIZES.map((p, index) => ({
     id: p.id,
     index,
@@ -769,7 +767,6 @@ function prizeTable(user) {
     weight: p.weight,
     pct: (p.weight / SPIN_WEIGHTS) * 100,
     oneIn: Math.max(1, Math.round(SPIN_WEIGHTS / p.weight)),
-    lockedOnly: p.kind === 'banner' ? BANNER_KEYS.filter((t) => !held.has(t)).length : null,
   }));
 }
 
@@ -2052,8 +2049,8 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     const day = spinDay();
     const today = user.fortune?.day === day ? Math.min(SPIN_LIMIT, Number(user.fortune?.spinsToday) || 0) : 0;
     return {
-      prizes: prizeTable(user),
-      held: [...bannerHeldBy(user)],
+      prizes: prizeTable(),
+      held: [...bannerHeldBy()],
       level: publicUser(user).stats.level,
       day,
       nextAt: nextSpinAt(),
@@ -2075,22 +2072,10 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     const drawn = rollPrize();
     const won = { ...drawn.prize, index: drawn.at };
 
-    if (won.kind === 'banner') {
-      const locked = BANNER_KEYS.filter((theme) => !bannerHeldBy(user).has(theme));
-      if (!locked.length) {
-        won.kind = 'xp';
-        won.amount = 120;
-        won.id = 'xp-banners';
-      } else {
-        won.theme = locked[randomInt(locked.length)];
-      }
-    }
-
     const record = user.fortune || { day: null, at: 0, prize: null, faces: 0, spins: 0, spinsToday: 0 };
     const unlocks = user.unlocks || {};
     const banners = Array.isArray(unlocks.banners) ? unlocks.banners : [];
     const avatars = Array.isArray(unlocks.avatars) ? unlocks.avatars : [];
-    if (won.kind === 'banner' && won.theme && !banners.includes(won.theme)) banners.push(won.theme);
     user.unlocks = { banners, avatars };
     record.spinsToday = (record.day === day ? Number(record.spinsToday) || 0 : 0) + 1;
     record.day = day;
