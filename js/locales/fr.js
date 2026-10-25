@@ -721,32 +721,57 @@ const ui = {
   'Write a comment': 'Écrire un commentaire',
   you: 'vous',
   /* server errors shown as-is */
+  'Ask for a new email in this browser — the one you pasted belongs to another.':
+    'Demandez un nouvel e-mail dans ce navigateur — celui que vous avez collé appartient à un autre.',
   'Badges must be a list.': 'Les badges doivent être une liste.',
   'Broken request.': 'Requête incomplète.',
+  'Confirm your current password to finish that change.':
+    'Confirmez votre mot de passe actuel pour terminer ce changement.',
   'Could not save that.': 'Impossible d’enregistrer.',
   'Cross-site requests are blocked.': 'Les requêtes externes sont bloquées.',
   'Email or password is wrong.': 'E-mail ou mot de passe incorrect.',
+  'Google sign-in is not switched on for this project yet.':
+    'La connexion Google n’est pas encore activée pour ce projet.',
   'Invalid JSON body.': 'Corps JSON invalide.',
   'Malformed playlist entry.': 'Entrée de playlist mal formée.',
   'No such member.': 'Membre introuvable.',
   'No such report.': 'Signalement introuvable.',
+  'No Supabase project is connected.': 'Aucun projet Supabase n’est connecté.',
   'Only a Solvn admin can do that.': 'Seul un administrateur Solvn peut le faire.',
-  'Playlist entries must be a list.': 'Les entrées de playlist doivent être une liste.',
+  'Paste the whole link from the email, starting with https.':
+    "Collez le lien complet de l'e-mail, en commençant par https.",
+  'Paste the whole link from the reset email.': 'Collez le lien complet de l’e-mail de réinitialisation.',
+  'Please open the reset link again — this one has expired.':
+    'Veuillez ouvrir le lien de réinitialisation à nouveau — celui-ci a expiré.',
   'Please sign in first.': 'Connectez-vous d’abord.',
+  'Playlist entries must be a list.': 'Les entrées de playlist doivent être une liste.',
   'Say what you are reporting.': 'Indiquez ce que vous signalez.',
   'Send a JSON body.': 'Envoyez un corps JSON.',
   'Something broke on the server.': 'Le serveur a rencontré une erreur.',
   'Something went wrong. Try again.': 'Une erreur est survenue. Réessayez.',
   'That file is not a picture Solvn can store.':
     'Ce fichier n’est pas une image que Solvn peut stocker.',
+  'That is not a password reset link.': 'Ce n’est pas un lien de réinitialisation de mot de passe.',
   'That is not a report state.': 'Ce n’est pas un état de signalement valide.',
   'That is your own profile.': 'C’est votre propre profil.',
+  'That key does not look right.': 'Cette clé ne semble pas correcte.',
+  'That link does not look right.': 'Ce lien ne semble pas correct.',
+  'That link holds no reset code. Ask for a new email.':
+    'Ce lien ne contient aucun code de réinitialisation. Demandez un nouvel e-mail.',
   'That picture is too large. Pick a smaller file.':
     'Cette image est trop volumineuse. Choisissez un fichier plus léger.',
   'That playlist belongs to someone else.': 'Cette playlist appartient à quelqu’un d’autre.',
   'That playlist is gone.': 'Cette playlist n’existe plus.',
   'That playlist is private.': 'Cette playlist est privée.',
+  'That project URL does not look right.': 'Cette URL de projet ne semble pas correcte.',
   'That request is too large.': 'Requête trop volumineuse.',
+  'That reset link has expired. Ask for a new one.':
+    'Ce lien de réinitialisation a expiré. Demandez-en un nouveau.',
+  'The central database is not set up yet — run the SQL in docs/supabase.sql.':
+    'La base de données centrale n’est pas encore configurée — exécutez le SQL de docs/supabase.sql.',
+  'The sign-in service did not answer.': 'Le service de connexion n’a pas répondu.',
+  'This project is not allowing that sign-in method.':
+    'Ce projet n’autorise pas cette méthode de connexion.',
   'You already reported that.': 'Vous avez déjà signalé cela.',
   'Welcome': 'Bienvenue',
   'Welcome to Solvn – Free HD Anime Streaming': 'Bienvenue sur Solvn – streaming d’anime gratuit en HD',
@@ -878,15 +903,20 @@ const ui = {
   'Enter the email your account uses.': 'Indiquez l’e-mail associé à votre compte.',
   'Forgot password?': 'Mot de passe oublié ?',
   'friend': 'ami',
+  'Google sign-in is not switched on for this project yet — use your email below.':
+    'La connexion Google n’est pas encore activée pour ce projet — utilisez votre e-mail ci-dessous.',
   'Got it': 'Compris',
   'If that address has an account, a reset link is on its way. Follow it to choose a new password.': 'Si cette adresse a un compte, un lien de réinitialisation arrive. Suivez-le pour choisir un nouveau mot de passe.',
   'My list': 'Ma liste',
   'My profile': 'Mon profil',
   'Password updated. You are signed in.': 'Mot de passe mis à jour. Vous êtes connecté.',
+  'Reset link': 'Lien de réinitialisation',
   'Reset your password': 'Réinitialiser votre mot de passe',
   'Save new password': 'Enregistrer le nouveau mot de passe',
   'Send reset link': 'Envoyer le lien de réinitialisation',
-  'Tell us the email you signed up with and we send a link that lets you choose a new password.': 'Indiquez l’e-mail utilisé à l’inscription et nous envoyons un lien pour choisir un nouveau mot de passe.',
+  'Tell us the email you signed up with and we send a link that lets you choose a new password. If your mail app will not open it, paste the link below instead.':
+    'Indiquez l’e-mail utilisé à l’inscription et nous envoyons un lien pour choisir un nouveau mot de passe. Si votre messagerie ne l’ouvre pas, collez le lien ci-dessous.',
+  'Use the link I already have': "Utiliser le lien que j’ai déjà reçu",
   'The two passwords do not match.': 'Les deux mots de passe ne correspondent pas.',
   'This copy keeps accounts in this browser — signing in brings back the name, picture and lists saved here.':
     'Cette copie garde les comptes dans ce navigateur — vous connecter ramène le nom, la photo et les listes enregistrés ici.',

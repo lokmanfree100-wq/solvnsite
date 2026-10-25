@@ -619,10 +619,31 @@ export function WatchView({ params, route, onCleanup }) {
     fsBtn.setAttribute('aria-label', on ? t('Leave full screen') : t('Full screen'));
     fsBtn.replaceChildren(icon(on ? 'shrink' : 'expand'));
   }
+
+  /* A provider's own full-screen button takes only its frame into the top layer,
+     and the brand chip sits beside that frame rather than inside it, so the
+     corner goes blank on the one screen where it is biggest. Ask for the shell
+     instead: the same picture at the same size, with Solvn still wearing it.
+     A request the browser will not honour outside a gesture leaves the viewer
+     in the full screen they chose, which is the better failure. */
+  function keepBrandInFullscreen() {
+    const el = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!el || el.tagName !== 'IFRAME' || !frameBox.contains(el)) return;
+    const request = playerShell.requestFullscreen || playerShell.webkitRequestFullscreen;
+    if (!request) return;
+    try {
+      Promise.resolve(request.call(playerShell, { navigationUI: 'hide' })).catch(() => {});
+    } catch { /* the frame keeps its own full screen */ }
+  }
+
   if (fsSupported) {
     for (const type of ['fullscreenchange', 'webkitfullscreenchange']) {
       document.addEventListener(type, syncFsState);
-      onCleanup(() => document.removeEventListener(type, syncFsState));
+      document.addEventListener(type, keepBrandInFullscreen);
+      onCleanup(() => {
+        document.removeEventListener(type, syncFsState);
+        document.removeEventListener(type, keepBrandInFullscreen);
+      });
     }
   }
 

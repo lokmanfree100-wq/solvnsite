@@ -57,8 +57,53 @@ export function cloudConfig() {
 
 export const cloudActive = () => {
   const cfg = cloudConfig();
-  return cfg && cfg.verified && token() ? cfg : null;
+  return cfg && cfg.verified && schema.state !== 'missing' && token() ? cfg : null;
 };
+
+/* ---- has that database actually been built? --------------------------
+   On the permanent domain the project address is compiled in, so `verified` is
+   a promise this bundle makes rather than one the browser has checked. The
+   promise only holds once the Solvn tables exist: until they do, a cloud
+   sign-up would open an account that every later read answers 404 on, and a
+   form whose only reply is a thin line of red text reads, to the person holding
+   it, like a button that does nothing. So ask once at boot and let the answer
+   choose between the cloud and this device.
+
+   `wait` means "not yet known, assume the cloud" — an unreachable project must
+   not quietly move somebody off the account they already have. */
+const schema = { state: homeCloud() ? 'wait' : 'none' };
+
+export async function verifyCloudSchema() {
+  if (schema.state !== 'wait') return schema.state === 'live';
+  const cfg = cloudConfig();
+  if (!cfg) {
+    schema.state = 'none';
+    return false;
+  }
+  try {
+    const res = await fetch(`${cfg.url}/rest/v1/rpc/kitsune_ready`, {
+      method: 'POST',
+      headers: headers(cfg, false),
+      body: 'null',
+    });
+    if (res.ok) {
+      schema.state = (await res.json()) === true ? 'live' : 'missing';
+    } else {
+      /* Only "this project has no Solvn schema" moves the site to the device
+         backend. A 5xx or a rate limit is the project being briefly itself, and
+         guessing from that would split one account across two stores. */
+      schema.state = res.status === 404 || res.status === 425 ? 'missing' : 'wait';
+    }
+  } catch {
+    schema.state = 'wait';
+  }
+  /* The sheet, the chip and the Settings panel all read this, so say when the
+     answer lands rather than waiting for the next route change. */
+  document.dispatchEvent(new CustomEvent('kitsune:account'));
+  return schema.state === 'live';
+}
+
+export const cloudSchemaMissing = () => schema.state === 'missing';
 
 /** Saved but not yet proven — the Google button waits for `verified`. */
 export function saveCloudConfig({ url, key }) {
@@ -85,7 +130,14 @@ export function clearCloudConfig() {
  * stricter question — "is there a session to spend" — and an adapter that only
  * answered that one could never open a session in the first place.
  */
-export const authReady = () => Boolean(cloudConfig()?.verified);
+export const authReady = () => Boolean(cloudConfig()?.verified) && schema.state !== 'missing';
+
+/* ---- where the browser is sent back to --------------------------------
+   A reset email and an OAuth round trip only land if the address matches the
+   project's Site URL / Redirect URLs list exactly, so on the permanent domain it
+   is spelled out as the https site rather than inherited from whatever scheme or
+   LAN address this particular tab happens to be on. */
+export const cloudReturnUrl = () => (homeCloud() ? `https://${HOME_HOST}/` : `${location.origin}${location.pathname}`);
 
 /* ---- the link the browser comes back with ----------------------------
    A reset email hands the browser either a fragment (`#access_token=…&type=recovery`,
@@ -129,7 +181,7 @@ export async function requestPasswordReset(email) {
   if (pair) localStorage.setItem(FLOW, pair.verifier);
   else localStorage.removeItem(FLOW);
   sessionStorage.setItem(AWAITING, '1');
-  const q = new URLSearchParams({ redirect_to: `${location.origin}${location.pathname}` });
+  const q = new URLSearchParams({ redirect_to: cloudReturnUrl() });
   if (pair) {
     q.set('code_challenge', pair.challenge);
     q.set('code_challenge_method', 'S256');
@@ -195,6 +247,56 @@ function waitingForReset() {
 }
 
 /**
+ * Spend a reset address the viewer pasted in instead of following.
+ *
+ * Supabase sends a *link*, not a code you can type: the six-figure token is in
+ * the address. Plenty of mail apps open that address in their own webview, where
+ * the session it hands over dies with the preview — so the sheet lets the person
+ * copy the link back here instead, and this reads the credentials out of it.
+ * Both forms are accepted: the one-time `?code=` of the PKCE flow and the
+ * `#access_token=…&type=recovery` of the implicit one.
+ */
+export async function spendResetLink(text) {
+  const cfg = cloudConfig();
+  if (!cfg) throw badRequest('No Supabase project is connected.', 'no-cloud');
+  const raw = String(text || '').trim();
+  if (!/^https?:\/\//i.test(raw)) {
+    throw badRequest('Paste the whole link from the email, starting with https.', 'bad-link');
+  }
+  let link = null;
+  try {
+    link = new URL(raw);
+  } catch {
+    throw badRequest('That link does not look right.', 'bad-link');
+  }
+  const query = new URLSearchParams(link.search);
+  const hash = new URLSearchParams((link.hash || '').replace(/^#/, ''));
+  const read = (k) => query.get(k) || hash.get(k) || '';
+  const code = read('code');
+  const access = read('access_token');
+
+  if (code) {
+    const verifier = localStorage.getItem(FLOW);
+    localStorage.removeItem(FLOW);
+    if (!verifier) {
+      throw badRequest('Ask for a new email in this browser — the one you pasted belongs to another.', 'no-verifier');
+    }
+    const data = await req(cfg, '/auth/v1/token?grant_type=pkce', {
+      method: 'POST',
+      auth: false,
+      body: { auth_code: code, code_verifier: verifier },
+    });
+    setToken(data);
+    return 'recovery';
+  }
+
+  if (!access) throw badRequest('That link holds no reset code. Ask for a new email.', 'no-code');
+  if (read('type') && read('type') !== 'recovery') throw badRequest('That is not a password reset link.', 'not-recovery');
+  setToken({ access_token: access });
+  return 'recovery';
+}
+
+/**
  * Set the password of the session in hand — the last step of a recovery, and
  * the same call an account makes to change it from the profile.
  */
@@ -208,9 +310,13 @@ export async function updatePassword(password) {
   return true;
 }
 
+/**
+ * May the sheet offer Google at all? The same answer as email sign-up: a
+ * verified project whose schema is actually in place. Whether the provider is
+ * enabled on top of that is asked per press, in `googleAvailable()`.
+ */
 export function googleReady() {
-  const cfg = cloudConfig();
-  return Boolean(cfg && cfg.verified);
+  return authReady();
 }
 
 function baseUrl(value) {
@@ -342,9 +448,21 @@ async function req(cfg, path, { method = 'GET', body, auth = true, prefer } = {}
 
 /** GoTrue, PostgREST and the SQL raise in their own words; map to our copy. */
 function cloudMessage(data) {
-  const m = String(data?.msg || data?.error?.message || data?.message || data?.error_desc || '');
+  const m = String(data?.msg || data?.error?.message || data?.message || data?.error_desc || data?.error_description || '');
   if (/already registered|already exists/i.test(m)) return 'That email already has an account. Sign in instead.';
   if (/invalid login credentials|Invalid password/i.test(m)) return 'Email or password is wrong.';
+  if (/provider is not enabled|Unsupported provider/i.test(m)) return 'Google sign-in is not switched on for this project yet.';
+  /* A missing table or function is the deployment not being finished, and it is
+     worth naming: "Sign in failed" would send somebody hunting for a typo in
+     their own password. */
+  if (/does not exist|Could not find the (?:function|table relation)|PGRST20\d|PGRST404/i.test(m)) {
+    return 'The central database is not set up yet — run the SQL in docs/supabase.sql.';
+  }
+  if (/reauthentication_needed|Reauthentication/i.test(m)) return 'Confirm your current password to finish that change.';
+  if (/TokenExpired|invalid authorization code|invalid or expired recovery|expired/i.test(m)) {
+    return 'That reset link has expired. Ask for a new one.';
+  }
+  if (/Forced authentication challenge|not allow(?:ed)? sign/i.test(m)) return 'This project is not allowing that sign-in method.';
   if (/user not found|not authorized|row level security/i.test(m)) return 'Please sign in first.';
   if (/duplicate key|username_(?:key|idx)/i.test(m)) return 'That name is taken.';
   if (/playlist is private/i.test(m)) return 'That playlist is private.';
@@ -695,17 +813,62 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
   throw Object.assign(new Error('That is not the right method.'), { status: 404, code: 'no-route' });
 }
 
-/** Where the browser should go for the Google flow, once the project allows it. */
-export function googleSignInUrl() {
+/**
+ * Where the browser should go for the Google flow.
+ *
+ * A PKCE pair is minted for the round trip and its verifier kept here, because
+ * this project answers an OAuth callback with a one-time `?code=` that only
+ * `captureFromRedirect()` can spend when the verifier that opened the flow is
+ * still in reach. Without it the viewer would come back signed out and the
+ * button would look broken.
+ */
+export async function googleAuthorizeUrl() {
   const cfg = cloudConfig();
   if (!cfg) return '';
-  const next = `${location.origin}${location.pathname}`;
+  const pair = await pkcePair();
+  if (pair) localStorage.setItem(FLOW, pair.verifier);
+  else localStorage.removeItem(FLOW);
   const q = new URLSearchParams({
     provider: 'google',
-    redirect_to: next,
+    redirect_to: cloudReturnUrl(),
     scopes: 'openid email profile',
   });
+  if (pair) {
+    q.set('code_challenge', pair.challenge);
+    q.set('code_challenge_method', 'S256');
+  }
   return `${cfg.url}/auth/v1/authorize?${q}`;
+}
+
+/**
+ * Is Google actually switched on in this project?
+ *
+ * The provider is a dashboard setting, and pressing an OAuth button whose
+ * provider is disabled hands the whole tab to a Supabase error page — which is
+ * what this check exists to avoid. A 302 out to Google means yes; the
+ * "provider is not enabled" answer means no. Anything the browser will not let
+ * us look at (a CORS-blocked probe) is read as yes, so a failed check can never
+ * hide a working sign-in.
+ */
+export async function googleAvailable() {
+  const cfg = cloudConfig();
+  if (!cfg) return false;
+  const q = new URLSearchParams({ provider: 'google', redirect_to: cloudReturnUrl() });
+  try {
+    const res = await fetch(`${cfg.url}/auth/v1/authorize?${q}`, {
+      method: 'GET',
+      redirect: 'manual',
+      headers: { apikey: cfg.key, Accept: 'application/json' },
+    });
+    if (res.type === 'opaqueredirect') return true;
+    if (res.status >= 300 && res.status < 400) return true;
+    if (res.ok) return true;
+    const data = await res.json().catch(() => null);
+    const message = String(data?.error_description || data?.msg || data?.error || '');
+    return !/provider is not enabled|Unsupported provider/i.test(message);
+  } catch {
+    return true;
+  }
 }
 
 /* ---- the admin desk's own cloud door ------------------------------------

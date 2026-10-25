@@ -1140,6 +1140,11 @@
   aspect-ratio: 16 / 9;
   width: 100%;
   background: var(--void);
+  /* The chip sizes itself to the player rather than to the screen: a 400px
+     embed on a 4K monitor and a 1900px fullscreen shell are two different
+     canvases, and only the canvas decides how big its corner mark must be. */
+  container-type: inline-size;
+  container-name: player;
 }
 .player-frame iframe {
   position: absolute;
@@ -1181,6 +1186,29 @@
     padding: 2px 10px;
     font-size: 11px;
   }
+}
+/* Where the browser knows container units — every browser we ship to — the chip
+   stops being a fixed badge and grows with the frame it sits on: 11px on a
+   phone, a clean 20px on a large desktop panel or a fullscreen 1080p+ canvas,
+   pinned to the top-right corner the whole way. `pointer-events: none` stays,
+   so no matter the size it can never swallow a control underneath it. */
+@supports (width: 1cqw) {
+  .player-brand {
+    top: clamp(8px, 1.25cqw, 24px);
+    right: clamp(8px, 1.5cqw, 30px);
+    min-height: clamp(22px, 3.2cqw, 42px);
+    padding: 0 clamp(9px, 1.5cqw, 20px);
+    font-size: clamp(11px, 1.7cqw, 20px);
+  }
+}
+/* Fullscreen is the same rule with a bigger canvas: the shell we ask to
+   fullscreen owns the frame, so the chip is on the top layer by construction.
+   A firmer shadow keeps it readable over a bright frame of animation. */
+.player-shell:fullscreen .player-brand,
+.player-shell:-webkit-full-screen .player-brand {
+  top: clamp(14px, 1.1cqw, 34px);
+  right: clamp(14px, 1.3cqw, 40px);
+  box-shadow: 0 2px 20px var(--accent-glow), 0 0 0 1px rgb(0 0 0 / 0.35);
 }
 .player-boot {
   position: absolute;

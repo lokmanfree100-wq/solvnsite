@@ -16,12 +16,13 @@ import {
   isSignedIn,
   login,
   logout,
+  refresh,
   setNewPassword,
   shownName,
   signup,
   staticHost,
 } from '../lib/account.js';
-import { authReady, googleReady, googleSignInUrl } from '../lib/cloud.js';
+import { authReady, googleAvailable, googleAuthorizeUrl, googleReady, spendResetLink } from '../lib/cloud.js';
 import { divisionOf, titleById, titleUnlocked } from '../lib/ranks.js';
 import { inboxState, inboxUsable } from '../lib/dms.js';
 import { isGuest, markAsked, setGuest, wasAsked } from '../lib/store.js';
@@ -309,7 +310,9 @@ export function resetSheet() {
           toast(t('Password updated. You are signed in.'), { tone: 'ok', iconName: 'check' });
           go('/profile');
         } catch (err) {
-          pass.set(say(err));
+          const msg = say(err);
+          pass.set(msg);
+          toast(msg, { tone: 'err', iconName: 'alert' });
         } finally {
           submit.disabled = false;
           submit.classList.remove('is-busy');
@@ -351,9 +354,29 @@ export function authSheet(mode = 'login', { welcome = false } = {}) {
       'button.btn.btn--google.grow',
       {
         type: 'button',
-        onclick: () => {
+        /* The provider is a switch on the Supabase project, not something this
+           page can promise. Ask before the tab is handed over, or a disabled
+           provider shows the viewer a database error page instead of a site. */
+        onclick: async () => {
           btn.disabled = true;
-          location.assign(googleSignInUrl());
+          btn.classList.add('is-busy');
+          btn.setAttribute('aria-busy', 'true');
+          try {
+            if (!(await googleAvailable())) {
+              toast(t('Google sign-in is not switched on for this project yet — use your email below.'), {
+                tone: 'err',
+                iconName: 'alert',
+              });
+              return;
+            }
+            location.assign(await googleAuthorizeUrl());
+          } catch (err) {
+            toast(say(err, 'The sign-in service did not answer.'), { tone: 'err', iconName: 'alert' });
+          } finally {
+            btn.disabled = false;
+            btn.classList.remove('is-busy');
+            btn.removeAttribute('aria-busy');
+          }
         },
       },
       googleMark(),
@@ -394,7 +417,9 @@ export function authSheet(mode = 'login', { welcome = false } = {}) {
               ),
             );
           } catch (err) {
-            email.set(say(err));
+            const msg = say(err);
+            email.set(msg);
+            toast(msg, { tone: 'err', iconName: 'alert' });
             email.input.focus();
           } finally {
             submit.disabled = false;
@@ -406,10 +431,55 @@ export function authSheet(mode = 'login', { welcome = false } = {}) {
       email.node,
       h('div.auth-foot', {}, submit),
     );
+
+    /* The email carries its code inside a link, and some mail apps open that
+       link in their own reader, where the short session it hands over dies
+       before the page can use it. Copying the address back here spends it in
+       the browser that asked — the same reset, without following anything. */
+    const pasted = field('Reset link', { type: 'url', name: 'reset-link', autocomplete: 'off', required: true, placeholder: 'https://…' });
+    const spend = h('button.btn.grow', { type: 'submit' }, t('Use the link I already have'));
+    const linkForm = h(
+      'form.auth-form.stack',
+      {
+        novalidate: true,
+        onsubmit: async (e) => {
+          e.preventDefault();
+          const value = pasted.input.value.trim();
+          if (!value) {
+            pasted.set(t('Paste the whole link from the reset email.'));
+            pasted.input.focus();
+            return;
+          }
+          spend.disabled = true;
+          spend.classList.add('is-busy');
+          spend.setAttribute('aria-busy', 'true');
+          try {
+            await spendResetLink(value);
+            await refresh().catch(() => {});
+            api.close();
+            resetSheet();
+          } catch (err) {
+            const msg = say(err);
+            pasted.set(msg);
+            toast(msg, { tone: 'err', iconName: 'alert' });
+            pasted.input.focus();
+          } finally {
+            spend.disabled = false;
+            spend.classList.remove('is-busy');
+            spend.removeAttribute('aria-busy');
+          }
+        },
+      },
+      pasted.node,
+      h('div.auth-foot', {}, spend),
+    );
+
     const body = h(
       'div.auth-inner',
       {},
       form,
+      h('div.auth-or', { 'aria-hidden': 'true' }, h('span', {}, t('or'))),
+      linkForm,
       h('button.linkish', { type: 'button', onclick: () => authSheet('login') }, t('Back to sign in')),
     );
     return body;
@@ -470,6 +540,10 @@ export function authSheet(mode = 'login', { welcome = false } = {}) {
             pass.set(msg);
             email.set('');
             name?.set('');
+            /* A thin line of red under one field is easy to miss on a phone, and
+               a press that appears to do nothing reads as a broken button. Say it
+               out loud as well. */
+            toast(msg, { tone: 'err', iconName: 'alert' });
             (err.status === 401 || err.status === 429 ? pass : email).input.focus();
           } finally {
             submit.disabled = false;
@@ -547,7 +621,7 @@ export function authSheet(mode = 'login', { welcome = false } = {}) {
       : localOnly
         ? t('This copy keeps accounts in this browser, so your name, picture and lists stay on this device.')
         : t('An account keeps your name, your picture, your favourite anime and your lists in one place.'),
-    forgot: t('Tell us the email you signed up with and we send a link that lets you choose a new password.'),
+    forgot: t('Tell us the email you signed up with and we send a link that lets you choose a new password. If your mail app will not open it, paste the link below instead.'),
   };
 
   const opened = sheet({
