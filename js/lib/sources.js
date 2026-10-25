@@ -13,9 +13,13 @@
  *
  * Five rules follow from that.
  *
- * 1. Nothing ships pre-configured. A copy of Solvn plays what its operator adds
- *    in Settings ▸ Streaming servers, so the site can only be pointed at
- *    material whoever runs it is entitled to serve.
+ * 1. Nothing ships pre-configured — with one labelled exception: a fresh
+ *    install seeds a single **demo** server, an open test stream, so an episode
+ *    click plays something real while the site is still being set up. It is
+ *    named Demo, carries no third-party branding, is planted at most once per
+ *    device, and is gone the moment a real server is added or it is removed in
+ *    Settings ▸ Streaming servers. Real material still comes only from whoever
+ *    runs the site.
  * 2. `DENY_HOSTS` is permanent. An address on it is refused when typed, dropped
  *    from a list stored on this device by an older build, and checked once more
  *    at the moment a picture would be mounted.
@@ -169,8 +173,36 @@ export const isMediaUrl = (url) => HLS_URL.test(String(url || '')) || FILE_URL.t
 /** `media` plays inside Solvn; `embed` is somebody else's page, framed. */
 export const serverKind = (server) => (isMediaUrl(server?.url) ? 'media' : 'embed');
 
+/* ---- the demo seed ------------------------------------------------------
+   The one exception to rule 1. A fresh install has an empty server list, and
+   an empty list means every episode click lands on the "no source" notice —
+   technically correct, useless to a new operator. So the first read of the
+   list plants a single clearly-labelled demo: an open test stream (Mux's
+   public HLS file) that plays in Solvn's own `<video>`, proving the whole
+   pipeline — cards, stage, quality list, corner mark — before any real
+   material exists. It is planted at most once per device, never on a device
+   that already has servers of its own, and it is gone the moment a real
+   server is added or every server is removed in Settings. */
+const DEMO_SERVER = {
+  id: 'demo-test-stream',
+  name: 'Demo — open test stream',
+  url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+};
+
+const DEMO_SEEDED_KEY = 'demoSeeded';
+
+function seedDemoOnce() {
+  if (settings.get(DEMO_SEEDED_KEY)) return;
+  const stored = settings.get('servers');
+  const list = Array.isArray(stored) ? stored : [];
+  if (list.length) return; // has servers of its own — leave them alone
+  settings.set(DEMO_SEEDED_KEY, true);
+  settings.set('servers', [{ ...DEMO_SERVER }]);
+}
+
 /** Extra servers this device added, in the order the ladder should try them. */
 export function extraServers() {
+  seedDemoOnce();
   const list = settings.get('servers');
   return (Array.isArray(list) ? list : []).filter((s) => s && templateProblem(s.url) === null);
 }
@@ -178,9 +210,11 @@ export function extraServers() {
 /**
  * Everything the ladder may use.
  *
- * An install that has configured nothing has no pool, and the watch page says so
- * with a route to Settings rather than framing a stranger to fill the silence:
- * Solvn only plays what whoever runs it has chosen to point it at.
+ * An install that has configured nothing gets the labelled demo stream (see
+ * `seedDemoOnce`), so the watch page only says "nothing to play" when every
+ * server was removed on purpose — and then it offers a route to Settings
+ * rather than framing a stranger to fill the silence: Solvn only plays what
+ * whoever runs it has chosen to point it at.
  */
 export function servers() {
   return extraServers();
@@ -308,7 +342,9 @@ export function serverName(server) {
 export function addServer({ name = '', url = '', tracks = [] } = {}) {
   const problem = templateProblem(url);
   if (problem) return problem;
-  const list = extraServers();
+  /* A real server takes the demo's place: the ladder should not spend a hop on
+     the test stream once the operator's own material exists. */
+  const list = extraServers().filter((s) => s.id !== DEMO_SERVER.id);
   const clean = url.trim();
   if (list.some((s) => s.url === clean)) return t('That server is already listed.');
   const carried = TRACK_IDS.filter((id) => tracks.includes(id));
@@ -327,7 +363,10 @@ export function addServer({ name = '', url = '', tracks = [] } = {}) {
 }
 
 export function removeServer(id) {
-  settings.set('servers', extraServers().filter((s) => s.id !== id));
+  const rest = extraServers().filter((s) => s.id !== id);
+  settings.set('servers', rest);
+  /* Emptying the list is a choice: the demo does not sneak back afterwards. */
+  if (!rest.length) settings.set(DEMO_SEEDED_KEY, true);
 }
 
 /** The speeds the settings card offers, seconds. */
