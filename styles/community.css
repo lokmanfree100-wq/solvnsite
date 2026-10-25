@@ -602,6 +602,51 @@ label.pick-file { cursor: pointer; }
   white-space: nowrap;
 }
 
+/* central cloud roster */
+.ad-central { display: grid; gap: var(--sp-3); }
+.ad-c-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) 58px 82px 58px 58px 118px;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 12px;
+  background: var(--surface);
+  font-size: 12.5px;
+}
+.ad-c-row.is-head {
+  min-height: 0;
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ad-c-mail {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ad-c-last { color: var(--text-faint); }
+@media (max-width: 720px) {
+  .ad-c-row { grid-template-columns: minmax(0, 1fr) 56px 76px 54px 54px; }
+  .ad-c-mail,
+  .ad-c-last,
+  .ad-c-row.is-head span:nth-child(2),
+  .ad-c-row.is-head span:nth-child(7) { display: none; }
+}
+@media (max-width: 480px) {
+  .ad-c-row { grid-template-columns: minmax(0, 1fr) 52px 70px; }
+  .ad-c-row > span:nth-child(4),
+  .ad-c-row > span:nth-child(5),
+  .ad-c-row > span:nth-child(6),
+  .ad-c-row.is-head span:nth-child(4),
+  .ad-c-row.is-head span:nth-child(5),
+  .ad-c-row.is-head span:nth-child(6) { display: none; }
+}
+
 .ad-feed { display: grid; }
 .ad-event { display: flex; gap: 11px; padding: 10px 2px; border-top: 1px solid var(--hairline); min-width: 0; }
 .ad-event:first-child { border-top: 0; }

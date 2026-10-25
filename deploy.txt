@@ -1,24 +1,22 @@
 Solvn — static build
 
-1. Upload the CONTENTS of this folder into htdocs (index.html must end up at
-   htdocs/index.html, not htdocs/dist/index.html).
-2. That is the whole install. There is no server code, no database and nothing
-   to build — any plain web host will do.
+The contents of this folder are the site root of https://solvn.site. The
+hosting repo mirrors this folder, so a deploy means: replace the repo's files
+with these, commit, and push. That is the whole install — there is no server
+code, no database and nothing to build.
 
-What this copy does without a backend:
+What this copy does:
   - Search, browse, details pages, the player, watch history, favourites,
     settings and all 12 languages work as normal.
-  - Accounts, profiles, playlists, comments, friends, messages, card trades,
-    duels and the ranked board, the daily wheel, watch rooms and the notice
-    bell all keep their work in this browser's localStorage (lib/device.js),
-    with the same routes and shapes the Node server answers (server.js).
-  - Two limits follow from that: an account, a card, a message or a duel lives
-    on the browser that made it, so two people meet only when they sign in on
-    the same one. The bell is the exception — it asks AniList for air dates
-    directly and compares them against this device's saved list.
-  - A fresh browser starts empty: no accounts, no cards, no staff. There is no
-    seeded admin. A Supabase project added in Settings owns sign-in, and the
-    social pages carry on locally beside it.
+  - On solvn.site the central Supabase project is built in: accounts, profiles,
+    card binders, packs and XP sync to the one Solvn database automatically, so
+    a member who signs in on another device meets their own binder again, and
+    the site owner's admin desk sees every member live.
+  - A browser that has not signed into the central cloud keeps a local copy of
+    everything (lib/device.js), so cards and messages still work between
+    sign-ins; Settings ▸ Cloud sync carries that data up with one tap.
+  - The bell asks AniList for air dates directly and compares them against this
+    device's saved list, so episode notices work without any server.
 
 After uploading, open the site once and press Ctrl+F5 so the old copies held in
 your browser are replaced by these files.

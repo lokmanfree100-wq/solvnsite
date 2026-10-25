@@ -1,7 +1,7 @@
 /**
  * The API a static copy answers for itself.
  *
- * A folder on Netlify or htdocs has no `/api`, and this build does not pretend
+ * The static copy at solvn.site has no `/api`, and this build does not pretend
  * otherwise: `data-api="off"` is still on `<html>`, so nothing knocks on a route
  * that cannot exist. What changes is that every page that used to vanish with
  * the server — accounts, profiles, playlists, comments, friends, messages, card

@@ -416,7 +416,8 @@ function rollCharacter(len) {
 
 /* ---- the collection --------------------------------------------------- */
 const whoId = () => (currentUser()?.id != null ? String(currentUser().id) : 'device');
-const collKey = () => `cards:${whoId()}`;
+const collKeyFor = (id) => `cards:${String(id)}`;
+const collKey = () => collKeyFor(whoId());
 const empty = () => ({ owned: {}, serial: 0, packs: 0, pulls: 0, best: 0, pinned: [], escrow: {}, granted: [] });
 
 /* The one-of-one has moved twice as the set shrank: Lv 21 when the set stopped
@@ -509,8 +510,8 @@ function refreshMaster(owned) {
   return moved;
 }
 
-function coll() {
-  const raw = storage.read(collKey(), null);
+function collFor(id) {
+  const raw = storage.read(collKeyFor(id), null);
   if (!raw || typeof raw !== 'object') return empty();
   const out = {
     owned: raw.owned && typeof raw.owned === 'object' ? raw.owned : {},
@@ -536,9 +537,26 @@ function coll() {
     out.best = Object.values(out.owned).reduce((n, e) => Math.max(n, Number(e?.lv) || 0), out.best);
     if (collapsed) out.pinned = [...new Set(out.pinned)];
     out.score = SCORE_VERSION;
-    save(out);
+    /* The live binder publishes its new summary; a binder read under another
+       id (the sync's capture) is written back quietly. */
+    if (String(id) === whoId()) save(out);
+    else storage.write(collKeyFor(id), out);
   }
   return out;
+}
+
+function coll() {
+  return collFor(whoId());
+}
+
+/** The whole binder of another id — what the sync captures before it moves. */
+export const collectionFor = (id) => collFor(String(id));
+
+/** Land a binder under one id — the cloud's copy arriving on this device. */
+export function importCollection(id, raw) {
+  storage.write(collKeyFor(String(id)), raw && typeof raw === 'object' ? raw : empty());
+  collFor(String(id));
+  if (String(id) === whoId()) publishSoon();
 }
 
 function save(next) {

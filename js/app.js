@@ -11,6 +11,7 @@ import { errorState } from './components/media.js';
 import { closeSheets } from './lib/ui.js';
 import { initTilt } from './lib/tilt.js';
 import { installInterfaceSounds } from './lib/sounds.js';
+import './lib/core.js';
 
 import { HomeView } from './views/home.js';
 import { DiscoverView } from './views/discover.js';
@@ -78,14 +79,6 @@ function pulse(path) {
   }
 }
 setInterval(() => pulse(parse().path), 60_000);
-
-/* Netlify puts its watermark in the bottom-right corner — the same corner the
-   mobile dock lives in. base.css hides the mark, and this flag raises the dock
-   above that corner as well, so the navigation stays reachable even on a plan
-   that will not let the badge go. A plain host never matches, so nothing moves. */
-if (/\.netlify\.(app|site|com)$/i.test(location.hostname)) {
-  document.documentElement.dataset.hostBadge = 'netlify';
-}
 
 function applyTheme() {
   paintAccent();

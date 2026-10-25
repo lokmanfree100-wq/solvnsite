@@ -32,6 +32,38 @@ export const genres = {
 };
 
 const ui = {
+  'Accounts, binders, packs and XP live in the one Solvn database — the owner sees every member live. This device keeps its own copy too, so cards still open between sign-ins.':
+    'Comptes, classeurs, boosters et XP vivent dans la seule base Solvn — le propriétaire voit chaque membre en direct. Cet appareil garde aussi sa propre copie, donc les cartes restent ouvertes entre deux connexions.',
+  'Admin email': 'E-mail admin',
+  'Backup restored.': 'Sauvegarde restaurée.',
+  'Backup saved.': 'Sauvegarde enregistrée.',
+  'Central cloud': 'Cloud central',
+  'Central cloud in use — every pull, pack and level syncs to solvn.site.':
+    'Cloud central actif — chaque tirage, booster et niveau se synchronise sur solvn.site.',
+  'Connect': 'Connecter',
+  'Connected to the central cloud.': 'Connecté au cloud central.',
+  'Enter the owner email and password.': 'Saisissez l’e-mail et le mot de passe du propriétaire.',
+  'Last sync': 'Dernière synchro',
+  'Member': 'Membre',
+  'No central cloud is configured — accounts and cards live on this device. On solvn.site the central database is built in.':
+    'Aucun cloud central n’est configuré — les comptes et les cartes vivent sur cet appareil. Sur solvn.site, la base centrale est intégrée.',
+  'No members have synced yet.': 'Aucun membre n’a encore synchronisé.',
+  'Packs': 'Boosters',
+  'Restore a backup': 'Restaurer une sauvegarde',
+  'Save a backup': 'Enregistrer une sauvegarde',
+  'Sign in and this device carries its binder, packs and XP into the central cloud.':
+    'Connectez-vous et cet appareil emporte son classeur, ses boosters et son XP dans le cloud central.',
+  'Sign in as the owner to see every member, binder and pack in the one Solvn database.':
+    'Connectez-vous en tant que propriétaire pour voir chaque membre, classeur et booster de la base Solvn unique.',
+  'Sign in to the central cloud first.': 'Connectez-vous d’abord au cloud central.',
+  'Signed out of the central cloud.': 'Déconnecté du cloud central.',
+  'Sync my data': 'Synchroniser mes données',
+  'That file is not a Solvn backup.': 'Ce fichier n’est pas une sauvegarde Solvn.',
+  'This device caught up with the cloud.': 'Cet appareil est à jour avec le cloud.',
+  'Your data now lives in the central cloud.':
+    'Vos données vivent désormais dans le cloud central.',
+  'solvn.site is wired to the central Solvn database automatically.':
+    'solvn.site est automatiquement relié à la base de données centrale Solvn.',
   '{count} result for “{q}”': '{count} résultat pour « {q} »',
   '{count} results for “{q}”': '{count} résultats pour « {q} »',
   '{count} titles · showing {shown}': '{count} titres · {shown} affichés',

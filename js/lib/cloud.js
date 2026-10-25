@@ -19,7 +19,32 @@ const SESSION = 'kitsune:cloud:session';
    between here and the project. */
 const EXPIRY_LEEWAY_MS = 60 * 1000;
 
+/* ---- the permanent home -----------------------------------------------
+   solvn.site is wired to the one central Solvn Supabase project in code: no
+   per-browser Settings step, every visitor meets the same database. The key
+   here is publishable by design — it can only do what row-level security
+   allows — and the secret key is never part of any file. On any other host
+   (the LAN preview, a hand-uploaded folder) the Settings flow below still
+   rules, so a second project can be tested without touching this default. */
+export const HOME_HOST = 'solvn.site';
+
+const BUILT_IN = {
+  url: 'https://omefwehdgfifeoibisth.supabase.co',
+  /* Publishable, by design public. Row-level security is the door. */
+  key: 'sb_publishable_YKm0-DevDi__Ua5xH9T6Ig_t_Vbze4p',
+};
+
+/** Is this copy running on the permanent domain? */
+export const homeCloud = () => {
+  try {
+    return /(^|\.)solvn\.site$/i.test(location.hostname);
+  } catch {
+    return false;
+  }
+};
+
 export function cloudConfig() {
+  if (homeCloud()) return { ...BUILT_IN, verified: true, builtin: true };
   let raw = null;
   try {
     raw = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -369,6 +394,36 @@ function toPlaylist(row, likeIds) {
 
 const likeIdsOf = (rows) => new Set((rows || []).map((r) => String(r.playlist)));
 
+/** A core row: the binder, packs and XP the device sent up. */
+function toCore(row) {
+  if (!row) return null;
+  return {
+    collection: row.collection && typeof row.collection === 'object' ? row.collection : {},
+    packs: row.packs && typeof row.packs === 'object' ? row.packs : {},
+    xp: row.xp && typeof row.xp === 'object' ? row.xp : {},
+    clientAt: Number(row.client_at) || 0,
+    updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : 0,
+  };
+}
+
+/** One line of the Super Admin roster, already shaped by the SQL. */
+function toRosterRow(row) {
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    username: row.username || '',
+    displayName: row.displayName || row.username || '',
+    email: row.email || '',
+    level: Number(row.level) || 1,
+    xp: Number(row.xp) || 0,
+    cards: Number(row.cards) || 0,
+    packs: Number(row.packs) || 0,
+    pulls: Number(row.pulls) || 0,
+    updatedAt: Number(row.updatedAt) || 0,
+    createdAt: Number(row.createdAt) || 0,
+  };
+}
+
 /** The account behind this browser's token, or nothing. */
 async function myUid(cfg) {
   const me = await req(cfg, '/auth/v1/user');
@@ -520,10 +575,36 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
     return { user: await patchRow(cfg, uid, { cards: body.cards || null }) };
   }
 
+  /* -- the central core: binder, packs and XP -- */
+  if (seg[0] === 'account' && seg[1] === 'core' && method === 'GET') {
+    const data = await req(cfg, '/rest/v1/rpc/kitsune_core_get');
+    return { core: data?.core ? toCore(data.core) : null };
+  }
+
+  if (seg[0] === 'account' && seg[1] === 'core') {
+    const data = await req(cfg, '/rest/v1/rpc/kitsune_core_put', {
+      method: 'POST',
+      body: {
+        p_collection: body.collection ?? {},
+        p_packs: body.packs ?? {},
+        p_xp: body.xp ?? {},
+        p_client_at: Number(body.client_at) || 0,
+      },
+    });
+    return { core: data?.core ? toCore(data.core) : null };
+  }
+
+  /* The Super Admin's global roster — the RPC decides who may see it. */
+  if (seg[0] === 'admin' && seg[1] === 'core-roster' && method === 'GET') {
+    const data = await req(cfg, '/rest/v1/rpc/kitsune_core_roster');
+    return { users: (data?.users || []).map(toRosterRow).filter(Boolean) };
+  }
+
   /* -- playlists -- */
   if (seg[0] === 'playlists' && !seg[1]) {
     const rows = await req(cfg, '/rest/v1/kitsune_playlists?select=*', {
       method: 'POST',
+      prefer: 'return=representation',
       body: { title: body.title, items: body.items, visibility: body.visibility },
     });
     return { playlist: toPlaylist(rows[0]) };
@@ -625,4 +706,25 @@ export function googleSignInUrl() {
     scopes: 'openid email profile',
   });
   return `${cfg.url}/auth/v1/authorize?${q}`;
+}
+
+/* ---- the admin desk's own cloud door ------------------------------------
+   The owner's staff account belongs to this site's backend, so signing into
+   the central cloud for the global roster must not touch that session. These
+   two only move the Supabase token in this browser. */
+export async function cloudDirectLogin(email, password) {
+  const cfg = cloudConfig();
+  if (!cfg) throw badRequest('Cloud sync is not configured.', 'no-cloud');
+  const data = await req(cfg, '/auth/v1/token?grant_type=password', {
+    method: 'POST',
+    auth: false,
+    body: { email, password },
+  });
+  setToken(data);
+  const me = await req(cfg, '/auth/v1/user').catch(() => null);
+  return { email: me?.email || me?.user?.email || email };
+}
+
+export function cloudSignOut() {
+  setToken(null);
 }

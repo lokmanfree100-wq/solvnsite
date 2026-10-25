@@ -10,6 +10,7 @@ import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
 import { account, isStaff, adminUsers, adminPatchUser, adminReports, adminPatchReport, adminComments, removeComment, adminGift } from '../lib/account.js';
+import { cloudConfig, cloudActive, cloudApi, cloudDirectLogin, cloudSignOut } from '../lib/cloud.js';
 import { BADGES, rankOf } from '../lib/ranks.js';
 import { statsLocked, setStatsLock } from '../lib/store.js';
 import { avatar, say, statTile } from '../components/account.js';
@@ -597,6 +598,133 @@ function pulseFeed() {
   );
 }
 
+/* ---- central cloud ---------------------------------------------------- */
+/* One Supabase project holds every account, binder and pack. This panel is
+   the Super Admin's window into it: owner sign-in, then the full roster.
+   The server-side RPC is the actual gate — it only answers the owner. */
+function centralPanel() {
+  const box = h('section.ad-central.glass');
+  const cfg = cloudConfig();
+
+  function paint() {
+    if (!cfg) {
+      box.replaceChildren(
+        h('h2.panel-title', {}, icon('globe'), t('Central cloud')),
+        h('p.muted', {}, t('No central cloud is configured — accounts and cards live on this device. On solvn.site the central database is built in.')),
+      );
+      return;
+    }
+
+    if (!cloudActive()) {
+      const emailIn = h('input.input', { type: 'email', placeholder: t('Admin email'), autocomplete: 'email' });
+      const passIn = h('input.input', { type: 'password', placeholder: t('Password'), autocomplete: 'current-password' });
+      const connect = h(
+        'button.btn.btn--sm.btn--primary',
+        {
+          onclick: async () => {
+            if (!emailIn.value.trim() || !passIn.value) {
+              toast(t('Enter the owner email and password.'), { tone: 'err', iconName: 'alert' });
+              return;
+            }
+            connect.disabled = true;
+            connect.classList.add('is-busy');
+            connect.setAttribute('aria-busy', 'true');
+            try {
+              await cloudDirectLogin(emailIn.value.trim(), passIn.value);
+              toast(t('Connected to the central cloud.'), { tone: 'ok', iconName: 'check' });
+              paint();
+            } catch (err) {
+              toast(say(err), { tone: 'err', iconName: 'alert' });
+            } finally {
+              connect.disabled = false;
+              connect.classList.remove('is-busy');
+              connect.removeAttribute('aria-busy');
+            }
+          },
+        },
+        icon('globe'),
+        t('Connect'),
+      );
+      box.replaceChildren(
+        h('h2.panel-title', {}, icon('globe'), t('Central cloud')),
+        h('p.muted', {}, t('Sign in as the owner to see every member, binder and pack in the one Solvn database.')),
+        h('div.cloud-fields', {}, h('label.cloud-field', {}, t('Email'), emailIn), h('label.cloud-field', {}, t('Password'), passIn)),
+        h('div.rowline.wrap', { style: { gap: '8px', padding: '12px 0 0' } }, connect),
+      );
+      return;
+    }
+
+    const body = h('div');
+    const refresh = h('button.btn.btn--sm.btn--primary', { onclick: load }, icon('refresh'), t('Refresh'));
+    const signout = h(
+      'button.btn.btn--sm',
+      {
+        onclick: () => {
+          cloudSignOut();
+          toast(t('Signed out of the central cloud.'), { tone: 'ok', iconName: 'check' });
+          paint();
+        },
+      },
+      icon('offline'),
+      t('Sign out'),
+    );
+
+    const rowOf = (u) =>
+      h(
+        'div.ad-c-row',
+        { role: 'row' },
+        h('span.ad-handle', { role: 'cell' }, u.username ? `@${u.username}` : u.displayName || '—'),
+        h('span.ad-c-mail', { role: 'cell' }, u.email || '—'),
+        h('span.tnum', { role: 'cell' }, `Lv ${u.level}`),
+        h('span.tnum', { role: 'cell' }, String(u.xp)),
+        h('span.tnum', { role: 'cell' }, String(u.cards)),
+        h('span.tnum', { role: 'cell' }, String(u.packs)),
+        h('span.ad-c-last.tnum', { role: 'cell' }, u.updatedAt ? intlDate(u.updatedAt) : '—'),
+      );
+
+    const head = h(
+      'div.ad-c-row.is-head',
+      { role: 'row' },
+      h('span', { role: 'columnheader' }, t('Member')),
+      h('span', { role: 'columnheader' }, t('Email')),
+      h('span', { role: 'columnheader' }, t('Level')),
+      h('span', { role: 'columnheader' }, t('XP')),
+      h('span', { role: 'columnheader' }, t('Cards')),
+      h('span', { role: 'columnheader' }, t('Packs')),
+      h('span', { role: 'columnheader' }, t('Last sync')),
+    );
+
+    async function load() {
+      refresh.disabled = true;
+      refresh.classList.add('is-busy');
+      body.replaceChildren(h('p.muted', {}, t('Loading…')));
+      try {
+        const res = await cloudApi('admin/core-roster');
+        const users = res?.users || [];
+        body.replaceChildren(
+          head,
+          ...(users.length ? users.map(rowOf) : [h('p.muted', {}, t('No members have synced yet.'))]),
+        );
+      } catch (err) {
+        body.replaceChildren(head, h('p.muted', {}, say(err)));
+      } finally {
+        refresh.disabled = false;
+        refresh.classList.remove('is-busy');
+      }
+    }
+
+    box.replaceChildren(
+      h('h2.panel-title', {}, icon('globe'), t('Central cloud')),
+      h('div.rowline.wrap', { style: { gap: '8px' } }, refresh, signout),
+      body,
+    );
+    load();
+  }
+
+  paint();
+  return box;
+}
+
 /* ---- the page ------------------------------------------------------------ */
 export async function AdminView({ onCleanup } = {}) {
   const wrap = h('div.page-admin');
@@ -630,6 +758,7 @@ export async function AdminView({ onCleanup } = {}) {
   const studio = h('section.ad-studio.glass');
   const pulseBox = h('section.ad-pulse.glass');
   const hold = h('div.ad-hold');
+  const central = centralPanel();
   const roster = h('div.ad-roster');
   const reportBox = h('div.ad-reports');
   const commentBox = h('div.ad-comments');
@@ -791,7 +920,7 @@ export async function AdminView({ onCleanup } = {}) {
     paintPulse();
   }
 
-  wrap.append(head, totals, analyticsBox, studio, pulseBox, hold, roster, reportBox, commentBox);
+  wrap.append(head, totals, analyticsBox, studio, pulseBox, hold, central, roster, reportBox, commentBox);
   paintHold();
   await fill();
   const pulseTimer = setInterval(paintPulse, 15_000);

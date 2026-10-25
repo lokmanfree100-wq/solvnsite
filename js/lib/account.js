@@ -116,9 +116,12 @@ export class ApiError extends Error {
    waits for `cloudActive()`, because a token has to be behind it. */
 const AUTH_ROUTE = /^account\/(signup|login|logout)$/;
 /* The account fields a verified Supabase project owns. On a static copy every
-   other route is answered by `lib/device.js`, so friends and messages still
-   work even when the member signed in through the cloud. */
-const CLOUD_OWN = /^account\/(me|avatar|stats|cards)$|^favourite$/;
+   other route is answered by `lib/device.js`, so messages and trades still
+   work even when the member signed in through the cloud. Playlists and the
+   community boards read from the cloud too, because on solvn.site the cloud
+   IS the site's database — a board that only counted this browser's accounts
+   would be a shadow of the real one. */
+const CLOUD_OWN = /^account\/(me|avatar|stats|cards)$|^favourite$|^playlists|^users\/|^members$|^community\/(collectors|leaderboard|playlists)$/;
 
 const wrapCloud = async (path, opts) => {
   try {

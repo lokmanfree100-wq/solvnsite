@@ -10,6 +10,8 @@ import { FAILOVER_CHOICES, MAIN_SERVER, TEMPLATE_HINT, TRACKS, addServer, asTrac
 import { toast, confirmSheet } from '../lib/ui.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
 import { cloudConfig, cloudActive, clearCloudConfig, testCloudConnection } from '../lib/cloud.js';
+import { syncMyData, captureDeviceData, backupBundle, restoreBundle } from '../lib/core.js';
+import { authSheet, say } from '../components/account.js';
 import { renderFooter } from '../components/footer.js';
 import { logoMark } from '../lib/brand.js';
 
@@ -409,13 +411,119 @@ export async function SettingsView() {
   paintData();
 
   /* ---- cloud sync ---------------------------------------------------- */
-  /* Optional and strictly additive: without a verified project every account
-     call still goes to server.js, and nothing here runs. */
+  /* On solvn.site the central cloud is built in and needs no keys: it is the
+     one database behind every account. Everywhere else this section stays the
+     old optional project, plus the same sync controls once it is live. */
   const cloudBody = h('div');
 
   function paintCloud() {
     const cfg = cloudConfig();
+    const builtin = Boolean(cfg?.builtin);
     const live = Boolean(cloudActive());
+
+    const sync = h(
+      'button.btn.btn--sm.btn--primary',
+      {
+        onclick: async () => {
+          /* A guest still owns a device binder. Capture it before the sheet
+             swaps the identity, so the first sign-in carries it up. */
+          if (!cloudActive() || !isSignedIn()) {
+            captureDeviceData();
+            authSheet('login');
+            toast(t('Sign in and this device carries its binder, packs and XP into the central cloud.'), { tone: 'ok', iconName: 'globe' });
+            return;
+          }
+          sync.disabled = true;
+          sync.classList.add('is-busy');
+          sync.setAttribute('aria-busy', 'true');
+          try {
+            const res = await syncMyData();
+            toast(
+              res.direction === 'up'
+                ? t('Your data now lives in the central cloud.')
+                : t('This device caught up with the cloud.'),
+              { tone: 'ok', iconName: 'check' },
+            );
+            document.dispatchEvent(new CustomEvent('kitsune:core'));
+            paintCloud();
+          } catch (err) {
+            toast(say(err), { tone: 'err', iconName: 'alert' });
+          } finally {
+            sync.disabled = false;
+            sync.classList.remove('is-busy');
+            sync.removeAttribute('aria-busy');
+          }
+        },
+      },
+      icon('globe'),
+      t('Sync my data'),
+    );
+
+    const backup = h(
+      'button.btn.btn--sm',
+      {
+        onclick: () => {
+          const stamp = new Date().toISOString().slice(0, 10);
+          const blob = new Blob([JSON.stringify(backupBundle(), null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `solvn-backup-${stamp}.json`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+          toast(t('Backup saved.'), { tone: 'ok', iconName: 'check' });
+        },
+      },
+      icon('share'),
+      t('Save a backup'),
+    );
+
+    const fileIn = h('input', {
+      type: 'file',
+      accept: 'application/json,.json',
+      hidden: true,
+      onchange: async () => {
+        const file = fileIn.files?.[0];
+        if (!file) return;
+        try {
+          restoreBundle(JSON.parse(await file.text()));
+          toast(t('Backup restored.'), { tone: 'ok', iconName: 'check' });
+          document.dispatchEvent(new CustomEvent('kitsune:account'));
+          document.dispatchEvent(new CustomEvent('kitsune:core'));
+        } catch (err) {
+          toast(say(err), { tone: 'err', iconName: 'alert' });
+        } finally {
+          fileIn.value = '';
+        }
+      },
+    });
+    const restore = h('button.btn.btn--sm', { onclick: () => fileIn.click() }, icon('swap'), t('Restore a backup'));
+
+    const syncRow = h(
+      'div.rowline.wrap',
+      { style: { gap: '8px', padding: '12px 0 0' } },
+      sync,
+      backup,
+      restore,
+      fileIn,
+    );
+
+    if (builtin) {
+      const status = live
+        ? t('Central cloud in use — every pull, pack and level syncs to solvn.site.')
+        : t('solvn.site is wired to the central Solvn database automatically.');
+      cloudBody.replaceChildren(
+        h(
+          'div.set-row',
+          {},
+          h('div.ico', {}, icon('globe')),
+          h('div.txt', {}, h('b', {}, t('Central cloud')), h('span', {}, status)),
+        ),
+        syncRow,
+        h('p.faint.cloud-note', {}, t('Accounts, binders, packs and XP live in the one Solvn database — the owner sees every member live. This device keeps its own copy too, so cards still open between sign-ins.')),
+      );
+      return;
+    }
+
     const status = live
       ? t('Cloud account in use. Your lists, ranks and playlists read from Supabase.')
       : cfg?.verified
@@ -496,6 +604,7 @@ export async function SettingsView() {
             )
           : null,
       ),
+      ...(live ? [syncRow] : []),
       h('p.faint.cloud-note', {}, t('Run the SQL in docs/supabase.sql in the project first, then test. Your local hours upload on the first sign-in.')),
     );
   }

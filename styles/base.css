@@ -181,38 +181,6 @@ p {
   padding-bottom: calc(var(--dock-clear) + var(--sp-5));
 }
 
-/* ---- the deploy host's badge ----------------------------------------
-   Netlify staples its own mark to the bottom-right of every site it serves.
-   No file in this project adds it and no file can delete it from the host, but
-   its stacking is high enough to sit over the dock — which makes the navigation
-   items both invisible and untappable. Two defences, in order of preference:
-
-   1. Hide it. It is a normal element in this document, so CSS owns it.
-   2. Clear it anyway. `app.js` puts `data-host-badge` on <html> when the address
-      is a Netlify one, and the dock is lifted above the corner the badge occupies
-      — every page pays for the lift, so nothing ends up under either of them.
-
-   InfinityFree injects nothing and the local server injects nothing, so on a
-   plain static copy the lift stays 0 and the dock sits where it was designed. */
-[class*='netlify'],
-[id*='netlify'],
-[data-netlify],
-iframe[src*='netlify'] {
-  display: none !important;
-}
-
-html[data-host-badge] {
-  --dock-lift: 42px;
-}
-
-@media (min-width: 1000px) {
-  /* The dock does not exist on a desktop window, so neither does the corner it
-     would have to clear. */
-  html[data-host-badge] {
-    --dock-lift: 0px;
-  }
-}
-
 /* A page that hides the footer — only the watch page does, where the player owns
    the viewport — has nothing else reserving the dock's height, so its last row
    would end underneath the navigation. Give it the clearance the footer carries. */

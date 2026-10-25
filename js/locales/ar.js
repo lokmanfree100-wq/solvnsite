@@ -33,6 +33,37 @@ export const genres = {
 };
 
 const ui = {
+  'Accounts, binders, packs and XP live in the one Solvn database — the owner sees every member live. This device keeps its own copy too, so cards still open between sign-ins.':
+    'الحسابات والمجموعات والحزم ونقاط XP تعيش في قاعدة بيانات Solvn الواحدة — المالك يرى كل عضو مباشرة. هذا الجهاز يحتفظ بنسخته أيضًا، فتبقى البطاقات متاحة بين عمليات الدخول.',
+  'Admin email': 'بريد المدير',
+  'Backup restored.': 'تمت استعادة النسخة الاحتياطية.',
+  'Backup saved.': 'تم حفظ النسخة الاحتياطية.',
+  'Central cloud': 'السحابة المركزية',
+  'Central cloud in use — every pull, pack and level syncs to solvn.site.':
+    'السحابة المركزية نشطة — كل سحب وحزمة ومستوى يتزامن مع solvn.site.',
+  'Connect': 'اتصال',
+  'Connected to the central cloud.': 'تم الاتصال بالسحابة المركزية.',
+  'Enter the owner email and password.': 'أدخل بريد المالك وكلمة المرور.',
+  'Last sync': 'آخر مزامنة',
+  'Member': 'عضو',
+  'No central cloud is configured — accounts and cards live on this device. On solvn.site the central database is built in.':
+    'لا توجد سحابة مركزية مكوّنة — الحسابات والبطاقات تعيش على هذا الجهاز. على solvn.site القاعدة المركزية مدمجة.',
+  'No members have synced yet.': 'لم يزامن أي عضو بعد.',
+  'Packs': 'الحزم',
+  'Restore a backup': 'استعادة نسخة احتياطية',
+  'Save a backup': 'حفظ نسخة احتياطية',
+  'Sign in and this device carries its binder, packs and XP into the central cloud.':
+    'سجّل الدخول وسيحمل هذا الجهاز مجموعته وحزمه ونقاط XP إلى السحابة المركزية.',
+  'Sign in as the owner to see every member, binder and pack in the one Solvn database.':
+    'سجّل الدخول كمالك لترى كل عضو ومجموعة وحزمة في قاعدة بيانات Solvn الواحدة.',
+  'Sign in to the central cloud first.': 'سجّل الدخول إلى السحابة المركزية أولاً.',
+  'Signed out of the central cloud.': 'تم تسجيل الخروج من السحابة المركزية.',
+  'Sync my data': 'مزامنة بياناتي',
+  'That file is not a Solvn backup.': 'هذا الملف ليس نسخة احتياطية من Solvn.',
+  'This device caught up with the cloud.': 'لحق هذا الجهاز بالسحابة.',
+  'Your data now lives in the central cloud.': 'بياناتك تعيش الآن في السحابة المركزية.',
+  'solvn.site is wired to the central Solvn database automatically.':
+    'solvn.site متصل تلقائيًا بقاعدة بيانات Solvn المركزية.',
   '{count} result for “{q}”': '{count} نتيجة عن «{q}»',
   '{count} results for “{q}”': '{count} نتيجة عن «{q}»',
   '{count} titles · showing {shown}': '{count} عنوانًا · عرض {shown}',

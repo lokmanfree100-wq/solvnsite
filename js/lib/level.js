@@ -98,6 +98,17 @@ function write(next) {
   return next;
 }
 
+/* ---- the central-cloud sync's handles -----------------------------------
+   The ledger travels whole: these two give lib/core.js the raw record and a
+   way to land a cloud copy, without the UI shapes in between. */
+export const levelLedger = () => read();
+
+/** Overwrite the ledger from a cloud copy, then read it back normalised. */
+export function importLedger(raw) {
+  storage.write(key(), raw && typeof raw === 'object' ? raw : blank());
+  return read();
+}
+
 /** Where this device stands, in the shape a bar and a chip both read. */
 export function levelState() {
   const st = read();
