@@ -181,7 +181,7 @@ export const serverKind = (server) => (isMediaUrl(server?.url) ? 'media' : 'embe
    public HLS file) that plays in Solvn's own `<video>`, proving the whole
    pipeline — cards, stage, quality list, corner mark — before any real
    material exists. It is planted at most once per device, never on a device
-   that already has servers of its own, and it is gone the moment a real
+   that has a server which can actually play, and it is gone the moment a real
    server is added or every server is removed in Settings. */
 const DEMO_SERVER = {
   id: 'demo-test-stream',
@@ -195,7 +195,11 @@ function seedDemoOnce() {
   if (settings.get(DEMO_SEEDED_KEY)) return;
   const stored = settings.get('servers');
   const list = Array.isArray(stored) ? stored : [];
-  if (list.length) return; // has servers of its own — leave them alone
+  /* Usable, not merely stored: a device whose list holds only addresses the
+     gates refuse (an old blocked host, a malformed template) has no server at
+     all, even though the list itself is not empty. */
+  const usable = list.filter((s) => s && templateProblem(s.url) === null);
+  if (usable.length) return; // has a server that can actually play — leave it alone
   settings.set(DEMO_SEEDED_KEY, true);
   settings.set('servers', [{ ...DEMO_SERVER }]);
 }
