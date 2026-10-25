@@ -612,8 +612,8 @@ export async function SettingsView() {
      address pointing at a file the watch page plays in its own player, or an
      address pointing at somebody else's player page, framed. What is drawn
      inside a framed page belongs to that page — its controls, its quality choice
-     and its corner mark cannot be taken out from here. Nothing ships
-     pre-configured, and each entry is tried in the order it is listed. */
+     and its corner mark cannot be taken out from here. A fresh install starts
+     with one entry, and each entry is tried in the order it is listed. */
   const serversBody = h('div');
   const hostOf = (url) => {
     try {
@@ -723,14 +723,16 @@ export async function SettingsView() {
     );
 
     serversBody.replaceChildren(
-      extra.length
-        ? null
-        : h(
-            'div.set-row',
-            {},
-            h('div.ico', {}, icon('alert')),
-            h('div.txt', {}, h('b', {}, t('No source configured yet')), h('span', {}, t('The player has nothing to play until an address is added below.'))),
-          ),
+      ...(extra.length
+        ? []
+        : [
+            h(
+              'div.set-row',
+              {},
+              h('div.ico', {}, icon('alert')),
+              h('div.txt', {}, h('b', {}, t('No source configured yet')), h('span', {}, t('The player has nothing to play until an address is added below.'))),
+            ),
+          ]),
       ...extra.map((s) =>
         h(
           'div.set-row',

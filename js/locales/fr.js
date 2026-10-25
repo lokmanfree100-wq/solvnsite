@@ -870,7 +870,6 @@ const ui = {
   'No source configured yet': 'Aucune source configurée',
   'No source yet': 'Aucune source',
   'No video source is configured yet.': 'Aucune source vidéo n’est configurée pour l’instant.',
-  'Solvn will not play from {host}.': 'Solvn ne lira rien venant de {host}.',
   'Switched to {label}': 'Passé en {label}',
   'These are the resolutions this stream actually carries. Picking one changes it right away; Auto lets the player choose for your connection.':
     'Ce sont les résolutions réellement disponibles pour ce flux. En choisir une change la lecture aussitôt ; Auto laisse le lecteur s’adapter à votre connexion.',

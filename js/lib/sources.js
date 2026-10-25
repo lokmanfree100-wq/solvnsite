@@ -11,28 +11,24 @@
  *   painted inside a cross-origin frame belongs to that frame: it cannot be
  *   re-skinned, muted, restyled or covered from out here.
  *
- * Five rules follow from that.
+ * Two rules follow from that.
  *
- * 1. Nothing ships pre-configured — with one labelled exception: a fresh
- *    install seeds a single **demo** server, an open test stream, so an episode
- *    click plays something real while the site is still being set up. It is
- *    named Demo, carries no third-party branding, is planted at most once per
- *    device, and is gone the moment a real server is added or it is removed in
- *    Settings ▸ Streaming servers. Real material still comes only from whoever
- *    runs the site.
- * 2. `DENY_HOSTS` is permanent. An address on it is refused when typed, dropped
- *    from a list stored on this device by an older build, and checked once more
- *    at the moment a picture would be mounted.
- * 3. The frame never gets to move the *site* somewhere else. `FRAME_SANDBOX`
+ * 1. A fresh install starts with one source, AniGato's embed, so an episode
+ *    click plays a real episode on the first visit instead of landing on the
+ *    "no source" notice. It is planted at most once per device, removed or
+ *    replaced in Settings ▸ Streaming servers like any other entry, and never
+ *    added on top of sources a device already has. Real material still comes
+ *    only from whoever runs the site.
+ * 2. The frame never gets to move the *site* somewhere else. `FRAME_SANDBOX`
  *    omits `allow-top-navigation` and `allow-popups`, so a player cannot
  *    redirect the tab, open a window, or leave the site behind — whatever it
  *    does internally, the viewer stays on Solvn.
- * 4. When one server is silent, the watch page moves to the next one by itself.
+ * 3. When one server is silent, the watch page moves to the next one by itself.
  *    Every enabled server gets a turn on the current audio track, then a turn on
  *    the other one, and only after all of them does the player say there is
  *    nothing to play. That ladder is what "server hopping" means here: the same
  *    episode, re-requested from another address, in the same stage.
- * 5. A server that went silent is remembered for half an hour and sent to the
+ * 4. A server that went silent is remembered for half an hour and sent to the
  *    back of the queue, so the next episode does not start on the frame that
  *    just failed. Picking it by name in the server sheet overrides that.
  *
@@ -131,34 +127,6 @@ export function serverTracks(server) {
 const PLACEHOLDERS = ['anilist', 'episode', 'audio', 'next', 'accent'];
 const MAX_URL = 500;
 
-/* ---- what Solvn will never play ---------------------------------------
-   A permanent block, not a preference. These hosts were framed by earlier
-   builds of this site and their own corner mark bled through into every
-   viewport Solvn cannot reach inside a cross-origin frame. The name is checked
-   in three places on purpose: when a template is typed into Settings, when a
-   list saved on this device years ago is read back, and again at the moment a
-   stage would be mounted. Deleting one check reopens the door the other two
-   shut. */
-const DENY_HOSTS = ['anigato.lol'];
-
-/** The blocked name this address is on, or '' when it is on none. */
-export function deniedHost(url) {
-  const raw = String(url || '').toLowerCase();
-  let host = '';
-  try {
-    host = new URL(raw).hostname;
-  } catch {
-    host = '';
-  }
-  if (host) return DENY_HOSTS.find((d) => host === d || host.endsWith(`.${d}`)) || '';
-  /* A template whose host is itself a placeholder is not a URL yet, so the name
-     is read off the text instead: the block is not something a shape gets to
-     walk around. */
-  return DENY_HOSTS.find((d) => raw.includes(d)) || '';
-}
-
-export const isBlockedUrl = (url) => deniedHost(url) !== '';
-
 /* ---- what a server actually is ----------------------------------------
    Decided from the address, never from a guess about the host: a file Solvn can
    feed to its own `<video>` is a media source, and anything else is a player
@@ -173,40 +141,54 @@ export const isMediaUrl = (url) => HLS_URL.test(String(url || '')) || FILE_URL.t
 /** `media` plays inside Solvn; `embed` is somebody else's page, framed. */
 export const serverKind = (server) => (isMediaUrl(server?.url) ? 'media' : 'embed');
 
-/* ---- the demo seed ------------------------------------------------------
-   The one exception to rule 1. A fresh install has an empty server list, and
-   an empty list means every episode click lands on the "no source" notice —
-   technically correct, useless to a new operator. So the first read of the
-   list plants a single clearly-labelled demo: an open test stream (Mux's
-   public HLS file) that plays in Solvn's own `<video>`, proving the whole
-   pipeline — cards, stage, quality list, corner mark — before any real
-   material exists. It is planted at most once per device, never on a device
-   that has a server which can actually play, and it is gone the moment a real
-   server is added or every server is removed in Settings. */
-const DEMO_SERVER = {
-  id: 'demo-test-stream',
-  name: 'Demo — open test stream',
-  url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+/* ---- the opening source ------------------------------------------------
+   A fresh install has an empty server list, and an empty list means every
+   episode click lands on the "no source" notice — technically correct, useless
+   to a new operator. So the first read of the list plants the source this build
+   ships with: AniGato's embed, addressed the way its contract spells it out —
+   the AniList id and the episode number in the path, the audio track, the
+   auto-next flag and the highlight colour in the query. A card click therefore
+   plays a real episode on the first visit. It is planted at most once per
+   device, only on a device that has nothing usable, and removing it (or every
+   source) in Settings is permanent. */
+const DEFAULT_SOURCE = {
+  id: 'anigato-embed',
+  name: 'AniGato',
+  url: 'https://anigato.lol/embed/anime/{anilist}/{episode}?audio={audio}&next={next}&accent={accent}',
+  tracks: ['sub', 'dub'],
 };
 
-const DEMO_SEEDED_KEY = 'demoSeeded';
+/* The open test stream an earlier build planted. It is only named here so that
+   a device still holding it can be moved onto the real source in place. */
+const LEGACY_DEMO_ID = 'demo-test-stream';
 
-function seedDemoOnce() {
-  if (settings.get(DEMO_SEEDED_KEY)) return;
+const DEFAULT_SEEDED_KEY = 'defaultSourceSeeded';
+
+const defaultSource = () => ({ ...DEFAULT_SOURCE, tracks: [...DEFAULT_SOURCE.tracks] });
+
+function seedDefaultOnce() {
   const stored = settings.get('servers');
-  const list = Array.isArray(stored) ? stored : [];
-  /* Usable, not merely stored: a device whose list holds only addresses the
-     gates refuse (an old blocked host, a malformed template) has no server at
-     all, even though the list itself is not empty. */
+  let list = Array.isArray(stored) ? stored : [];
+
+  /* A build before this one seeded a test stream whose picture is not an
+     episode. A device that still has it gets the real source in that same slot,
+     once, so the ladder does not carry the leftover frame forever. */
+  if (list.some((s) => s && s.id === LEGACY_DEMO_ID)) {
+    list = list.map((s) => (s && s.id === LEGACY_DEMO_ID ? defaultSource() : s));
+    settings.set('servers', list);
+  }
+
+  if (settings.get(DEFAULT_SEEDED_KEY)) return;
+  /* Usable, not merely stored: a device whose list holds only broken templates
+     has no server at all, even though the list itself is not empty. */
+  settings.set(DEFAULT_SEEDED_KEY, true);
   const usable = list.filter((s) => s && templateProblem(s.url) === null);
-  if (usable.length) return; // has a server that can actually play — leave it alone
-  settings.set(DEMO_SEEDED_KEY, true);
-  settings.set('servers', [{ ...DEMO_SERVER }]);
+  if (!usable.length) settings.set('servers', [defaultSource()]);
 }
 
-/** Extra servers this device added, in the order the ladder should try them. */
+/** The sources this device plays from, in the order the ladder should try them. */
 export function extraServers() {
-  seedDemoOnce();
+  seedDefaultOnce();
   const list = settings.get('servers');
   return (Array.isArray(list) ? list : []).filter((s) => s && templateProblem(s.url) === null);
 }
@@ -214,8 +196,8 @@ export function extraServers() {
 /**
  * Everything the ladder may use.
  *
- * An install that has configured nothing gets the labelled demo stream (see
- * `seedDemoOnce`), so the watch page only says "nothing to play" when every
+ * An install that has configured nothing gets the opening source (see
+ * `seedDefaultOnce`), so the watch page only says "nothing to play" when every
  * server was removed on purpose — and then it offers a route to Settings
  * rather than framing a stranger to fill the silence: Solvn only plays what
  * whoever runs it has chosen to point it at.
@@ -280,8 +262,6 @@ export function templateProblem(url) {
   if (!raw) return t('Add a player address.');
   if (raw.length > MAX_URL) return t('That address is too long.');
   if (!/^https:\/\/[^\s]+$/i.test(raw)) return t('It must start with https://');
-  const banned = deniedHost(raw);
-  if (banned) return t('Solvn will not play from {host}.', { host: banned });
   /* A direct file address names the episode in its own path and needs no
      placeholder at all; anything else — a player page — has to be told how to
      receive the id, the number and the track. */
@@ -346,9 +326,7 @@ export function serverName(server) {
 export function addServer({ name = '', url = '', tracks = [] } = {}) {
   const problem = templateProblem(url);
   if (problem) return problem;
-  /* A real server takes the demo's place: the ladder should not spend a hop on
-     the test stream once the operator's own material exists. */
-  const list = extraServers().filter((s) => s.id !== DEMO_SERVER.id);
+  const list = extraServers();
   const clean = url.trim();
   if (list.some((s) => s.url === clean)) return t('That server is already listed.');
   const carried = TRACK_IDS.filter((id) => tracks.includes(id));
@@ -369,8 +347,9 @@ export function addServer({ name = '', url = '', tracks = [] } = {}) {
 export function removeServer(id) {
   const rest = extraServers().filter((s) => s.id !== id);
   settings.set('servers', rest);
-  /* Emptying the list is a choice: the demo does not sneak back afterwards. */
-  if (!rest.length) settings.set(DEMO_SEEDED_KEY, true);
+  /* Emptying the list is a choice: the opening source does not sneak back
+     afterwards. */
+  if (!rest.length) settings.set(DEFAULT_SEEDED_KEY, true);
 }
 
 /** The speeds the settings card offers, seconds. */

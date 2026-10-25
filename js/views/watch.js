@@ -24,7 +24,7 @@ import { isSignedIn, tellDiscord } from '../lib/account.js';
 import { followTitle } from '../lib/notices.js';
 import { title, formatLabel, yearOf, statusLabel, listLabel, STATUS_TONE, plainDescription, countdown, scoreLabel, clamp, watched } from '../lib/util.js';
 import { buildEpisodes, episodeCountIsGuess, resolveEpisodeCount } from '../lib/embed.js';
-import { asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isBlockedUrl, isMediaUrl, isTrack, markServer, serverKind, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
+import { asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isMediaUrl, isTrack, markServer, serverKind, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
 import { createStage } from '../lib/playback.js';
 import { accentValue } from '../lib/accent.js';
 import { mediaRow, emptyState, episodeArt } from '../components/media.js';
@@ -405,11 +405,6 @@ export function WatchView({ params, route, onCleanup }) {
        different name. It must never reach `src`: an iframe pointed at '' loads the
        page it is standing in, and the site would be framing itself. */
     if (!url) return showUnconfigured();
-    /* The registry refuses these addresses before they can join the pool. Checked
-       again at the one place a picture is mounted, so a device holding a template
-       written by an older build — or typed straight into its own settings — still
-       cannot put it on screen. */
-    if (isBlockedUrl(url)) return advance(false);
     const kind = isMediaUrl(url) ? 'media' : 'embed';
     if (!stage || stage.kind !== kind || stage.heldSrc() === url) {
       dropStage();

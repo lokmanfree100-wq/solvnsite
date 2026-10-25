@@ -840,7 +840,6 @@ const ui = {
   'No source configured yet': 'لم يُضبط أي مصدر بعد',
   'No source yet': 'لا مصدر بعد',
   'No video source is configured yet.': 'لم يُضبط أي مصدر فيديو بعد.',
-  'Solvn will not play from {host}.': 'لن يشغّل Solvn أي شيء من {host}.',
   'Switched to {label}': 'تم التبديل إلى {label}',
   'These are the resolutions this stream actually carries. Picking one changes it right away; Auto lets the player choose for your connection.':
     'هذه هي الدقات المتاحة فعليًا في هذا البث؛ اختيار واحدة يغيّرها فورًا، أمّا «تلقائي» فيترك الاختيار للمشغّل حسب سرعة اتصالك.',
