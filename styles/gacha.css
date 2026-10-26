@@ -96,16 +96,28 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  isolation: isolate;
   background:
     radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.1), transparent 60%),
     linear-gradient(180deg, var(--gb), #06060b);
 }
 
-/* Nothing is painted over the portrait. A `::after` wash used to sit here at
-   0.28 alpha, which read as a colour cast on the face — orange on Epic, amber
-   on Legendary — and the character is the reason anybody opens the binder. The
-   tier still owns the frame: the art box background underneath the picture,
-   the bevel light at its edges, the ring, the badge and the tier weather. */
+/* The light on the character is white, not the tier's colour. It used to be
+   `var(--ga)` at 0.28, which put an orange cast on every Epic face and an amber
+   one on every Legendary. Screen blending and a low alpha keep it a sheen: it
+   lifts the highlights the way foil does instead of fogging the drawing, and it
+   is clipped to the art box by the isolation above so it cannot wash the frame. */
+.g-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(78% 44% at 50% -8%, rgba(255, 255, 255, 0.62), transparent 64%),
+    linear-gradient(168deg, rgba(255, 255, 255, 0.3), transparent 46%);
+  mix-blend-mode: screen;
+  opacity: 0.22;
+  pointer-events: none;
+}
 
 /* Character portraits are bust shots; a tilt and a crop is what turns one into a
    pose on a card. Every part of that framing is a variable, because the form bands
@@ -175,9 +187,10 @@
   --art-bri: 1.07;
 }
 
-/* From form IV the tier lights the card from behind and below, but it stops at
-   the picture: the glow is printed on the frame and the plate, never across the
-   character's face. */
+/* From form IV the card is lit harder, the way a poster is lit rather than
+   printed: the tier colour sits behind the picture in the art box, and the
+   stronger light over it stays white so the hotter tiers glow without
+   re-tinting the face. */
 .g-card.is-form4 .g-art,
 .g-card.is-form5 .g-art {
   background:
@@ -185,6 +198,15 @@
     linear-gradient(168deg, var(--ga), transparent 44%),
     radial-gradient(82% 52% at 50% 108%, color-mix(in srgb, var(--glow) 44%, transparent), transparent 68%),
     linear-gradient(180deg, var(--gb), #06060b);
+}
+
+.g-card.is-form4 .g-art::after,
+.g-card.is-form5 .g-art::after {
+  background:
+    radial-gradient(80% 46% at 50% 110%, rgba(255, 255, 255, 0.58), transparent 66%),
+    radial-gradient(78% 44% at 50% -8%, rgba(255, 255, 255, 0.62), transparent 64%),
+    linear-gradient(168deg, rgba(255, 255, 255, 0.34), transparent 48%);
+  opacity: 0.3;
 }
 
 .g-art.is-noart::before {
