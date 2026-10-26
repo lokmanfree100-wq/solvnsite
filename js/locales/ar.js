@@ -1033,38 +1033,11 @@ const ui = {
   'Card Binder — Solvn': 'مجلّد البطاقات — Solvn',
   '{n} packs a day, once you have an account.': '{n} باكيتات في اليوم ما إن يكون لك حساب.',
   'Your first pack is free, and there are {n} of them a day.': 'باكيتك الأوّل مجانًا، وهناك {n} منه كلّ يوم.',
-  'Packs are a member habit — {n} a day, free, and one more for every break you watch through.':
-    'الباكيتات عادة الأعضاء: {n} في اليوم مجانًا، وواحدة إضافية عن كل استراحة تُشاهدها إلى آخرها.',
+  'Packs are a member habit — {n} a day, free, and no advertisement doubles them.':
+    'الباكيتات عادة الأعضاء: {n} في اليوم، مجانًا، ولا إعلان يضاعفها.',
   'Unlimited packs while this account is signed in.': 'باكيتات بلا حدّ ما دام هذا الحساب مسجَّلًا.',
   'Open a pack': 'افتح باكيت',
   'Sign in to open packs': 'سجّل الدخول لفتح الباكيتات',
-  /* الاستراحة المكافَأ عليها: باكيت وخطوة حظّ مقابل ثلاثين ثانية من المشاهدة. */
-  'Watch a break': 'شاهد استراحة',
-  'Sign in for a break': 'سجّل الدخول للاستراحة',
-  'Luck break': 'استراحة الحظّ',
-  'Solvn spot': 'إعلان Solvn',
-  'Watch legally on Crunchyroll': 'شاهد بشكل قانوني على Crunchyroll',
-  'One pack and a luck step for {n} seconds of watching.': 'باكيت وخطوة حظّ مقابل {n} ثانية من المشاهدة.',
-  'One pack and a step of luck, paid for by the break you are watching.':
-    'باكيت وخطوة حظّ، تدفعهما الاستراحة التي تشاهدها.',
-  'Solvn is not big enough for an ad network to pay for it yet, so this break shows you Solvn. Finish it and the pack is yours.':
-    'Solvn لم يكبر بعد بما يكفي لتدفع له شبكة إعلانات، فتُريك هذه الاستراحة Solvn نفسه. أتممها والباكيت صار لك.',
-  'Stay on this page for the whole break.': 'ابقَ في هذه الصفحة طوال الاستراحة.',
-  'Break watched. Claim it before you leave.': 'تمّت الاستراحة. خذ مكافأتك قبل أن ترحل.',
-  'Claim the reward': 'خذ المكافأة',
-  'End break early': 'أنهِ الاستراحة مبكّرًا',
-  'The break ended early, so nothing was granted.': 'انتهت الاستراحة مبكّرًا، فلم يُعطَ شيء.',
-  'That break was already counted.': 'تُحسب تلك الاستراحة بالفعل.',
-  '{n} pack is in your bank and luck is up to {pct}%.': '{n} باكيت في مصرفك وارتفع الحظّ إلى {pct}%.',
-  'A break needs an account, so the luck has somewhere to live.': 'الاستراحة تحتاج حسابًا حتى يستقرّ الحظّ.',
-  'That is every break for today. The next set arrives at {hour}:00.':
-    'هذه كل استراحات اليوم. الدفعة التالية عند {hour}:00.',
-  'Luck is up {pct}% today, from the breaks you watched through to the end. Every pack you open is squeezed a little toward the top of its band.':
-    'ارتفع الحظّ {pct}% اليوم بسبب الاستراحات التي أتممتها. كل باكيت تفتحه يُدفع قليلًا نحو أعلى نطاقه.',
-  'No break watched today. Each one adds {pct}% luck, up to {max}% before {hour}:00.':
-    'لم تُشاهد استراحة اليوم. كل واحدة تضيف {pct}% حظًّا، حتى {max}% قبل {hour}:00.',
-  'A watched break': 'استراحة مُشاهَدة',
-  'One pack and {pct}% luck, {max} a day': 'باكيت واحد و{pct}% حظًّا، {max} في اليوم',
   'New pack': 'باكيت جديد',
   'Cards': 'البطاقات',
   'Copies': 'النسخ',
@@ -1126,8 +1099,8 @@ const ui = {
     'لا يردّ سجلّ الشخصيات، فلا شيء يُسحب بعد. حاول بعد دقائق.',
   'The drop table': 'جدول الظهور',
   'Twenty-five tiers, one roll': 'خمسة وعشرون مستوى، قرعة واحدة',
-  'Every pull is a roll against the published table. Nothing here is for sale: a break is thirty seconds of watching for one pack, and what it earns turns back to zero at {hour}:00.':
-    'كلّ سحب قرعة على الجدول المنشور. لا شيء هنا يُباع: الاستراحة ثلاثون ثانية من المشاهدة مقابل باكيت واحد، وما تكسبه يعود إلى صفر عند {hour}:00.',
+  'Every pull is a roll against the published table: nothing for sale, nothing handed out by an advertisement.':
+    'كلّ سحب قرعة على الجدول المنشور: لا شيء يُباع، ولا شيء تمنحه إعلان.',
   'Rolls come from the browser’s own entropy, with rejection sampling, so a tier is never over-favoured by the arithmetic. These are the odds every pack runs on — for every member, including a tester.':
     'القرعات تأتي من إنتروبيا المتصفّح نفسه، مع اختيار بالرفض، فلا يُحابى أيّ مستوى بالحساب. هذه هي احتمالات كلّ باكيت — لكلّ عضو، حتى المختبِر.',
   'Hide the table': 'أخفِ الجدول',
@@ -1176,8 +1149,8 @@ const ui = {
   'Max luck on: every roll takes the top of its band.': 'الحظّ الأقصى مفعّل: كل سحب يأخذ أعلى نطاقه.',
   'Max luck off: the published odds run again.': 'الحظّ الأقصى متوقف: تعمل الاحتمالات المنشورة من جديد.',
   'Force a hand of this tier': 'أجبر يدًا من هذا المستوى',
-  'Luck is a squeeze on the same roll. This switch moves only your debug number: at max every pack lands the top tiers and the high end of every stat band, which is what clears the {min} Power line a live card needs. A member’s own luck comes from watched breaks, and turns back to zero at {hour}:00.':
-    'الحظّ ضغطٌ على السحب نفسه. هذا المفتاح يحرّك رقم الاختبار الخاص بك فقط: عند الحدّ الأقصى يقع كل باكيت في أعلى المستويات وأعلى نطاق كل صفة، وهذا ما يتجاوز حدّ القدرة {min} الذي تحتاجه البطاقة الحيّة. أمّا حظّ العضو نفسه فيأتي من الاستراحات المشاهَدة ويعود إلى صفر عند {hour}:00.',
+  'Luck is a squeeze on the same roll, for this account only: at max every pack lands the top tiers and the high end of every stat band, which is what clears the {min} Power line a live card needs. Turn it off and the published odds run again, unchanged.':
+    'الحظّ ضغطٌ على السحب نفسه، لهذا الحساب وحده: عند الحدّ الأقصى يقع كل باكيت في أعلى المستويات وأعلى نطاق كل صفة، وهذا ما يتجاوز حدّ القدرة {min} الذي تحتاجه البطاقة الحيّة. أوقفه فتعود الاحتمالات المنشورة كما هي دون تغيير.',
   'A sample is a drawing, not a pull: previewing it rolls nothing and banks nothing. Force a hand instead when you want the cards in the binder.':
     'العيّنة رسم لا سحب: معاينتها لا تسحب شيئًا ولا تحفظ شيئًا. أجبر يدًا بدلها إن أردت البطاقات في المجلّد.',
 

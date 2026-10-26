@@ -4,9 +4,9 @@
  * Three things happen here and nothing is hidden about any of them: a pack is
  * opened against a published drop table, a binder is a shelf of cards this
  * account owns, and a duplicate is not a wasted pull but the raw material for an
- * evolution. Nothing is for sale: the way in is the packs the day hands you, plus
- * a watched break worth one more pack and a step of luck, and — for the one account
- * with a tester's hand — the tools at the bottom of the page.
+ * evolution. There is nothing to buy and no advertisement to watch, so the only
+ * ways to pull are the packs the day hands you and — for the one account with a
+ * tester's hand — the tools at the bottom of the page.
  *
  * Two views share this route. `?shelf=` is the binder: what you own. `?view=set`
  * is the compendium: the whole roster at one tier, unowned tiles locked behind a
@@ -31,11 +31,9 @@ import {
   rarityOf, dropRate, mergeCost, canMerge, packsLeft, quota, isLive,
   binderStats, ownedEntries, openPack, merge, grantCopies, forcePull,
   refillDaily, loadPool, poolSize, showcaseSet, isTester, serialText, luck, setLuck,
-  BREAKS_PER_DAY, EARNED_STEP, breaksLeft, earnedLuck, takeBreakReward,
   resetText, streakNow, streakFloor, nextStreakStep, allowanceLeft, bankedPacks,
   compendium, tierProgress, ultimateState, awardUltimate, ultimateCard, publishSoon,
 } from '../lib/cards.js';
-import { requestRewardedAd, BREAK_SECONDS } from '../lib/ads.js';
 import {
   gachaCard, rarityChip, dropTable, openPackFlow, evolveFlow, showcase,
   rarityLegend, tierStrip, closeGachaFlow,
@@ -170,8 +168,6 @@ export async function CollectionView(ctx) {
     const bank = bankedPacks();
     const run = streakNow(q);
     const held = ultimateState();
-    const breaks = breaksLeft();
-    const gained = earnedLuck();
 
     const packBtn = h(
       'button.btn.btn--primary.btn--pack',
@@ -179,21 +175,6 @@ export async function CollectionView(ctx) {
       icon('sparkles'),
       h('span', {}, signed ? t('Open a pack') : t('Sign in to open packs')),
       signed ? h('span.g-pack-count.tnum', {}, left === Infinity ? '∞' : String(left)) : null,
-    );
-
-    /* The break sits next to the pack button rather than under it, because the two
-       are one decision: the daily allowance is spent, and this is the only way to
-       ask for more of it today. */
-    const breakBtn = h(
-      'button.btn.btn--sm',
-      {
-        type: 'button',
-        disabled: !breaks,
-        onclick: () => runBreak(breakBtn),
-      },
-      icon('popcorn'),
-      h('span', {}, signed ? t('Watch a break') : t('Sign in for a break')),
-      signed ? h('span.g-pack-count.tnum', {}, `${breaks}/${BREAKS_PER_DAY}`) : null,
     );
 
     head.replaceChildren(
@@ -206,14 +187,10 @@ export async function CollectionView(ctx) {
           'p',
           {},
           signed
-            ? t('Every pull is a roll against the published table. Nothing here is for sale: a break is thirty seconds of watching for one pack, and what it earns turns back to zero at {hour}:00.', {
-                hour: String(PACK_HOUR),
-              })
-            : t('Packs are a member habit — {n} a day, free, and one more for every break you watch through.', {
-                n: String(DAILY_PACKS),
-              }),
+            ? t('Every pull is a roll against the published table: nothing for sale, nothing handed out by an advertisement.')
+            : t('Packs are a member habit — {n} a day, free, and no advertisement doubles them.', { n: String(DAILY_PACKS) }),
         ),
-        h('div.rowline.g-headline', {}, packBtn, breakBtn, rarityChip(stats.best || 1),
+        h('div.rowline.g-headline', {}, packBtn, rarityChip(stats.best || 1),
           /* The board is the one thing a binder is for besides finishing it, and
              on a phone the side rail is gone — so the way in lives here too. */
           h('a.btn.btn--sm', { href: '#/leaderboard' }, icon('crown'), h('span', {}, t('Leaderboard')))),
@@ -233,23 +210,6 @@ export async function CollectionView(ctx) {
                 }),
           signed && left !== Infinity ? h('span.g-daily-used.tnum', {}, ` ${q.used} / ${DAILY_PACKS}`) : null,
         ),
-        signed
-          ? h(
-              'p.g-luckline',
-              {},
-              icon('bolt'),
-              gained
-                ? t('Luck is up {pct}% today, from the breaks you watched through to the end. Every pack you open is squeezed a little toward the top of its band.', {
-                    pct: String(Math.round(gained * 100)),
-                  })
-                : t('No break watched today. Each one adds {pct}% luck, up to {max}% before {hour}:00.', {
-                    pct: String(Math.round(EARNED_STEP * 100)),
-                    max: String(Math.round(EARNED_STEP * BREAKS_PER_DAY * 100)),
-                    hour: String(PACK_HOUR),
-                  }),
-              breaks ? h('span.g-luckline-left.tnum', {}, ` ${breaks}/${BREAKS_PER_DAY}`) : null,
-            )
-          : null,
         signed && left !== Infinity
           ? h('p.g-clockline', {}, icon('clock'), t('Resets at {hour}:00', { hour: String(PACK_HOUR) }), clock)
           : null,
@@ -321,50 +281,6 @@ export async function CollectionView(ctx) {
       .finally(() => {
         btn.disabled = false;
         btn.classList.remove('is-busy');
-      });
-  }
-
-  /**
-   * One watched break. The reward is granted only on a `true`, which is the whole
-   * honesty of the mechanic: closing the sheet early costs the pack, and nothing
-   * here pretends a viewer watched something they skipped.
-   */
-  function runBreak(btn) {
-    if (!isSignedIn()) {
-      toast(t('A break needs an account, so the luck has somewhere to live.'), { iconName: 'user' });
-      authSheet('login');
-      return;
-    }
-    if (breaksLeft() <= 0) {
-      toast(t('That is every break for today. The next set arrives at {hour}:00.', { hour: String(PACK_HOUR) }), {
-        tone: 'err',
-        iconName: 'clock',
-      });
-      return;
-    }
-    btn.disabled = true;
-    requestRewardedAd({ seconds: BREAK_SECONDS })
-      .then((watched) => {
-        if (!watched) {
-          toast(t('The break ended early, so nothing was granted.'), { tone: 'err', iconName: 'clock' });
-          return;
-        }
-        const gift = takeBreakReward();
-        if (!gift) {
-          toast(t('That break was already counted.'), { tone: 'err', iconName: 'check' });
-          return;
-        }
-        repaintAll();
-        toast(
-          t('{n} pack is in your bank and luck is up to {pct}%.', {
-            n: String(gift.packs),
-            pct: String(Math.round(gift.luck * 100)),
-          }),
-          { tone: 'ok', iconName: 'gift' },
-        );
-      })
-      .finally(() => {
-        repaintAll();
       });
   }
 
@@ -825,10 +741,6 @@ export async function CollectionView(ctx) {
         {},
         rule(t('A pack holds'), t('{n} cards', { n: String(PACK_CARDS) })),
         rule(t('A day hands you'), t('{n} packs, free', { n: String(DAILY_PACKS) })),
-        rule(t('A watched break'), t('One pack and {pct}% luck, {max} a day', {
-          pct: String(Math.round(EARNED_STEP * 100)),
-          max: String(BREAKS_PER_DAY),
-        })),
         rule(t('The day turns at'), t('{hour}:00, your time', { hour: String(PACK_HOUR) })),
         rule(t('Packs you leave'), t('They wait in your bank. Nothing expires.')),
         rule(t('A streak is'), t('a day you open at least one pack')),
@@ -934,10 +846,7 @@ export async function CollectionView(ctx) {
           h(
             'p.muted',
             {},
-            t('Luck is a squeeze on the same roll. This switch moves only your debug number: at max every pack lands the top tiers and the high end of every stat band, which is what clears the {min} Power line a live card needs. A member’s own luck comes from watched breaks, and turns back to zero at {hour}:00.', {
-              min: String(LIVE_POWER),
-              hour: String(PACK_HOUR),
-            }),
+            t('Luck is a squeeze on the same roll, for this account only: at max every pack lands the top tiers and the high end of every stat band, which is what clears the {min} Power line a live card needs. Turn it off and the published odds run again, unchanged.', { min: String(LIVE_POWER) }),
           ),
           h(
             'div.rowline.g-tool-row',

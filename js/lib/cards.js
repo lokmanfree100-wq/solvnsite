@@ -2,9 +2,9 @@
  * The card binder: fifteen tiers you can roll, one you cannot, and nothing
  * for sale.
  *
- * A pull is a coin flip and nothing else. There is no store, no "boost" you can
- * buy and no pity timer that quietly hands a legend to anybody who clicks enough —
- * the drop table below is the whole of it, and the odds
+ * A pull is a coin flip and nothing else. There is no store, no rewarded ad, no
+ * "boost" you can buy and no pity timer that quietly hands a legend to anybody
+ * who clicks enough — the drop table below is the whole of it, and the odds
  * printed on the binder are the odds the code runs. The random source is the
  * browser's own entropy (`crypto.getRandomValues`) with rejection sampling, so a
  * tier cannot be over-favoured by the modulo at the end of a smaller draw, and
@@ -15,9 +15,7 @@
  * cleared their browser. The day turns at 04:00 local, whatever is left unopened
  * rolls into a bank that does not expire, and a run of consecutive days spent
  * pulling raises a *printed* floor under every pack — see `STREAK_STEPS`. A
- * watched break adds one more pack and a step of luck, and it is capped at five a
- * day and cleared by the same 04:00. A bonus that is not on the screen is not a
- * reward, it is a rig.
+ * bonus that is not on the screen is not a reward, it is a rig.
  *
  * Evolution is the patient half of the hobby — ten to twenty copies of the same
  * character at the same tier fuse into one card a tier higher, drawn in its
@@ -228,13 +226,11 @@ export function rollRarity() {
 }
 
 /* ---- the tester's thumb ------------------------------------------------
-   Two numbers reach the same squeeze. One is the tester's debug value and only
-   `@solvn` can move it. The other is a member's own, earned by watching a break
-   through to the end, and it turns back to zero at 04:00 like the packs do. Both
-   squeeze each draw toward the top of its own range — they do not touch the table,
-   because a tier nobody can read on the page is indistinguishable from a rig, and
-   the whole argument of this file is that the table on the screen is the table
-   that runs. */
+   One number between 0 and 1, and only the tester account can move it. It does
+   not touch the table: it squeezes each draw toward the top of its own range, so
+   at full luck a roll lands on Rainbow Holo and a stat band lands on its ceiling. A
+   member's odds stay the printed ones, and the squeeze reads the account before
+   it reads the number, so a stale value can never help a normal binder. */
 
 /**
  * The one account on this site with a tester's hand, and the only gate the
@@ -251,68 +247,15 @@ export const isTester = () => isStaff();
 
 export const MAX_LUCK = 1;
 
-/* The break's own two numbers. A step is small enough that five of them are still
-   a third of what the tester's thumb can do, and the day is short on purpose: an
-   earned bonus that never expires stops being a habit and becomes a permanent edge
-   for whoever started watching first. */
-export const EARNED_STEP = 0.05;
-export const BREAKS_PER_DAY = 5;
-export const EARNED_CAP = EARNED_STEP * BREAKS_PER_DAY;
-export const BREAK_PACKS = 1;
-
-/** Today's break record, rolled the same way the pack allowance is. */
-function breaks() {
-  const day = cardDay();
-  const who = whoId();
-  const raw = storage.read('breaks', null);
-  if (raw && raw.who === who && raw.day === day.key) return raw;
-  const next = { who, day: day.key, ord: day.ord, done: 0, points: 0 };
-  storage.write('breaks', next);
-  return next;
-}
-
-/** Breaks still on the table in this card day. */
-export const breaksLeft = () => Math.max(0, BREAKS_PER_DAY - (Number(breaks().done) || 0));
-
-/** The luck watched rather than debugged, read fresh so a new day starts clean. */
-export const earnedLuck = () => Math.min(EARNED_CAP, Math.max(0, Number(breaks().points) || 0));
-
-/**
- * Hand over what a finished break was worth: one pack in the bank, one step of
- * luck, and the count that tells the page how many are left. A break that was
- * closed early never reaches this — the caller only gets here on a `true`.
- *
- * The pack goes to the bank and not to today's allowance, for the same reason a
- * level-up reward does: a bonus must not quietly spend the allowance it is sitting
- * next to.
- */
-export function takeBreakReward() {
-  if (!isSignedIn()) return null;
-  const rec = breaks();
-  if (breaksLeft() <= 0) return null;
-  const done = (Number(rec.done) || 0) + 1;
-  const next = { ...rec, done, points: Math.min(EARNED_CAP, done * EARNED_STEP) };
-  storage.write('breaks', next);
-  bankPacks(BREAK_PACKS);
-  return {
-    done,
-    left: Math.max(0, BREAKS_PER_DAY - done),
-    luck: next.points,
-    packs: BREAK_PACKS,
-  };
-}
-
-const clamp01 = (n) => (Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0);
-
-/** The squeeze in force for this roll: a tester's hand plus whatever was watched. */
 export function luck() {
-  const debug = isTester() ? clamp01(Number(storage.read('luck', 0))) : 0;
-  return Math.min(MAX_LUCK, debug + earnedLuck());
+  if (!isTester()) return 0;
+  const n = Number(storage.read('luck', 0));
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0;
 }
 
 export function setLuck(n) {
   if (!isTester()) return 0;
-  storage.write('luck', clamp01(Number(n)));
+  storage.write('luck', Math.min(1, Math.max(0, Number(n) || 0)));
   return luck();
 }
 
