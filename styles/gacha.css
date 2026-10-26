@@ -1743,7 +1743,8 @@
 }
 
 .g-clockline,
-.g-streakline {
+.g-streakline,
+.g-luckline {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1754,7 +1755,8 @@
 }
 
 .g-clockline svg,
-.g-streakline svg {
+.g-streakline svg,
+.g-luckline svg {
   width: 14px;
   height: 14px;
   flex: none;
@@ -1763,6 +1765,129 @@
 
 .g-streakline svg {
   color: var(--warn);
+}
+
+/* The break's own line. It is printed rather than hidden because a bonus nobody
+   can read is indistinguishable from a rig — the same rule the streak ladder and
+   the odds table follow, one floor higher. */
+.g-luckline {
+  flex-wrap: wrap;
+}
+
+.g-luckline-left {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the rewarded break ----------------------------------------------
+   The sheet a member sits through for a pack. Deliberately quiet: it is Solvn's
+   own spot, so it borrows the site's surfaces rather than dressing up as a
+   third-party advert, and the only thing that moves is the bar under the art.
+   ------------------------------------------------------------------------ */
+.ad-break {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.ad-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-6) var(--sp-4) calc(var(--sp-4) + 4px);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--accent-line);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.ad-art {
+  width: clamp(92px, 26vw, 132px);
+  height: auto;
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(closest-side, #000 82%, transparent);
+  mask: radial-gradient(closest-side, #000 82%, transparent);
+}
+
+.ad-count {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-text);
+}
+
+.ad-ring {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ad-ring::after {
+  content: '';
+  display: block;
+  height: 100%;
+  width: calc(var(--ad-fill, 0) * 100%);
+  background: var(--accent);
+  transition: width 240ms linear;
+}
+
+.ad-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.ad-tag svg {
+  width: 13px;
+  height: 13px;
+}
+
+.ad-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.ad-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--accent-line);
+  background: var(--surface-3);
+  color: var(--accent-text);
+  font-size: 13.5px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.ad-link svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.ad-note {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-ring::after {
+    transition: none;
+  }
 }
 
 /* Tabular figures, because a countdown that changes width as it ticks moves the
@@ -2622,7 +2747,8 @@ body.g-shake .modal-backdrop.is-gacha {
   }
 
   .g-clockline,
-  .g-streakline {
+  .g-streakline,
+  .g-luckline {
     flex-wrap: wrap;
     gap: 6px;
   }

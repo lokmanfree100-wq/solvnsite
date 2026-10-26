@@ -1064,11 +1064,38 @@ const ui = {
   'Card Binder — Solvn': 'Album de cartes — Solvn',
   '{n} packs a day, once you have an account.': '{n} packs par jour, dès que vous avez un compte.',
   'Your first pack is free, and there are {n} of them a day.': 'Votre premier pack est gratuit, et il y en a {n} par jour.',
-  'Packs are a member habit — {n} a day, free, and no advertisement doubles them.':
-    'Les packs sont une habitude de membre : {n} par jour, gratuits, et aucune publicité ne les double.',
+  'Packs are a member habit — {n} a day, free, and one more for every break you watch through.':
+    'Les packs sont une habitude de membre : {n} par jour, gratuits, et un de plus pour chaque pause regardée jusqu’au bout.',
   'Unlimited packs while this account is signed in.': 'Packs illimités tant que ce compte est connecté.',
   'Open a pack': 'Ouvrir un pack',
   'Sign in to open packs': 'Connectez-vous pour ouvrir des packs',
+  /* The rewarded break: one pack and a step of luck for thirty seconds of watching. */
+  'Watch a break': 'Regarder une pause',
+  'Sign in for a break': 'Connectez-vous pour une pause',
+  'Luck break': 'Pause chance',
+  'Solvn spot': 'Spot Solvn',
+  'Watch legally on Crunchyroll': 'Regardez légalement sur Crunchyroll',
+  'One pack and a luck step for {n} seconds of watching.': 'Un pack et un pas de chance pour {n} secondes de visionnage.',
+  'One pack and a step of luck, paid for by the break you are watching.':
+    'Un pack et un pas de chance, payés par la pause que vous regardez.',
+  'Solvn is not big enough for an ad network to pay for it yet, so this break shows you Solvn. Finish it and the pack is yours.':
+    'Solvn n’est pas encore assez grand pour qu’une régie le paie, alors cette pause vous montre Solvn. Allez jusqu’au bout et le pack est à vous.',
+  'Stay on this page for the whole break.': 'Restez sur cette page pendant toute la pause.',
+  'Break watched. Claim it before you leave.': 'Pause regardée. Réclamez-la avant de partir.',
+  'Claim the reward': 'Réclamer la récompense',
+  'End break early': 'Terminer la pause avant la fin',
+  'The break ended early, so nothing was granted.': 'La pause s’est terminée trop tôt, rien n’a été accordé.',
+  'That break was already counted.': 'Cette pause a déjà été comptée.',
+  '{n} pack is in your bank and luck is up to {pct}%.': '{n} pack est dans votre réserve et la chance monte à {pct}%.',
+  'A break needs an account, so the luck has somewhere to live.': 'Une pause demande un compte, pour que la chance ait où rester.',
+  'That is every break for today. The next set arrives at {hour}:00.':
+    'C’est toutes les pauses pour aujourd’hui. La prochaine série arrive à {hour}:00.',
+  'Luck is up {pct}% today, from the breaks you watched through to the end. Every pack you open is squeezed a little toward the top of its band.':
+    'La chance est montée de {pct}% aujourd’hui, grâce aux pauses regardées jusqu’au bout. Chaque pack ouvert est un peu poussé vers le haut de sa fourchette.',
+  'No break watched today. Each one adds {pct}% luck, up to {max}% before {hour}:00.':
+    'Aucune pause regardée aujourd’hui. Chacune ajoute {pct}% de chance, jusqu’à {max}% avant {hour}:00.',
+  'A watched break': 'Une pause regardée',
+  'One pack and {pct}% luck, {max} a day': 'Un pack et {pct}% de chance, {max} par jour',
   'New pack': 'Nouveau pack',
   'Cards': 'Cartes',
   'Copies': 'Exemplaires',
@@ -1131,8 +1158,8 @@ const ui = {
     'Le fichier des personnages ne répond pas : rien à tirer pour l’instant. Réessayez dans quelques minutes.',
   'The drop table': 'La table d’apparition',
   'Twenty-five tiers, one roll': 'Vingt-cinq paliers, un seul tirage',
-  'Every pull is a roll against the published table: nothing for sale, nothing handed out by an advertisement.':
-    'Chaque tirage suit la table publiée : rien à vendre, rien offert par une publicité.',
+  'Every pull is a roll against the published table. Nothing here is for sale: a break is thirty seconds of watching for one pack, and what it earns turns back to zero at {hour}:00.':
+    'Chaque tirage suit la table publiée. Rien ici n’est à vendre : une pause, c’est trente secondes de visionnage pour un pack, et ce qu’elle rapporte repart à zéro à {hour}:00.',
   'Rolls come from the browser’s own entropy, with rejection sampling, so a tier is never over-favoured by the arithmetic. These are the odds every pack runs on — for every member, including a tester.':
     "Les tirages viennent de l'entropie du navigateur, avec échantillonnage par rejet : un palier n'est jamais favorisé par l'arithmétique. Voici les chances sur lesquelles chaque pack s'appuie — pour tous les membres, y compris un testeur.",
   'Hide the table': 'Masquer la table',
@@ -1181,8 +1208,8 @@ const ui = {
   'Max luck on: every roll takes the top of its band.': 'Chance maximale activée : chaque tirage prend le haut de sa fourchette.',
   'Max luck off: the published odds run again.': 'Chance maximale désactivée : les chances publiées s’appliquent de nouveau.',
   'Force a hand of this tier': 'Forcer une main de ce palier',
-  'Luck is a squeeze on the same roll, for this account only: at max every pack lands the top tiers and the high end of every stat band, which is what clears the {min} Power line a live card needs. Turn it off and the published odds run again, unchanged.':
-    "La chance est un pressage du même tirage, pour ce compte seul : au maximum, chaque pack tombe sur les paliers du sommet et sur le haut de chaque fourchette — c'est ce qui franchit la barre de Puissance {min} qu'il faut à une carte vivante. Désactivez-la et les chances publiées reprennent, inchangées.",
+  'Luck is a squeeze on the same roll. This switch moves only your debug number: at max every pack lands the top tiers and the high end of every stat band, which is what clears the {min} Power line a live card needs. A member’s own luck comes from watched breaks, and turns back to zero at {hour}:00.':
+    "La chance est un pressage du même tirage. Cette touche ne déplace que votre numéro de test : au maximum, chaque pack tombe sur les paliers du sommet et sur le haut de chaque fourchette — c'est ce qui franchit la barre de Puissance {min} qu'il faut à une carte vivante. La chance d'un membre vient des pauses regardées et repart à zéro à {hour}:00.",
   'A sample is a drawing, not a pull: previewing it rolls nothing and banks nothing. Force a hand instead when you want the cards in the binder.':
     'Un exemple est un dessin, pas un tirage : le prévisualiser ne lance rien et n’enregistre rien. Forcez une main si vous voulez ces cartes dans l’album.',
 
