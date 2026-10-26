@@ -398,12 +398,14 @@ export async function loadPool() {
 export const poolSize = () => pool?.length || 0;
 
 /**
- * The character inside the tier. The most-favoured names appear far more often
- * than the deep cuts, which is how a real set behaves and why a duplicate is a
- * normal pull rather than a mistake. Weights are 1/(rank+6) over the roster.
+ * The character inside the tier. Popular names still come up more often than the
+ * deep cuts, but on a gentle slope. The old one-in-six scale put 52% of every
+ * draw on the first thirty characters of a two-hundred-strong set, so a binder
+ * built from daily packs filled up with the same handful of faces and the other
+ * hundred and seventy never appeared at all. Weights are 1/(rank+40).
  */
 function rollCharacter(len) {
-  const scale = 6;
+  const scale = 40;
   let total = 0;
   for (let i = 0; i < len; i += 1) total += 1 / (i + scale);
   let point = below(1000000) / 1000000 * total;
@@ -412,6 +414,20 @@ function rollCharacter(len) {
     if (point <= 0) return i;
   }
   return len - 1;
+}
+
+/* A pack holds five different people. The character roll is independent of the
+   tier roll, so without this a single hand can print one portrait twice, and a
+   duplicate inside one pack reads as a defect no matter what the table says.
+   Four redraws clears a collision almost every time; past that the pull stands as
+   rolled rather than the pack quietly arriving short. */
+function rollFace(sources, used) {
+  let index = rollCharacter(sources.length);
+  for (let retry = 0; retry < 4 && used.has(sources[index].id); retry += 1) {
+    index = rollCharacter(sources.length);
+  }
+  used.add(sources[index].id);
+  return sources[index];
 }
 
 /* ---- the collection --------------------------------------------------- */
@@ -812,11 +828,12 @@ export async function openPack() {
   const floor = spent.floor;
   const next = coll();
   const out = [];
+  const faces = new Set();
   for (let i = 0; i < PACK_CARDS; i += 1) {
     let rarity = rollRarity();
     const raised = floor > rarity.lv;
     if (raised) rarity = rarityOf(floor);
-    const source = sources[rollCharacter(sources.length)];
+    const source = rollFace(sources, faces);
     next.serial += 1;
     const card = build(source, rarity.lv, next.serial, false);
     const added = addOwned(next, card);
@@ -923,8 +940,9 @@ export function forcePull(lv, count = PACK_CARDS) {
   if (!sources.length) return [];
   const next = coll();
   const out = [];
+  const faces = new Set();
   for (let i = 0; i < Math.min(PACK_CARDS, Number(count) || 1); i += 1) {
-    const source = sources[rollCharacter(sources.length)];
+    const source = rollFace(sources, faces);
     next.serial += 1;
     const card = build(source, tier.lv, next.serial, false);
     const added = addOwned(next, card);

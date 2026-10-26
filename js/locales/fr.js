@@ -262,6 +262,7 @@ const ui = {
   Music: 'Musique',
   Newest: 'Nouveautés',
   'Newest first': 'Plus récents',
+  'Never twice': 'Jamais deux fois',
   'Next · Ep {n}': 'Suivant · Ép. {n}',
   'Next episode': 'Épisode suivant',
   'Next episode plays automatically from here on':
@@ -276,6 +277,7 @@ const ui = {
   'No synopsis has been added for this title yet.':
     'Aucun synopsis n’a encore été ajouté pour ce titre.',
   'No titles match those filters': 'Aucun titre ne correspond à ces filtres',
+  'No two cards in a pack share a face': 'Aucun pack ne contient deux fois le même visage.',
   'Not aired yet': 'Pas encore diffusé',
   'Not rated': 'Non noté',
   'Nothing found for “{q}”': 'Rien trouvé pour « {q} »',

@@ -740,6 +740,7 @@ export async function CollectionView(ctx) {
         'div.g-rule-grid',
         {},
         rule(t('A pack holds'), t('{n} cards', { n: String(PACK_CARDS) })),
+        rule(t('Never twice'), t('No two cards in a pack share a face')),
         rule(t('A day hands you'), t('{n} packs, free', { n: String(DAILY_PACKS) })),
         rule(t('The day turns at'), t('{hour}:00, your time', { hour: String(PACK_HOUR) })),
         rule(t('Packs you leave'), t('They wait in your bank. Nothing expires.')),

@@ -122,6 +122,11 @@ export function gachaCard(card, { variant = 'full', count = 1, onClick = null, e
   const locked = Boolean(card.locked);
   /* The grade a locked tile shows: stars for a band, never the number itself. */
   const stars = starsFor(r.lv);
+  /* Art ladder: portrait first, then the poster of the title they are known from.
+     AniList drops a portrait when an entry is merged, and a grey silhouette where a
+     face should be reads as a broken card. */
+  const art = [card.image, card.cover].filter(Boolean).filter((u, i, a) => a.indexOf(u) === i);
+  let artStep = 0;
   const powerText = (key) => {
     if (r.ultimate && key === 'power') return t('INFINITY');
     if (locked) return key === 'power' ? '★'.repeat(stars) : '•••';
@@ -161,20 +166,29 @@ export function gachaCard(card, { variant = 'full', count = 1, onClick = null, e
         h('div.g-bevel', { 'aria-hidden': 'true' }),
         h(
           'div.g-art',
-          {},
+          { class: art.length ? null : 'is-noart' },
           r.lv >= 9 ? h('div.g-burst', { 'aria-hidden': 'true' }) : null,
-          h('img.g-portrait', {
-            src: card.image,
-            alt: card.name,
-            loading: eager ? 'eager' : 'lazy',
-            decoding: 'async',
-            onError: (e) => {
-              /* A portrait that will not load still leaves a card: the frame,
-                 the name and the numbers are ours, only the art is borrowed. */
-              e.target.closest('.g-art')?.classList.add('is-noart');
-              e.target.remove();
-            },
-          }),
+          art.length
+            ? h('img.g-portrait', {
+                src: art[0],
+                alt: card.name,
+                loading: eager ? 'eager' : 'lazy',
+                decoding: 'async',
+                onError: (e) => {
+                  /* A portrait that will not load still leaves a card: the frame,
+                     the name and the numbers are ours, only the art is borrowed. Walk
+                     the rest of the ladder before dropping to the silhouette. */
+                  const img = e.target;
+                  if (artStep + 1 < art.length) {
+                    artStep += 1;
+                    img.src = art[artStep];
+                    return;
+                  }
+                  img.closest('.g-art')?.classList.add('is-noart');
+                  img.remove();
+                },
+              })
+            : null,
           /* The tier effect: from Scarce up every rung carries its own weather —
              motes, rays, embers, lightning, a prismatic ring, a celestial halo,
              fire. It sits over the portrait and under the printed plate, and it

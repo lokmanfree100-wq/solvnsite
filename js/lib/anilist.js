@@ -829,7 +829,7 @@ export const Q_ROSTER = /* GraphQL */ `
         image { large }
         favourites
         media(type: ANIME, perPage: 3, sort: POPULARITY_DESC) {
-          edges { node { id title { romaji english } seasonYear format coverImage { large } genres } }
+          edges { node { id title { romaji english } seasonYear format coverImage { extraLarge large } genres } }
         }
       }
     }
@@ -1040,7 +1040,8 @@ function characterCard(node) {
       id: m.id,
       title: m.title?.romaji || m.title?.english || '',
       year: m.seasonYear || null,
-      cover: m.coverImage?.large || null,
+      // `large` is 230x345 and the card frame is bigger, so it upscales soft; extraLarge is 460x690.
+      cover: m.coverImage?.extraLarge || m.coverImage?.large || null,
       genres: (m.genres || []).slice(0, 3),
     })),
   };

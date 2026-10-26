@@ -112,22 +112,25 @@
   pointer-events: none;
 }
 
-/* Character portraits are bust shots; a tilt and an overcrop is what turns one
-   into a pose on a card. Every part of that framing is a variable, because the
-   form bands below reframe the same portrait rather than swapping the drawing:
-   how close the crop sits, which shoulder is forward and how hot the grade runs
-   are what make form II read as a different card from form IV. */
+/* Character portraits are bust shots; a tilt and a crop is what turns one into a
+   pose on a card. Every part of that framing is a variable, because the form bands
+   below reframe the same portrait rather than swapping the drawing.
+
+   The crop stays shallow deliberately: AniList's largest portrait is 230x345 and the
+   art box is wider than that, so the picture is already scaled to the box and cropped
+   in height. Extra zoom throws away more of those 230 pixels and stretches what is
+   left back over the card — at a phone's 2x or 3x pixel density that is a smear.
+   Nothing is mirrored either: a reversed character reads as the wrong picture. */
 .g-portrait {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: var(--art-focus, 50% 18%);
+  object-position: var(--art-focus, 50% 26%);
   transform:
-    scale(var(--art-zoom, 1.08))
-    rotate(var(--art-tilt, -1.4deg))
-    scaleX(var(--art-flip, 1));
+    scale(var(--art-zoom, 1.05))
+    rotate(var(--art-tilt, -1.4deg));
   transform-origin: 50% 40%;
   filter:
     saturate(var(--art-sat, 1.08))
@@ -137,42 +140,41 @@
 
 /* ---- the five forms ------------------------------------------------------
    A tier does not only change the ring, it changes the picture in it: the same
-   character moves from an even bust shot, through a tighter waist-up and a
-   mirrored profile, into a close, hot, lit-from-behind headshot. Five bands —
-   the ones `formOf` names — so a card in the binder reads as one rung of an
-   evolution without the set pretending to own drawings it does not have. */
+   character moves from an even bust shot through progressively closer crops and
+   a hotter grade. Five bands — the ones `formOf` names — so a card in the binder
+   reads as one rung of an evolution without the set pretending to own drawings it
+   does not have. Focus rises up the head as the crop tightens; it never climbs
+   past 26% so the top of the head stays inside the frame. */
 .g-card.is-form2 {
-  --art-zoom: 1.15;
+  --art-zoom: 1.07;
   --art-tilt: -0.4deg;
-  --art-focus: 50% 14%;
+  --art-focus: 50% 24%;
   --art-sat: 1.14;
   --art-con: 1.1;
 }
 
 .g-card.is-form3 {
-  --art-zoom: 1.2;
+  --art-zoom: 1.08;
   --art-tilt: 0.8deg;
-  --art-flip: -1;
-  --art-focus: 50% 12%;
+  --art-focus: 50% 22%;
   --art-sat: 1.2;
   --art-con: 1.16;
   --art-bri: 1.02;
 }
 
 .g-card.is-form4 {
-  --art-zoom: 1.26;
+  --art-zoom: 1.1;
   --art-tilt: -1.6deg;
-  --art-focus: 50% 9%;
+  --art-focus: 50% 20%;
   --art-sat: 1.28;
   --art-con: 1.22;
   --art-bri: 1.05;
 }
 
 .g-card.is-form5 {
-  --art-zoom: 1.3;
+  --art-zoom: 1.12;
   --art-tilt: 1.2deg;
-  --art-flip: -1;
-  --art-focus: 50% 7%;
+  --art-focus: 50% 18%;
   --art-sat: 1.34;
   --art-con: 1.28;
   --art-bri: 1.07;
@@ -848,12 +850,11 @@
 }
 
 /* The master's art is the platform mark, not a portrait, so it keeps its own
-   framing: centred, unmirrored and only a breath closer than the plate. It is
-   still form V — the highest band — but the mark is not a character to reframe. */
+   framing: dead centre and only a breath closer than the plate. It is still form
+   V — the highest band — but the mark is not a character to reframe. */
 .g-card.is-ultimate .g-portrait {
-  --art-zoom: 1.04;
+  --art-zoom: 1.03;
   --art-tilt: 0deg;
-  --art-flip: 1;
   --art-focus: 50% 50%;
   --art-sat: 1;
   --art-con: 1.05;
@@ -1214,17 +1215,17 @@
 }
 
 /* Evolution deepens whatever form the card arrived in rather than flattening it
-   back to one shot: it lifts the grade, pushes the crop a little closer and turns
-   the pose off the card's own tilt by one more degree. */
+   back to one shot: it lifts the grade, nudges the crop a little closer and turns
+   the pose off the card's own tilt by one more degree. The step is additive, not a
+   multiplier, so an evolved form V never runs past the sharpness ceiling. */
 .g-card.is-evolved .g-portrait {
   filter:
     saturate(calc(var(--art-sat, 1.08) + 0.15))
     contrast(calc(var(--art-con, 1.05) + 0.07))
     brightness(calc(var(--art-bri, 1) + 0.04));
   transform:
-    scale(calc(var(--art-zoom, 1.08) * 1.06))
-    rotate(calc(var(--art-tilt, -1.4deg) - 1deg))
-    scaleX(var(--art-flip, 1));
+    scale(calc(var(--art-zoom, 1.05) + 0.03))
+    rotate(calc(var(--art-tilt, -1.4deg) - 1deg));
 }
 
 /* Variants: the grid tile keeps everything but the numbers, the sample row
@@ -2543,14 +2544,14 @@ body.g-shake .modal-backdrop.is-gacha {
     animation: none;
   }
 
-  /* A form is the crop, not the motion: the zoom and the mirrored pose stay, the
-     tilt — the part that reads as movement — comes out. */
+  /* A form is the crop, not the motion: the zoom stays, the tilt — the part that
+     reads as movement — comes out. */
   .g-portrait {
-    transform: scale(var(--art-zoom, 1.08)) scaleX(var(--art-flip, 1));
+    transform: scale(var(--art-zoom, 1.05));
   }
 
   .g-card.is-evolved .g-portrait {
-    transform: scale(calc(var(--art-zoom, 1.08) + 0.03)) scaleX(var(--art-flip, 1));
+    transform: scale(calc(var(--art-zoom, 1.05) + 0.03));
   }
 }
 
