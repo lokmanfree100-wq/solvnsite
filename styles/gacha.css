@@ -101,16 +101,11 @@
     linear-gradient(180deg, var(--gb), #06060b);
 }
 
-.g-art::after {
-  /* The tier wash, under the portrait, so a card reads as its colour before it
-     reads as its picture. */
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(170deg, var(--ga), transparent 46%);
-  opacity: 0.28;
-  pointer-events: none;
-}
+/* Nothing is painted over the portrait. A `::after` wash used to sit here at
+   0.28 alpha, which read as a colour cast on the face — orange on Epic, amber
+   on Legendary — and the character is the reason anybody opens the binder. The
+   tier still owns the frame: the art box background underneath the picture,
+   the bevel light at its edges, the ring, the badge and the tier weather. */
 
 /* Character portraits are bust shots; a tilt and a crop is what turns one into a
    pose on a card. Every part of that framing is a variable, because the form bands
@@ -180,18 +175,16 @@
   --art-bri: 1.07;
 }
 
-/* From form IV the tier lights the picture from behind and below, the way a
-   poster is lit rather than printed. One painted gradient, no blurred layer. */
-.g-card.is-form4 .g-art::after,
-.g-card.is-form5 .g-art::after {
+/* From form IV the tier lights the card from behind and below, but it stops at
+   the picture: the glow is printed on the frame and the plate, never across the
+   character's face. */
+.g-card.is-form4 .g-art,
+.g-card.is-form5 .g-art {
   background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.1), transparent 60%),
     linear-gradient(168deg, var(--ga), transparent 44%),
-    radial-gradient(
-      82% 52% at 50% 108%,
-      color-mix(in srgb, var(--glow) 44%, transparent),
-      transparent 68%
-    );
-  opacity: 0.42;
+    radial-gradient(82% 52% at 50% 108%, color-mix(in srgb, var(--glow) 44%, transparent), transparent 68%),
+    linear-gradient(180deg, var(--gb), #06060b);
 }
 
 .g-art.is-noart::before {
