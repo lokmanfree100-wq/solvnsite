@@ -924,6 +924,7 @@ const ui = {
   'Member since': 'عضو منذ',
   'Permanent': 'ثابت',
   'Your @handle is permanent and cannot be changed.': 'معرّفك (@username) ثابت ولا يمكن تغييره.',
+  'Neutral White': 'أبيض محايد',
   Violet: 'بنفسجي',
   Iris: 'سوسني',
   Orchid: 'أوركيد',
@@ -2044,6 +2045,8 @@ const ui = {
   '{n} new': '{n} جديد',
   '{n} visits': '{n} زيارة',
   '{packs} packs and {xp} XP claimed.': 'تم استلام {packs} حزم و{xp} نقطة خبرة.',
+  'The site address has been updated to solvn.site': 'تم تحديث عنوان الموقع إلى solvn.site.',
+  'Go to solvn.site now': 'الانتقال إلى solvn.site الآن',
 
 };
 

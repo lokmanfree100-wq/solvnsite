@@ -390,6 +390,61 @@ async function frameFromImage(img, w, h, ratio) {
 
 const encode = (canvas, quality = AVATAR_UPLOAD.quality) => canvas.toDataURL(AVATAR_UPLOAD.mime, quality);
 
+/**
+ * The colour a picture is mostly made of, in degrees.
+ *
+ * A plain average would be wrong: a sunset that is ninety per cent night sky
+ * reads as grey-blue, not orange. So every pixel votes with the weight of the
+ * colour it actually carries — a pixel of flat grey abstains — and the votes are
+ * added as directions rather than as numbers, which is the one way to average a
+ * hue without 359 and 1 cancelling out into a meaningless 180.
+ *
+ * Null means there was no colour to find, and the band is worn untinted.
+ */
+function sampleHue(canvas) {
+  try {
+    const w = 48;
+    const h = 12;
+    const small = document.createElement('canvas');
+    small.width = w;
+    small.height = h;
+    const ctx = small.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(canvas, 0, 0, w, h);
+    const { data } = ctx.getImageData(0, 0, w, h);
+
+    let x = 0;
+    let y = 0;
+    let total = 0;
+    for (let i = 0; i + 3 < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const chroma = (max - min) / 255;
+      if (chroma < 0.08) continue;
+      /* A near-black pixel has a hue nobody can see and a blown-out one has
+         none; both are counted, neither is trusted. */
+      const light = max / 255;
+      const vote = chroma * Math.min(light, 1.15 - light);
+      const d = max - min;
+      const deg = max === r ? (((g - b) / d) % 6) * 60 : max === g ? ((b - r) / d + 2) * 60 : ((r - g) / d + 4) * 60;
+      const rad = ((deg < 0 ? deg + 360 : deg) * Math.PI) / 180;
+      x += Math.cos(rad) * vote;
+      y += Math.sin(rad) * vote;
+      total += vote;
+    }
+    if (!(total > 0)) return null;
+    const hue = Math.round((Math.atan2(y, x) * 180) / Math.PI);
+    return hue < 0 ? hue + 360 : hue;
+  } catch {
+    /* A canvas this browser refuses to read costs a profile its tint, not the
+       background somebody picked. */
+    return null;
+  }
+}
+
 const dataUrlOf = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -465,8 +520,9 @@ export const BANNER_UPLOAD = {
 
 /**
  * Turn a picked file into a background the server will accept: cropped to the
- * band's own shape, downscaled, re-encoded, and — for an animated GIF — carried
- * along as its original bytes so the motion survives.
+ * band's own shape, downscaled, re-encoded, — for an animated GIF carried along
+ * as its original bytes so the motion survives — and read for the colour it is
+ * mostly made of, which is what the profile is lit with afterwards.
  */
 export async function bannerFromImageFile(file) {
   if (!file) throw new Error('Choose a picture first.');
@@ -491,7 +547,9 @@ export async function bannerFromImageFile(file) {
 
     const animated = type === 'image/gif' && file.size <= BANNER_UPLOAD.maxStored ? await dataUrlOf(file) : null;
     const animatedOk = animated && animated.startsWith('data:image/gif') && (await verify(animated));
-    return { dataUrl: out, fileUrl: animatedOk ? animated : null };
+    /* Read off the band this browser just drew, so the hue and the picture the
+       member saved are the same picture — and the tint outlives the tab. */
+    return { dataUrl: out, fileUrl: animatedOk ? animated : null, hue: sampleHue(canvas) };
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -618,6 +676,86 @@ export const BANNER_MOTION = {
 };
 
 export const bannerMotion = (key) => BANNER_MOTION[key] || 'drift';
+
+/**
+ * The colour each band is built around, as a hue in degrees.
+ *
+ * This is the `--bk-1` of the matching block in profile.css, so the light a
+ * profile throws around its name is the light the band itself is drawn with —
+ * and a band that changes colour has to be changed in one place, not two.
+ *
+ * It exists for one reason: the site as a whole is neutral, and colour is only
+ * ever borrowed back from the member standing in front of you. A band the
+ * gallery drew has its hue written here; a picture has its hue read off the
+ * pixels before it is stored.
+ */
+export const BANNER_HUES = {
+  aurora: 158,
+  neon: 186,
+  ocean: 201,
+  ember: 25,
+  matrix: 144,
+  violet: 257,
+  spectrum: 186,
+  gold: 43,
+  sakura: 330,
+  storm: 222,
+  sunset: 14,
+  glacier: 190,
+  lava: 14,
+  forest: 146,
+  retro: 334,
+  glitch: 184,
+  cyber: 192,
+  toxic: 83,
+  ink: 234,
+  chrome: 226,
+  cosmos: 251,
+  eclipse: 35,
+  fireworks: 312,
+  bubbles: 191,
+  mint: 161,
+  lilac: 262,
+  peach: 21,
+  ice: 194,
+  mango: 42,
+  lotus: 331,
+  polar: 153,
+  siren: 172,
+  dusk: 257,
+  cotton: 319,
+  honey: 43,
+  ripple: 184,
+  pulse: 339,
+  veil: 229,
+  beam: 221,
+  horizon: 186,
+  koi: 22,
+  crystal: 196,
+  inferno: 42,
+  rose: 334,
+  thunder: 229,
+  tide: 194,
+};
+
+/**
+ * The light a profile should wear, and how much of it.
+ *
+ * A themed band answers from the table above. A picture answers from the hue
+ * that was read off it when it was chosen — and only when there is a picture on
+ * the band, because the `hue` field rides along on every banner record and an
+ * old number from a wallpaper somebody deleted is not a colour to paint with.
+ * Nothing chosen, nothing sampled: null, and the hero stays the house neutral.
+ */
+export function bannerTint(banner) {
+  if (!banner || typeof banner !== 'object') return null;
+  if (BANNER_KEYS.includes(banner.theme)) {
+    return { hue: BANNER_HUES[banner.theme], strength: 1 };
+  }
+  if (!banner.photo && !banner.file && !banner.url) return null;
+  const hue = Number(banner.hue);
+  return Number.isFinite(hue) && hue >= 0 && hue < 360 ? { hue, strength: 0.85 } : null;
+}
 
 /**
  * The shelf. Every band is open, so this is the list itself plus the flag the

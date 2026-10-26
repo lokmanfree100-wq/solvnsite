@@ -954,6 +954,7 @@ const ui = {
   'Member since': 'Membre depuis',
   'Permanent': 'Permanent',
   'Your @handle is permanent and cannot be changed.': 'Votre @pseudo est permanent et ne peut pas être modifié.',
+  'Neutral White': 'Blanc neutre',
   Violet: 'Violet',
   Iris: 'Iris',
   Orchid: 'Orchidée',
@@ -2084,6 +2085,8 @@ const ui = {
   '{n} new': '{n} nouveaux',
   '{n} visits': '{n} visites',
   '{packs} packs and {xp} XP claimed.': '{packs} packs et {xp} XP récupérés.',
+  'The site address has been updated to solvn.site': 'L’adresse du site est maintenant solvn.site.',
+  'Go to solvn.site now': 'Aller sur solvn.site maintenant',
 
 };
 

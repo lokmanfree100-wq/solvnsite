@@ -360,6 +360,82 @@ p {
   }
 }
 
+/* ---- the relocation notice -------------------------------------------
+   Shown in place of the site when somebody arrives at an address Solvn no
+   longer uses. It sits above the startup veil, because it is the only thing
+   that should be read before the browser moves on. No colour in it: an
+   announcement about where the site lives is not a marketing banner. */
+.reloc {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-6);
+  text-align: center;
+  background: var(--void);
+  animation: reloc-in 0.5s var(--ease) both;
+}
+.reloc .logo {
+  width: clamp(64px, 17vmin, 92px);
+  height: auto;
+  aspect-ratio: 1;
+  -webkit-mask-image: radial-gradient(closest-side, #000 58%, transparent 98%);
+  mask-image: radial-gradient(closest-side, #000 58%, transparent 98%);
+}
+.reloc-word {
+  font-family: var(--font-display);
+  font-size: clamp(17px, 3.6vw, 24px);
+  font-weight: 800;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.reloc-line {
+  max-width: 34ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.reloc-go {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 var(--sp-5);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text);
+  transition: background 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.reloc-go:hover,
+.reloc-go:focus-visible {
+  background: var(--surface-3);
+  border-color: var(--text-faint);
+}
+@keyframes reloc-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reloc {
+    animation: none;
+  }
+}
+
 /* ---- typography helpers ---------------------------------------------- */
 .display {
   font-family: var(--font-display);

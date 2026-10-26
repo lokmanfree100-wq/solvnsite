@@ -1,12 +1,14 @@
 :root {
-  /* ---- colour: "Graphite & Violet" ----------------------------------
-     Deep black, charcoal, crisp white — and one accent. Violet is the
-     language the interface uses when it is answering you: hover, focus, the
-     active nav item, a link, a primary button, and nowhere else. It also
-     leaks a little light: the ambient field behind the page and the glow
-     under a lit control are both the same hue at very low alpha, never a
-     coloured gradient across a panel. Panels read as glass from their
-     hairline and blur, not from colour bleeding behind them. */
+  /* ---- colour: "Graphite & Neutral" ----------------------------------
+     Deep black, charcoal, crisp white — and one accent, which is light itself.
+     The interface answers you in grey and white: hover, focus, the active nav
+     item, a link, a primary button. Nothing on this site reaches for a colour
+     to say "look at me"; a member's own banner is the one place colour is
+     allowed to come back, and it only ever tints that member's page. A chosen
+     accent in Settings is the exception a person opts into, never the default.
+     The ambient field is the same light at very low alpha, so the page feels
+     lit rather than coloured, and panels read as glass from their hairline and
+     blur, not from colour bleeding behind them. */
   --bg: #050505;
   /* Deeper than the page: the letterbox black behind the player and the
      startup veil, where nothing should be lit. */
@@ -40,32 +42,33 @@
 
   /* --accent is the fill, --accent-bright the lit end of a hover, --accent-text
      the shade used for accent-coloured *text* on a dark surface. The fill is
-     deep enough to hold near-black ink at 5:1 and light enough to sit on a
-     black panel without shouting. */
-  --accent: #8b6cff;
-  --accent-bright: #a78bff;
-  --accent-deep: #6d4ce0;
-  --accent-text: #bda6ff;
+     light, so it always carries near-black ink and clears contrast on the
+     first try; on the page it reads as the same white the type already uses,
+     which is the point — a control that is lit is a control that is white. */
+  --accent: #e9ebee;
+  --accent-bright: #edeff1;
+  --accent-deep: #b6b7ba;
+  --accent-text: #f0f2f4;
   --accent-ink: #0a0713;
-  --accent-glow: rgba(139, 108, 255, 0.3);
-  --accent-wash: rgba(139, 108, 255, 0.13);
-  --accent-line: rgba(167, 139, 255, 0.36);
-  /* The two lights the page sits in: a wide, very soft violet field behind the
-     content and a tighter one under a control that is lit. Both are low alpha
-     on purpose — enough to feel like a mood, not enough to draw the eye away
-     from what you are reading. */
-  --ambient: rgba(139, 108, 255, 0.17);
-  --ambient-soft: rgba(139, 108, 255, 0.09);
+  --accent-glow: rgba(233, 235, 238, 0.3);
+  --accent-wash: rgba(233, 235, 238, 0.13);
+  --accent-line: rgba(237, 239, 241, 0.36);
+  /* The two lights the page sits in: a wide, very soft field behind the content
+     and a tighter one under a control that is lit. Both are low alpha on
+     purpose — enough to feel like a mood, not enough to draw the eye away from
+     what you are reading. */
+  --ambient: rgba(233, 235, 238, 0.17);
+  --ambient-soft: rgba(233, 235, 238, 0.09);
   /* Icons used to carry a coloured bloom. They don't any more, so every rule
      that reaches for this becomes a no-op instead of a leftover glow. */
   --accent-drop: none;
 
-  /* Legacy light-field names, now violet-tinted: any gradient still written
-     against them resolves to the same soft purple as the ambient field. New
-     rules should use --ambient instead. */
-  --glow-cyan: #d8ccff;
-  --glow-violet: #b79dff;
-  --glow-blue: #8f79d6;
+  /* Legacy light-field names, now the same light as everything else: any
+     gradient still written against them resolves to soft white. New rules
+     should use --ambient instead. */
+  --glow-cyan: #fafafb;
+  --glow-violet: #f5f6f7;
+  --glow-blue: #c6c8ca;
 
   --success: #5ad19a;
   --warn: #e0b341;
@@ -141,10 +144,25 @@
    derivation the custom picker uses (lib/color.js): a bright fill takes the
    dark ink and a deep fill the light one, so a label always clears 4.5:1, and
    --accent-text is walked lighter until it clears 4.5:1 against the page.
-   "Violet" is the default and deliberately has no block here — :root already
-   is violet. A colour chosen in the picker is not one of these ids; it is
+   "Neutral" is the default and deliberately has no block here — :root already
+   is neutral. A colour chosen in the picker is not one of these ids; it is
    painted as inline custom properties by lib/accent.js under data-accent=
    'custom', so a preset switch and a custom choice never fight. */
+[data-accent='violet'] {
+  --accent: #8b6cff;
+  --accent-bright: #a78bff;
+  --accent-deep: #6d4ce0;
+  --accent-text: #bda6ff;
+  --accent-ink: #0a0713;
+  --accent-glow: rgba(139, 108, 255, 0.3);
+  --accent-wash: rgba(139, 108, 255, 0.13);
+  --accent-line: rgba(167, 139, 255, 0.36);
+  --ambient: rgba(139, 108, 255, 0.17);
+  --ambient-soft: rgba(139, 108, 255, 0.09);
+  --glow-cyan: #d8ccff;
+  --glow-violet: #b79dff;
+  --glow-blue: #8f79d6;
+}
 [data-accent='iris'] {
   --accent: #6d7bff;
   --accent-bright: #8a95ff;

@@ -21,8 +21,16 @@
    One wide glass panel: a light field behind the face, then the avatar in its
    ring, the name, the locked handle, and the four figures of the shelf below.
    The panel is the page's only large animation, and it runs on arrival, not on
-   every tab click — see `introDone` in views/profile.js. */
+   every tab click — see `introDone` in views/profile.js.
+
+   `--pf-hue` and `--pf-tint` are the one place Solvn gives colour back. The site
+   is neutral; a profile is lit with the hue of the band that member is wearing,
+   and the tint is written by JS only when a band exists — every rule below that
+   reads it collapses to nothing at `--pf-tint: 0`, so a bare profile stays as
+   grey and quiet as the rest of the site. */
 .profile-hero {
+  --pf-hue: 210;
+  --pf-tint: 0;
   position: relative;
   isolation: isolate;
   display: flex;
@@ -37,6 +45,7 @@
   inset: 0;
   z-index: -2;
   background:
+    radial-gradient(64% 130% at 50% -26%, hsl(var(--pf-hue) 92% 62% / calc(0.22 * var(--pf-tint))), transparent 66%),
     radial-gradient(74% 128% at 10% -18%, var(--accent-wash), transparent 60%),
     radial-gradient(56% 112% at 90% -10%, var(--ambient-soft), transparent 62%),
     linear-gradient(180deg, var(--surface-2), transparent 78%);
@@ -46,7 +55,9 @@
   position: absolute;
   inset: auto 0 0 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-line) 34%, transparent 78%);
+  background:
+    linear-gradient(90deg, transparent, hsl(var(--pf-hue) 92% 70% / calc(0.5 * var(--pf-tint))) 34%, transparent 78%),
+    linear-gradient(90deg, transparent, var(--accent-line) 34%, transparent 78%);
 }
 .pf-hero-row {
   display: flex;
@@ -227,6 +238,17 @@
   inset: -22px;
   filter: blur(18px);
   opacity: 0.55;
+  background:
+    radial-gradient(closest-side, hsl(var(--pf-hue) 92% 62% / calc(0.8 * var(--pf-tint))), transparent 74%),
+    conic-gradient(
+      from 0deg,
+      var(--accent-bright),
+      var(--glow-cyan) 20%,
+      var(--accent) 44%,
+      var(--glow-blue) 66%,
+      var(--accent-text) 86%,
+      var(--accent-bright)
+    );
 }
 @keyframes pf-orbit {
   to {

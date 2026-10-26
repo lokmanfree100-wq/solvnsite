@@ -325,10 +325,17 @@ function avatarOf(raw) {
   };
 }
 
+/* The hue is a real colour at zero: `Number(b.hue) || 210` would turn a red
+   band into a cool blue one, which is the opposite of what the member chose. */
+const hueOf = (value) => {
+  const n = Math.round(Number(value));
+  return n >= 0 && n < 360 ? n : 210;
+};
+
 function bannerOf(raw) {
   const b = raw && typeof raw === 'object' ? raw : {};
   return {
-    hue: Number(b.hue) || 210,
+    hue: hueOf(b.hue),
     theme: typeof b.theme === 'string' ? b.theme.slice(0, 40) : null,
     photo: typeof b.photo === 'string' && /^data:image\//i.test(b.photo) ? b.photo : null,
     file: typeof b.file === 'string' && /^data:image\//i.test(b.file) ? b.file : null,
@@ -1043,6 +1050,25 @@ function freshUserId(target) {
   return 0;
 }
 
+/**
+ * A member who signs in through the cloud has no local record for a number to
+ * come from, and rolling one here would hand the same person a different ID on
+ * every device. Folding the account's immutable id answers with the same number
+ * wherever it is asked. The database column is the real record — this is what a
+ * project whose database predates that column falls back to.
+ */
+function stableUserId(seed) {
+  let a = 0x811c9dc5;
+  let b = 0x1000193;
+  const value = String(seed || '');
+  for (let i = 0; i < value.length; i += 1) {
+    const c = value.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193) >>> 0;
+    b = Math.imul(b ^ (c + i), 0x85ebca6b) >>> 0;
+  }
+  return USER_ID_MIN + (((a ^ b) >>> 0) % (USER_ID_MAX - USER_ID_MIN + 1));
+}
+
 function byUserId(target, value) {
   const n = Number(value);
   if (!Number.isInteger(n) || n < ADMIN_USER_ID) return null;
@@ -1061,7 +1087,9 @@ function adopt(target, viewer) {
   if (!user) {
     user = {
       id,
-      userId: Number(viewer.userId) || 0,
+      /* The house account keeps the short number the local store gives it; a
+         cloud mirror would otherwise fold its own and show something else. */
+      userId: Number(viewer.userId) || (fold(viewer.username || '') === HOUSE ? ADMIN_USER_ID : stableUserId(id)),
       email: '',
       username: viewer.username || 'member',
       displayName: viewer.displayName || viewer.username || 'Member',
@@ -1095,7 +1123,7 @@ function adopt(target, viewer) {
   if (viewer.duel) user.duel = { ...user.duel, ...viewer.duel };
   if (viewer.unlocks) user.unlocks = { ...user.unlocks, ...viewer.unlocks };
   if (viewer.fortune) user.fortune = { ...user.fortune, ...viewer.fortune };
-  if (!user.userId && Number(viewer.userId)) user.userId = Number(viewer.userId);
+  if (!user.userId) user.userId = Number(viewer.userId) || stableUserId(user.id);
   const nameKey = fold(user.username);
   if (nameKey) target.byName[nameKey] = id;
   return user;

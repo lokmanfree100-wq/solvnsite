@@ -475,6 +475,11 @@ function toUser(row) {
   if (!row) return null;
   return {
     id: String(row.id),
+    /* The number a member is searched by. It lives on the row, so signing out,
+       changing device or clearing local storage all give back the same one. A
+       project whose database predates the column reads 0, and `adopt` in
+       device.js then derives a stable number instead of showing nothing. */
+    userId: Number(row.user_id) || 0,
     username: row.username,
     /* The handle is chosen once at registration and never changes; the name
        people see is separate. An account that has not set one shows its handle. */
@@ -749,7 +754,19 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
 
   /* -- community -- */
   if (seg[0] === 'users' && seg[1]) {
-    const data = await req(cfg, '/rest/v1/rpc/kitsune_profile', { method: 'POST', body: { p_id: seg[1] } });
+    /* The route answers for a handle, an auth id or the member's number, because
+       the copy button on a profile prints the number and that is what a friend
+       pastes. `kitsune_profile` only takes a uuid, so a number is resolved to the
+       row first. */
+    let key = seg[1];
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (/^\d+$/.test(key) || !uuid.test(key)) {
+      const by = /^\d+$/.test(key) ? `user_id=eq.${encodeURIComponent(key)}` : `username=eq.${encodeURIComponent(key)}`;
+      const [row] = await req(cfg, `/rest/v1/kitsune_profiles?${by}&select=id&limit=1`);
+      if (!row?.id) return { user: null, playlists: [] };
+      key = String(row.id);
+    }
+    const data = await req(cfg, '/rest/v1/rpc/kitsune_profile', { method: 'POST', body: { p_id: key } });
     return {
       user: data?.user ? toUser(data.user) : null,
       playlists: (data?.playlists || []).map((p) => toPlaylist(p)),
@@ -760,9 +777,13 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
     /* The term goes into a PostgREST filter, so it is cut down to the characters
        a handle can hold — and a filter built from nothing but those cannot
        escape the string it was meant to search for. Prefix match first, exactly
-       like the local route. */
+       like the local route. A run of digits is read as a user number instead. */
     const term = (params.get('q') || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim();
     if (term.length < 2) return { users: [] };
+    if (/^\d+$/.test(term)) {
+      const rows = await req(cfg, `/rest/v1/kitsune_profiles?user_id=eq.${encodeURIComponent(term)}&limit=8&select=*`);
+      return { users: (rows || []).map(toUser) };
+    }
     const like = encodeURIComponent(term.toLowerCase());
     const rows = await req(
       cfg,

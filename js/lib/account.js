@@ -370,13 +370,27 @@ export async function setAvatar(source) {
  * into it — `theme` for one of the animation pairs, `photo`/`file` for bytes the
  * browser produced, `url` for a picture that stays elsewhere.
  */
-const bannerPayload = (user, { theme = null, photo = null, file = null, url = null } = {}) => ({
-  hue: Number(user?.banner?.hue) || 210,
+const bannerPayload = (user, { theme = null, photo = null, file = null, url = null, hue = null } = {}) => ({
+  hue: hueOf(hue, user),
   theme,
   photo,
   file,
   url,
 });
+
+/**
+ * The hue the band is worn under. `hue` is what this upload measured; a member
+ * who changes something else about their profile — or whose picture had no
+ * colour to measure — keeps the number already on the record, and one nobody
+ * ever wrote sits at the cool house default.
+ */
+function hueOf(hue, user) {
+  for (const value of [hue, user?.banner?.hue]) {
+    const n = Math.round(Number(value));
+    if (value !== null && value !== undefined && Number.isFinite(n) && n >= 0 && n < 360) return n;
+  }
+  return 210;
+}
 
 /**
  * Set or clear the profile background.
@@ -394,6 +408,7 @@ export async function setBanner(source) {
     body = {
       photo: source.dataUrl || null,
       file: source.fileUrl && source.fileUrl.length <= BANNER_UPLOAD.maxStored ? source.fileUrl : null,
+      hue: Number.isFinite(Number(source.hue)) && source.hue != null ? Math.round(Number(source.hue)) : null,
     };
   }
   const banner = bannerPayload(me, body);

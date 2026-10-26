@@ -36,6 +36,7 @@ import { restore, pushStats, staticHost, takeRecovery, account } from './lib/acc
 import { verifyCloudSchema } from './lib/cloud.js';
 import { beat, markAway } from './lib/presence.js';
 import { askAboutAccount, resetSheet } from './components/account.js';
+import { leaveForHome } from './lib/domain.js';
 
 const ROUTES = [
   { match: /^\/$/, view: HomeView, nav: true },
@@ -265,6 +266,12 @@ if (splash) {
   setTimeout(() => splash.remove(), introMs);
 }
 
+/* Somebody who reached the site under an address it no longer uses is looking at
+   a page that has already told them where Solvn lives and is on its way there.
+   The notice owns the screen, so the only thing worth doing here is not spending
+   the next two seconds building and fetching a view nobody will read. */
+const leaving = leaveForHome();
+
 let lastY = 0;
 window.addEventListener(
   'scroll',
@@ -307,40 +314,42 @@ document.addEventListener('visibilitychange', () => {
   mount(parse());
 });
 
-startRouter();
+if (!leaving) {
+  startRouter();
 
-/* The page never waits on the session: the chip repaints itself when the answer
-   arrives. Only the pages that are *about* the session are rebuilt, and only if
-   somebody deep-linked straight into one of them. The same probe finds out
-   whether this copy has a server at all — if it does not, the view is rebuilt
-   once so that the controls needing one are taken out rather than left to fail.
+  /* The page never waits on the session: the chip repaints itself when the answer
+     arrives. Only the pages that are *about* the session are rebuilt, and only if
+     somebody deep-linked straight into one of them. The same probe finds out
+     whether this copy has a server at all — if it does not, the view is rebuilt
+     once so that the controls needing one are taken out rather than left to fail.
 
-   The cloud is asked first, and the session only after it: on the permanent
-   domain the project address is compiled in, so whether that database really
-   exists is what decides where an account lives — and a sign-in that reaches a
-   schema nobody has built yet looks from the outside like a dead button. */
-verifyCloudSchema()
-  .catch(() => {})
-  .then(restore)
-  /* A session this browser cannot read is not a reason to leave the site dead:
-     the chain that mounts the first page and wires every button hangs off it,
-     so a throw here would look exactly like a Sign in button that does nothing. */
-  .catch(() => {})
-  .then(() => {
-    const { path } = parse();
-    if (staticHost() || path === '/profile' || path.startsWith('/profile/')) mount(parse());
-    /* An email link that came here to reset a password carries a session that
-       exists for no other purpose, so the first thing on screen is the sheet
-       that spends it. Nothing else about the page changes. */
-    if (takeRecovery()) {
-      resetSheet();
-      return;
-    }
-    /* A first visitor is asked about an account once, and only after the answer
-       about the session is known — otherwise a returning member would be offered
-       a signup form over their own profile. It waits for the intro as well, since
-       a sheet under the veil is a sheet nobody sees. A deep link straight into the
-       player is the one screen it must not land on: the episode owns that moment. */
-    if (path.startsWith('/watch/')) return;
-    setTimeout(askAboutAccount, Math.max(0, introEnds - Date.now()));
-  });
+     The cloud is asked first, and the session only after it: on the permanent
+     domain the project address is compiled in, so whether that database really
+     exists is what decides where an account lives — and a sign-in that reaches a
+     schema nobody has built yet looks from the outside like a dead button. */
+  verifyCloudSchema()
+    .catch(() => {})
+    .then(restore)
+    /* A session this browser cannot read is not a reason to leave the site dead:
+       the chain that mounts the first page and wires every button hangs off it,
+       so a throw here would look exactly like a Sign in button that does nothing. */
+    .catch(() => {})
+    .then(() => {
+      const { path } = parse();
+      if (staticHost() || path === '/profile' || path.startsWith('/profile/')) mount(parse());
+      /* An email link that came here to reset a password carries a session that
+         exists for no other purpose, so the first thing on screen is the sheet
+         that spends it. Nothing else about the page changes. */
+      if (takeRecovery()) {
+        resetSheet();
+        return;
+      }
+      /* A first visitor is asked about an account once, and only after the answer
+         about the session is known — otherwise a returning member would be offered
+         a signup form over their own profile. It waits for the intro as well, since
+         a sheet under the veil is a sheet nobody sees. A deep link straight into the
+         player is the one screen it must not land on: the episode owns that moment. */
+      if (path.startsWith('/watch/')) return;
+      setTimeout(askAboutAccount, Math.max(0, introEnds - Date.now()));
+    });
+}

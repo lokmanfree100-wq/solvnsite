@@ -2172,7 +2172,7 @@ button.cal-cell:focus-visible { outline: 2px solid var(--accent); outline-offset
 .ad-studio-bar { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .an-days { display: flex; align-items: flex-end; gap: 4px; min-height: 92px; padding: var(--sp-2) 0; }
 .an-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
-.an-bar { width: 100%; max-width: 26px; border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg, var(--accent), var(--accent-soft)); min-height: 3px; }
+.an-bar { width: 100%; max-width: 26px; border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg, var(--accent), var(--accent-deep)); min-height: 3px; }
 .an-day b { font-size: 10.5px; font-weight: 600; color: var(--text-dim); }
 .an-day span { font-size: 10px; color: var(--text-faint); }
 @media (max-width: 560px) {

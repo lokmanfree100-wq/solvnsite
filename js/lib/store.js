@@ -27,12 +27,13 @@ export const LIST_LABELS = {
   planned: 'Plan to Watch',
 };
 
-export const DEFAULT_ACCENT = 'violet';
+export const DEFAULT_ACCENT = 'mono';
 /** Highlight shades, id -> hex without the '#'. Each id has a generated block in
-   tokens.css (both come from the same ramp in lib/color.js); violet is :root
+   tokens.css (both come from the same ramp in lib/color.js); mono is :root
    itself. A colour picked by hand is not an id in this table — it is stored in
    `accentCustom` and painted as inline custom properties by lib/accent.js. */
 export const ACCENTS = {
+  mono: 'e9ebee',
   violet: '8b6cff',
   iris: '6d7bff',
   orchid: 'c06bff',
@@ -48,6 +49,7 @@ export const ACCENTS = {
 /** Names shown in Settings and read out by a screen reader. They reach t()
    through this table, so they are listed in the key extractor's INDIRECT set. */
 export const ACCENT_LABELS = {
+  mono: 'Neutral White',
   violet: 'Violet',
   iris: 'Iris',
   orchid: 'Orchid',

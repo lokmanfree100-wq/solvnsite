@@ -18,7 +18,7 @@ import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
 import { account, answerFriend, askFriend, authUsable, duelsUsable, fortuneUsable, isSignedIn, isStaff, publicProfile, patchMe, setAvatar, setBanner, setFavourite, setTitle, shownName, tradesUsable } from '../lib/account.js';
 import { intlDate } from '../lib/util.js';
-import { BANNER_KEYS, BANNER_UPLOAD, TITLES, bannerFromImageFile, bannerMotion, bannerRows, titleUnlocked } from '../lib/ranks.js';
+import { BANNER_KEYS, BANNER_UPLOAD, TITLES, bannerFromImageFile, bannerMotion, bannerRows, bannerTint, titleUnlocked } from '../lib/ranks.js';
 import { search } from '../lib/anilist.js';
 import { PIN_MAX, displayCard, isPinned, ownedEntries, pins, publish, togglePin } from '../lib/cards.js';
 import { FACES_PER_QUEST, faceAccess, faceQuestAt, faceQuestRows, faces, matchFaces } from '../lib/faces.js';
@@ -991,6 +991,22 @@ function heroBackdrop(user, { canEdit = false, onChanged = null } = {}) {
   ];
 }
 
+/**
+ * Light the hero with the colour of the band it is wearing.
+ *
+ * Two custom properties do all of it, and profile.css is written so that
+ * `--pf-tint: 0` — the value every hero starts at — makes each of those lights
+ * invisible. A profile with no band is therefore as neutral as the rest of the
+ * site, and the colour a member chose never leaks past their own page.
+ */
+function paintTint(hero, banner) {
+  const tint = bannerTint(banner);
+  if (!tint) return hero;
+  hero.style.setProperty('--pf-hue', String(tint.hue));
+  hero.style.setProperty('--pf-tint', String(tint.strength));
+  return hero;
+}
+
 /* ---- favourite anime -------------------------------------------------
    AniList answers with the title and its art, and the account keeps the three
    fields the card needs. It is a server field, so the choice follows the
@@ -1335,10 +1351,11 @@ export async function ProfileView(ctx) {
     const user = { ...data.user, canEdit: data.isMe };
     const repaint = () => paint();
     const playlists = data.playlists || [];
-    return h(
-      `header.profile-hero.glass${intro ? '.is-intro' : ''}`,
-      {},
-      ...heroBackdrop(user, { canEdit: data.isMe, onChanged: repaint }),
+    return paintTint(
+      h(
+        `header.profile-hero.glass${intro ? '.is-intro' : ''}`,
+        {},
+        ...heroBackdrop(user, { canEdit: data.isMe, onChanged: repaint }),
       h(
         'div.pf-hero-row',
         {},
@@ -1437,7 +1454,9 @@ export async function ProfileView(ctx) {
           ),
         ),
       ),
-      data.isMe ? statRow(user, playlists) : null,
+        data.isMe ? statRow(user, playlists) : null,
+      ),
+      user.banner,
     );
   }
 
