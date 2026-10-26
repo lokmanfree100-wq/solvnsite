@@ -224,6 +224,7 @@ export async function CollectionView(ctx) {
           fact(stats.packs, t('Packs opened')),
           fact(stats.holo, t('Holographic')),
           fact(held.held, t('Tiers held')),
+          fact(poolSize(), t('In the set')),
         ),
         !poolSize()
           ? h('p.g-note', {}, icon('offline'), t('The character roster is not answering, so there is nothing to draw yet. Try again in a few minutes.'))

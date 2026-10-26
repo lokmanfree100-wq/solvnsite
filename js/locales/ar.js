@@ -466,6 +466,7 @@ const ui = {
   'I already have an account': 'لديّ حساب بالفعل',
   'in this list': 'في هذه القائمة',
   'In this list': 'في هذه القائمة',
+  'In the set': 'في المجموعة',
   'That email address does not look right.': 'عنوان البريد هذا لا يبدو صحيحًا.',
   'That email already has an account. Sign in instead.': 'لهذا البريد حساب بالفعل. سجّل الدخول بدلًا من ذلك.',
   'That email is reserved.': 'هذا البريد الإلكتروني محجوز.',

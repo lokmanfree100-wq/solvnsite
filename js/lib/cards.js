@@ -329,11 +329,18 @@ export const starsFor = (lv) => Math.min(5, Math.max(1, Math.ceil(Number(lv) / 3
 /* ---- the roster ------------------------------------------------------ */
 /**
  * Card artwork comes from the character page while AniList is answering, and
- * from the copy shipped with the build when it is not. A live roster is worth
- * keeping for the session: two requests, a hundred characters, and every pack
- * after that is free.
+ * from the copy shipped with the build when it is not.
+ *
+ * Six pages, not two. The face gallery already asks for six, and a binder that
+ * draws from a hundred characters shows the same thirty names every day however
+ * gently the weights slope — a set of two hundred and fifty is what makes the
+ * deep cuts actually turn up. Pages are gathered with `allSettled`, because one
+ * blip used to reject the whole batch and hand everyone the small bundled
+ * snapshot instead of the live roster they could have had.
  */
 const SEED_URL = new URL('data/packs.json', document.baseURI).href;
+const POOL_PAGES = 6;
+const POOL_PER_PAGE = 50;
 let pool = null;
 let loading = null;
 
@@ -365,13 +372,16 @@ export async function loadPool() {
   if (!loading) {
     loading = (async () => {
       let found = [];
-      try {
-        const pages = await Promise.all([roster(1, 50), roster(2, 50)]);
-        const seen = new Set();
-        const names = new Set();
-        /* The roster arrives favourites-first, so the spelling kept for a name
-           is the one the audience uses. */
-        for (const card of pages.flat()) {
+      const settled = await Promise.allSettled(
+        Array.from({ length: POOL_PAGES }, (_, i) => roster(i + 1, POOL_PER_PAGE)),
+      );
+      const seen = new Set();
+      const names = new Set();
+      /* The roster arrives favourites-first, so the spelling kept for a name
+         is the one the audience uses. */
+      for (const page of settled) {
+        if (page.status !== 'fulfilled') continue;
+        for (const card of page.value) {
           if (!card || seen.has(card.id)) continue;
           const key = nameKey(card.name);
           if (key && names.has(key)) continue;
@@ -379,8 +389,6 @@ export async function loadPool() {
           if (key) names.add(key);
           found.push(card);
         }
-      } catch {
-        found = [];
       }
       if (!found.length) found = await bundledPool();
       /* Nothing live and nothing bundled is not a crash: the binder says so and
@@ -400,9 +408,10 @@ export const poolSize = () => pool?.length || 0;
 /**
  * The character inside the tier. Popular names still come up more often than the
  * deep cuts, but on a gentle slope. The old one-in-six scale put 52% of every
- * draw on the first thirty characters of a two-hundred-strong set, so a binder
- * built from daily packs filled up with the same handful of faces and the other
- * hundred and seventy never appeared at all. Weights are 1/(rank+40).
+ * draw on the first thirty characters of the set, so a binder built from daily
+ * packs filled up with the same handful of faces and the rest never appeared at
+ * all. Weights are 1/(rank+40): the top ten land about 12% of draws and the back
+ * half of the roster gets a third of them.
  */
 function rollCharacter(len) {
   const scale = 40;

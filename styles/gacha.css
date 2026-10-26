@@ -1243,6 +1243,26 @@
   display: none;
 }
 
+/* The tile is the binder at a glance, so its print keeps to two lines. At a grid
+   column of 150-190px the name band, the serial and the rule above the rarity
+   line together cost a fifth of the picture — which is the difference between a
+   character with shoulders and a face with its chin cut off. A locked tile still
+   says so: the padlock veil prints the word. */
+.g-tile .g-plate {
+  gap: 3px;
+  padding: 7px 10px 9px;
+}
+
+.g-tile .g-serial,
+.g-tile .g-title:empty {
+  display: none;
+}
+
+.g-tile .g-rar {
+  margin-top: 0;
+  padding-top: 4px;
+}
+
 /* ---- the chips and the legend -------------------------------------------- */
 .g-chip {
   display: inline-flex;

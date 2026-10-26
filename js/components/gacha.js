@@ -235,15 +235,20 @@ export function gachaCard(card, { variant = 'full', count = 1, onClick = null, e
         h(
           'figcaption.g-plate',
           {},
-          h(
-            'div.g-ident',
-            {},
-            h('span.g-name', {}, card.name),
-            h('span.g-title', {}, card.mediaTitle || (r.ultimate ? t('The platform itself') : '')),
-            r.lv < BANNER_LV
-              ? h('span.g-serial', {}, locked ? t('Not owned') : serialText(card.serial))
-              : null,
-          ),
+          /* From the holographic line up the banner already prints the character,
+             their title and their serial in light-on-foil, so the plate does not
+             say it a second time under the art — the name band and the printed
+             plate are one or the other, which also hands ~45px back to the
+             picture on the tiers that most deserve it. */
+          r.lv < BANNER_LV
+            ? h(
+                'div.g-ident',
+                {},
+                h('span.g-name', {}, card.name),
+                h('span.g-title', {}, card.mediaTitle || (r.ultimate ? t('The platform itself') : '')),
+                h('span.g-serial', {}, locked ? t('Not owned') : serialText(card.serial)),
+              )
+            : null,
           variant === 'mini'
             ? null
             : h(

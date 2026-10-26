@@ -477,6 +477,7 @@ const ui = {
   'I already have an account': 'J’ai déjà un compte',
   'in this list': 'dans cette liste',
   'In this list': 'Dans cette liste',
+  'In the set': 'Dans la collection',
   'That email address does not look right.': 'Cette adresse e-mail ne semble pas valide.',
   'That email already has an account. Sign in instead.':
     'Un compte existe déjà pour cet e-mail. Connectez-vous.',
