@@ -13,7 +13,7 @@ import { toast } from '../lib/ui.js';
 import { errorState } from '../components/media.js';
 import { mCard, mRail, openTrailer } from './movies.js';
 import {
-  api, poster, backdrop, img, nameOf, yearOf, rating, runtimeText, fmtDate,
+  api, poster, backdrop, img, nameOf, yearOf, rating, runtimeText, seasonsLabel, fmtDate,
   firstTrailer, toggleMovieWatchlist, inMovieWatchlist, proxyNotice,
 } from '../lib/tmdb.js';
 
@@ -107,7 +107,7 @@ export async function MovieDetailView(ctx) {
           'div.m-detail-tags',
           {},
           h('span.m-chip.is-type', {}, type === 'tv' ? t('Series') : t('Movie')),
-          ...(d.genres || []).slice(0, 3).map((g) => h('span.m-chip', {}, g.name)),
+          ...(d.genres || []).slice(0, 3).map((g) => h('span.m-chip', {}, t(g.name))),
         ),
         h('h1', {}, title),
         h(
@@ -119,7 +119,7 @@ export async function MovieDetailView(ctx) {
           type === 'movie' && d.runtime ? h('span.sep', {}, '·') : null,
           type === 'movie' && d.runtime ? h('span', {}, runtimeText(d.runtime)) : null,
           type === 'tv' && d.number_of_seasons ? h('span.sep', {}, '·') : null,
-          type === 'tv' && d.number_of_seasons ? h('span', {}, `${d.number_of_seasons} ${t('seasons')}`) : null,
+          type === 'tv' && d.number_of_seasons ? h('span', {}, seasonsLabel(d.number_of_seasons)) : null,
           d.status && d.status !== 'Released' ? h('span.sep', {}, '·') : null,
           d.status && d.status !== 'Released' ? h('span', {}, d.status) : null,
         ),

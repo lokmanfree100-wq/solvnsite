@@ -5,16 +5,27 @@
  * lives), which holds the key, so the token never reaches the browser. Results
  * are cached in memory for the life of the page: TMDB pages are stable, and the
  * same home rail re-fetched per mount would only hammer the proxy.
+ *
+ * When the host answers with nothing that looks like catalogue JSON — which is
+ * what a static host does, because it runs no server code at all — the same call
+ * is answered from data/catalogue.json instead (see lib/catalogue.js). The
+ * snapshot carries no key, so it is the only way these pages can fill on
+ * GitHub Pages, and a host that does run the proxy keeps serving live TMDB.
  */
 
 import { proxyUrl } from './proxy.js';
+import { answer as catalogueAnswer, hasCatalogue, loadCatalogue, onOffline, servingOffline } from './catalogue.js';
+import { t } from './i18n.js';
+
+export { onOffline, servingOffline };
 
 const BASE = '/tmdb';
 const memCache = new Map();
 
-/* Thrown when the address under BASE did not answer with catalogue JSON — a
-   host that has no /tmdb route replies with its own HTML page, and calling
-   that "empty results" would leave the rails silently blank. */
+/* Thrown when the address under BASE did not answer with catalogue JSON and no
+   snapshot is loaded either — a host that has no /tmdb route replies with its own
+   HTML page, and calling that "empty results" would leave the rails silently
+   blank. */
 export class ProxyMissing extends Error {
   constructor(url) {
     super(`No catalogue proxy at ${url}`);
@@ -22,18 +33,33 @@ export class ProxyMissing extends Error {
   }
 }
 
+/* The proxy is absent but the snapshot is in hand, and this particular title is
+   simply not in it. Different sentence, because it is a different fact: the
+   shelves work, one title does not. */
+export class NotInCatalogue extends Error {
+  constructor(path) {
+    super(`Offline catalogue has no entry for ${path}`);
+    this.name = 'NotInCatalogue';
+  }
+}
+
 export async function tmdb(path, params = {}) {
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''));
   const url = proxyUrl(`${BASE}${path}?${qs}`);
   if (memCache.has(url)) return memCache.get(url);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`TMDB ${res.status} on ${path}`);
-  const text = await res.text();
   let data;
   try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`TMDB ${res.status} on ${path}`);
+    const text = await res.text();
     data = JSON.parse(text);
   } catch {
-    throw new ProxyMissing(url);
+    /* Nothing usable from this host. The snapshot is the only other answer, and
+       it is consulted before the page writes an empty rail. */
+    await loadCatalogue();
+    const offline = await catalogueAnswer(path, params);
+    if (offline) return offline;
+    throw hasCatalogue() ? new NotInCatalogue(path) : new ProxyMissing(url);
   }
   memCache.set(url, data);
   return data;
@@ -44,10 +70,16 @@ export async function tmdb(path, params = {}) {
    succeed: retrying does not install the endpoint. */
 export const PROXY_NOTICE = {
   heading: 'No catalogue proxy on this host',
-  body: 'Movies & Series read TMDB through a /tmdb endpoint that runs beside the site, and this address does not answer it, so there is nothing to list. This repo carries netlify.toml and netlify/functions/proxy.mjs: deploy them, set TMDB_API_KEY on that host, and write its address into js/lib/proxy.js — then these pages fill. Until then, the anime side is unaffected.',
+  body: 'Movies & Series read TMDB through a /tmdb endpoint that runs beside the site, and this address does not answer it. This repo carries data/catalogue.json and netlify/functions/proxy.mjs: the first fills these pages on a static host with no server at all, the second makes the shelves live if you deploy it and set TMDB_API_KEY there. Until one of them answers, the anime side is unaffected.',
 };
 
-export const proxyNotice = (err) => (err instanceof ProxyMissing ? PROXY_NOTICE : null);
+export const CATALOGUE_MISS = {
+  heading: 'Not in the offline catalogue',
+  body: 'This host runs no catalogue server, so these pages read the snapshot in data/catalogue.json — about a hundred and forty of the most-watched films and series. This title is not in it. build-catalogue.mjs regenerates the file, and deploying netlify/functions/proxy.mjs with TMDB_API_KEY replaces the snapshot with the whole database.',
+};
+
+export const proxyNotice = (err) =>
+  (err instanceof ProxyMissing ? PROXY_NOTICE : err instanceof NotInCatalogue ? CATALOGUE_MISS : null);
 
 /* ---- artwork --------------------------------------------------------- */
 export const img = (p, size) => (p ? `https://image.tmdb.org/t/p/${size}${p}` : null);
@@ -90,6 +122,10 @@ export const typeOf = (d) => (d?.media_type === 'tv' || d?.first_air_date || d?.
 export const rating = (v) => (Number(v) ? Number(v).toFixed(1) : '–');
 
 export const runtimeText = (m) => (m ? `${Math.floor(m / 60)}h ${m % 60}m` : '');
+
+/** "1 seasons" is wrong in English and worse in Arabic, and both the hub and the
+    detail page print this number. */
+export const seasonsLabel = (n) => (Number(n) === 1 ? t('{n} season', { n: 1 }) : t('{n} seasons', { n: n }));
 
 /** Nice date in the page's own language, e.g. "Nov 4, 2026" / "4 novembre 2026". */
 export function fmtDate(iso) {

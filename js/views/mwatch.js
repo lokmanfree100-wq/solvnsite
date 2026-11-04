@@ -34,9 +34,12 @@ import { extraServers as allServers, serverKind, serverUrl, serverName } from '.
    server list or out of the provider ladder. */
 const FILE_URL = /^https:\/\/\S+\.(?:m3u8|mp4)(?:[?#]|$)/i;
 
-/* Clean, ad-filtered embed providers only — ordered safest-first. The frame is
-   unsandboxed for the reason above; the guards are order, referrer policy and
-   calm hosts. */
+/* The embed pool, ordered calm-hosts-first. Solvn cannot filter what these pages
+   draw inside their own frame — a cross-origin document is unread from out here —
+   so the guards are the order, the referrer policy, the sandbox (no top
+   navigation, no pop-ups, no downloads: the viewer stays on Solvn whatever the
+   player tries) and the choice to put them last, behind two engines that play a
+   file in our own player. A viewer who wants none of it presses Clean room. */
 const SERVERS = {
   vidlink: {
     label: 'Server 1 · VidLink',
@@ -72,7 +75,13 @@ const PLAYER_BRAND = 'Solvn';
 /* ---- health ----------------------------------------------------------------
    Per embed URL: the site's /health proxy requests the real stream URL and
    reports status + latency, so we pick a server that can serve THIS title, not
-   one whose homepage merely resolves. A no-cors favicon probe is the fallback. */
+   one whose homepage merely resolves. A no-cors favicon probe is the fallback.
+
+   A 404 from our own /health route is not a verdict about the server — it means
+   this host runs no server code at all (GitHub Pages serves the site today), so
+   nobody was tested. The ladder then mounts in ranked order and lets the frame
+   answer for itself, because a favicon blocked by the visitor's ad-blocker is
+   not evidence that a stream server is dead. */
 const healthCache = new Map();
 const HEALTH_TTL = 5 * 60 * 1000;
 
@@ -82,14 +91,21 @@ async function checkHealth(url) {
   let out;
   try {
     const r = await fetch(proxyUrl(`/health?url=${encodeURIComponent(url)}`), { cache: 'no-store' });
-    const j = await r.json();
-    out = { ok: !!j.ok, status: Number(j.status) || 0, ms: Number(j.ms) || 0, via: 'http' };
+    if (r.status === 404) out = { ok: true, status: 0, ms: 0, via: 'no-route' };
+    else {
+      const j = await r.json();
+      out = { ok: !!j.ok, status: Number(j.status) || 0, ms: Number(j.ms) || 0, via: 'http' };
+    }
   } catch {
     out = { ok: await probeFavicon(url), status: 0, ms: 0, via: 'favicon' };
   }
   healthCache.set(url, { ...out, at: Date.now() });
   return out;
 }
+
+/** A record that only says this host has no checker is shown as "not checked",
+    never as a passing server with a latency of zero. */
+const untested = (st) => (st && st.via === 'no-route' ? null : st);
 
 async function probeFavicon(url) {
   const origin = new URL(url).origin;
@@ -449,7 +465,9 @@ export async function MovieWatchView(ctx) {
     serversBox.replaceChildren();
     for (const key of SERVER_KEYS) {
       const s = SERVERS[key];
-      const st = health(key);
+      /* 'no-route' is this host having no checker, not a server that passed one,
+         so it reads as "not checked" rather than a green tick and a latency. */
+      const st = untested(health(key));
       const down = st && st.ok === false;
       const detail = !st
         ? t('Not checked yet')
@@ -563,7 +581,7 @@ export async function MovieWatchView(ctx) {
 
   function failAll() {
     clearFailBox();
-    const results = SERVER_KEYS.map((k) => ({ k, h: health(k) }));
+    const results = SERVER_KEYS.map((k) => ({ k, h: untested(health(k)) }));
     const allDown = results.every((r) => r.h && r.h.ok === false);
     const summary = results
       .map((r) => `${SERVERS[r.k].label}: ${!r.h ? t('not checked') : r.h.ok ? `OK ${r.h.ms} ms` : r.h.status ? `HTTP ${r.h.status}` : t('unreachable')}`)

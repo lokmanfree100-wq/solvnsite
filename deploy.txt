@@ -18,20 +18,40 @@ What this copy does:
   - The bell asks AniList for air dates directly and compares them against this
     device's saved list, so episode notices work without any server.
 
-MOVIES & SERIES NEED ONE SERVER ROUTE — read this before judging the section.
+MOVIES & SERIES — what works today, and what a server would add.
 
 The anime half runs on AniList, which answers browsers directly. The film half
 reads TMDB, and a TMDB key cannot be put inside a page: whoever opens DevTools
-would own it. So every film call goes to a /tmdb endpoint that runs beside the
-site, and four sibling routes do the rest: /ia (public-domain copies), /health
-(which embed host answers this title) and /stream (the direct-file resolver).
+would own it. So film calls go to a /tmdb endpoint that runs beside the site,
+and three sibling routes do the rest: /ia (public-domain copies), /health (which
+embed host answers this title) and /stream (the direct-file resolver).
 
 GitHub Pages — what www.solvn.site points at today — runs no server code, so all
-four answer 404 there and the film pages say "No catalogue proxy on this host"
-instead of pretending to be empty. The anime side is unaffected either way.
+four answer 404 there. That no longer means empty pages: this folder carries
+data/catalogue.json, a dated snapshot of the nine film and series shelves
+(trending, popular, top rated, now playing, upcoming, airing today, on the air —
+for both movies and TV), with posters, synopses, cast, trailers and the first
+two seasons of every series in it. The pages read that file when no proxy
+answers, so browsing, search, detail pages, watchlists, continue-watching and
+trailer playback all work on the live site with no server and no key. The film
+hub says "Offline catalogue · 138 titles · dated <day>" on top so nobody mistakes
+a snapshot for the whole database.
 
-To turn the film half on, deploy the same folder on Netlify instead (netlify.toml
-and netlify/functions/proxy.mjs in this repo are the whole server):
+Two things a snapshot cannot do, and what to do about them:
+
+  - Search covers the ~140 titles in the file, not all of TMDB, and the shelves
+    only move when the file is rebuilt. Rebuild it on any machine that holds the
+    key: with serve-solvn.mjs running, `node build-catalogue.mjs` in the folder
+    above the site, then commit data/catalogue.json. Or deploy the proxy below,
+    which reads TMDB live and drops the snapshot entirely.
+  - The direct-file engine and the embed health pre-flight need /stream and
+    /health. Without them the watch page hands over to the embed pool, which
+    builds its addresses from the TMDB id in this file and so still plays; the
+    clean room asks Archive.org directly and works here too, because Archive
+    answers browsers itself.
+
+To put a live TMDB behind the site, deploy the same folder on Netlify
+(netlify.toml and netlify/functions/proxy.mjs in this repo are the whole server):
 
   1. app.netlify.com ▸ Add new site ▸ Import an existing project ▸ GitHub ▸
      pick lokmanfree100-wq/solvnsite. Build command: leave empty. Publish
@@ -53,6 +73,27 @@ Steps 1-3 are account buttons; nobody can click them for you, and nothing here
 changes the live site until they are. The alternative, if you would rather keep
 Pages: run serve-solvn.mjs on any small server you own, at the same address the
 site is served from — that answers all four routes without step 4.
+
+ANIME PLAYS ONLY WHAT YOU CHOOSE — and right now you have chosen nothing, so the
+player says "No video source is configured yet."
+
+Solvn hosts no video. Settings ▸ Streaming servers stores what plays, and that
+store lives in one browser: configuring your laptop configures your laptop, not
+the site. For everyone, name the sources once in the repo — js/lib/defaults.js,
+an array of entries in this shape:
+
+  { name: 'My player', url: 'https://player.example/anime/{anilist}/{episode}?audio={audio}', tracks: ['sub', 'dub'] }
+  { name: 'My CDN', url: 'https://cdn.example/{anilist}/ep-{episode}.m3u8', tracks: ['sub'] }
+
+A file address (.m3u8/.mp4/.webm) plays in Solvn's own player with no third-party
+page on the screen at all, so it carries no ads — that is the shape to prefer. An
+embed page is framed and sandboxed so it cannot move your visitors elsewhere, but
+whatever that page draws inside its own frame, including its advertising, belongs
+to it and Solvn cannot filter it from outside. That is why this list ships empty
+and why AniGato is blocked in code: the choice of host is the choice of what your
+visitors see, and nobody should make it for you. Entries here pass the same gate
+as a typed one — https only, placeholders checked, blocked hosts refused — and
+appear in Settings as a locked "Site default" row.
 
 After uploading, open the site once and press Ctrl+F5 so the old copies held in
 your browser are replaced by these files.

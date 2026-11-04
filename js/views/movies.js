@@ -16,8 +16,8 @@ import { t } from '../lib/i18n.js';
 import { sheet } from '../lib/ui.js';
 import { errorState } from '../components/media.js';
 import {
-  api, poster, backdrop, nameOf, yearOf, rating, runtimeText, genreMap,
-  firstTrailer, movieContinueWatching, movieWatchlist, movieProgress, proxyNotice,
+  api, poster, backdrop, nameOf, yearOf, rating, runtimeText, seasonsLabel, genreMap,
+  firstTrailer, movieContinueWatching, movieWatchlist, movieProgress, proxyNotice, onOffline, servingOffline,
 } from '../lib/tmdb.js';
 
 /* ---- one honest notice per page ---------------------------------------
@@ -130,6 +130,13 @@ export function mRail({ heading, sub, viewAll, fetcher }) {
   const root = h('section.section.row-wrap');
   const fill = (items) => {
     if (!items.length) {
+      /* A shelf the snapshot simply does not fill — a genre with no titles in it
+         — leaves no heading standing over nothing. On a live connection an empty
+         shelf is a fault, so it stays visible and says so. */
+      if (servingOffline()) {
+        root.remove();
+        return;
+      }
       track.replaceChildren(h('p.muted', { style: { padding: '20px 0', fontSize: '14px' } }, t('Nothing to show here right now.')));
       return;
     }
@@ -194,7 +201,12 @@ function mGrid({ title, sub, type, fetcher }) {
       box.append(wrap);
     });
     if (atPage === 1 && !items.length) {
-      box.replaceChildren(h('p.muted', { style: { padding: '24px 0' } }, t('Nothing to show here right now.')));
+      /* A shelf of twenty that ends is a full page; a search that returns nothing
+         on this host is a title the snapshot never carried. Say which. */
+      const line = servingOffline()
+        ? t('Nothing in the offline catalogue matches this. Deploy the /tmdb proxy beside the site for the full database.')
+        : t('Nothing to show here right now.');
+      box.replaceChildren(h('p.muted', { style: { padding: '24px 0' } }, line));
       more.hidden = true;
     }
   };
@@ -207,7 +219,12 @@ function mGrid({ title, sub, type, fetcher }) {
     try {
       const r = await fetcher(page);
       const items = Array.isArray(r) ? r : (r?.results || []);
-      if (items.length < 20) done = true;
+      /* Two ways this list can be over: a short page, or the last page TMDB said
+         there was. The second one matters because a shelf of exactly twenty
+         answers the first test with "there may be more" and leaves a Load more
+         button on screen that can only ever bring back nothing. */
+      const pages = Array.isArray(r) ? 0 : Number(r?.total_pages) || 0;
+      if (items.length < 20 || (pages && page >= pages)) done = true;
       page += 1;
       append(items, page - 1);
     } catch (err) {
@@ -291,7 +308,7 @@ function mHero(items, { onCleanup }) {
     const y = yearOf(d);
     if (y) metaBits.push(h('span', { class: 'tnum' }, String(y)));
     if (type === 'movie' && d.runtime) metaBits.push(h('span', {}, runtimeText(d.runtime)));
-    if (type === 'tv' && d.number_of_seasons) metaBits.push(h('span', {}, `${d.number_of_seasons} ${t('seasons')}`));
+    if (type === 'tv' && d.number_of_seasons) metaBits.push(h('span', {}, seasonsLabel(d.number_of_seasons)));
 
     return h(
       'div.hero-content',
@@ -308,7 +325,7 @@ function mHero(items, { onCleanup }) {
         ? h(
             'div.hero-genres',
             {},
-            ...d.genres.slice(0, 3).map((g) => h('a.hero-chip', { href: `#/movies?type=${type}&genre=${g.id}` }, g.name)),
+            ...d.genres.slice(0, 3).map((g) => h('a.hero-chip', { href: `#/movies?type=${type}&genre=${g.id}` }, t(g.name))),
           )
         : null,
       h(
@@ -444,11 +461,19 @@ const listLabel = (list) =>
   })[list] || t('Popular');
 
 const listFetcher = (list, type, page = 1) => {
-  const take = (r) => (r?.results || []).map((m) => ({ ...m, media_type: type }));
+  /* Stamped with the type the grid is showing, and returned in TMDB's own shape:
+     the page count travels with it, because a grid needs to know when a list is
+     over and an array of twenty looks like a page that has more behind it. */
+  const take = (r) => ({ ...r, results: (r?.results || []).map((m) => ({ ...m, media_type: type })) });
+  const onlyType = (r) => {
+    const out = take(r);
+    out.results = out.results.filter((m) => typeOf(m) === type);
+    return out;
+  };
   switch (list) {
-    case 'trending': return api.trending('week', page).then((r) => take(r).filter((m) => typeOf(m) === type));
-    case 'popular': return type === 'tv' ? api.popularTv(page).then(take) : api.popularMovies(page).then(take);
-    case 'top': return type === 'tv' ? api.topTv(page).then(take) : api.topMovies(page).then(take);
+    case 'trending': return api.trending('week', page).then(onlyType);
+    case 'popular': return (type === 'tv' ? api.popularTv(page) : api.popularMovies(page)).then(take);
+    case 'top': return (type === 'tv' ? api.topTv(page) : api.topMovies(page)).then(take);
     case 'now': return api.nowPlaying(page).then(take);
     case 'upcoming': return api.upcoming(page).then(take);
     case 'airing': return api.airingToday(page).then(take);
@@ -522,7 +547,7 @@ export async function MoviesView(ctx) {
       if (map[label]) label = map[label];
     } catch { /* label stays numeric */ }
     return mGrid({
-      title: label,
+      title: t(label),
       sub: type === 'tv' ? t('Series') : t('Movies'),
       type,
       fetcher: (page) => genreFetcher(query.genre, type, page),
@@ -556,6 +581,21 @@ export async function MoviesView(ctx) {
     }, icon('tv'), t('Series')),
   );
   wrap.append(seg);
+
+  /* Which half of the site answered. A live proxy needs no label; a snapshot does:
+     a viewer who opens "Upcoming" and finds last year's releases is entitled to
+     know these shelves are a dated copy of the database rather than the database.
+     The line appears only when a rail really was served from the file. */
+  const offlineTag = h('p.m-offline-tag', { hidden: true });
+  wrap.append(offlineTag);
+  onOffline(({ titles, updated, via }) => {
+    offlineTag.replaceChildren(
+      icon('info'),
+      h('span', {}, t('Offline catalogue · {n} titles · dated {date} · data by {via}', { n: titles, date: updated, via })),
+      h('span.m-offline-how', {}, t('Deploy the /tmdb proxy beside the site for the full database.')),
+    );
+    offlineTag.hidden = false;
+  });
 
   /* its own search box — the header field searches anime, this one the TMDB side */
   const searchInput = h('input.m-search', {
@@ -623,7 +663,7 @@ export async function MoviesView(ctx) {
       heading: t(heading),
       sub: t(sub),
       viewAll: `#/movies?type=${type}&list=${list}`,
-      fetcher: () => listFetcher(list, type).then((r) => r.slice(0, 18)),
+      fetcher: () => listFetcher(list, type).then((r) => r.results.slice(0, 18)),
     }));
   }
 
@@ -636,7 +676,7 @@ export async function MoviesView(ctx) {
         const names = ids.split(',').map((gid) => map[gid]).filter(Boolean);
         genreSlot.append(mRail({
           heading: t(heading),
-          sub: names.slice(0, 2).join(' · '),
+          sub: names.slice(0, 2).map((n) => t(n)).join(' · '),
           viewAll: `#/movies?type=${type}&genre=${ids.split(',')[0]}`,
           fetcher: () => genreFetcher(ids, type).then((r) => (r.results || []).slice(0, 18)),
         }));

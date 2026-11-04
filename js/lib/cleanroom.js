@@ -2,8 +2,12 @@
    The Internet Archive open catalogue holds feature films that are public domain or CC-licensed,
    as plain MP4 files. We stream those files into Solvn's own <video> element, so the player
    chrome, the scripts and the click handling all stay ours. Nothing from the embed pool is used.
-   Metadata goes through the site's /ia proxy (see lib/proxy.js); the video bytes come straight
-   from archive.org, which CSP allows only through `media-src` (never `frame-src` or `script-src`). */
+   The two catalogue endpoints this file needs — advancedsearch.php and /metadata/<id> — answer with
+   `Access-Control-Allow-Origin: *`, so the browser asks archive.org itself and the search works on a
+   host that runs no server code at all, which solvn.site is. The site's own /ia route (see
+   lib/proxy.js) stays as the second try, for a network that reaches archive.org only through the
+   site. The video bytes always came straight from archive.org anyway; CSP has never stood in the
+   way, since there is no CSP here. */
 
 import { proxyUrl } from './proxy.js';
 
@@ -69,17 +73,54 @@ function pickVideo(meta, id, wantSec) {
   };
 }
 
-async function json(url) {
-  const r = await fetch(proxyUrl(url), { cache: 'no-store' });
-  if (!r.ok) throw new Error('ia http ' + r.status);
-  return r.json();
+/* Direct first, proxy second. Both shapes describe the same request, and the
+   order is the one that works on a static host: archive.org answers the browser
+   straight, so no server of ours is needed. A failure of either kind — a network
+   that resolves archive.org to nothing, a proxy that is not there — simply moves
+   to the next shape, and the clean room reports no file rather than an error. */
+async function json(direct, proxied) {
+  for (const url of [direct, proxyUrl(proxied)]) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) continue;
+      return await r.json();
+    } catch {
+      /* unreachable from here — the other shape may still answer */
+    }
+  }
+  throw new Error('ia unreachable');
+}
+
+/* The search the /ia route builds server-side, built here too so the direct
+   request is the same question: words from the title, movies only, the deposit
+   year widened by one. Anything that is not a letter or a space goes, because it
+   is Archive's own query syntax leaking in from a title. */
+function iaSearch(title, year, rows) {
+  const words = String(title || '')
+    .replace(/^\s*title\s*:?\s*/i, ' ')
+    .replace(/[^A-Za-z0-9 ]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 12);
+  const y = /^\d{4}$/.test(String(year || '')) ? Number(year) : 0;
+  const docs = [
+    `title:(${words.join(' AND ')})`,
+    'mediatype:movies',
+    y ? `year:(${y} OR ${y - 1} OR ${y + 1})` : null,
+  ]
+    .filter(Boolean)
+    .join(' AND ');
+  const fl = ['identifier', 'title', 'year', 'downloads', 'licenseurl', 'collection']
+    .map((f) => `fl%5B%5D=${f}`)
+    .join('&');
+  return `https://archive.org/advancedsearch.php?q=${encodeURIComponent(docs)}&${fl}&rows=${rows}&page=1&output=json`;
 }
 
 async function hits(title, year) {
   const q = new URLSearchParams({ q: title, rows: '20' });
   if (year) q.set('year', String(year));
   try {
-    const res = await json(`/ia/search?${q}`);
+    const res = await json(iaSearch(title, year, 20), `/ia/search?${q}`);
     return res?.response?.docs || [];
   } catch { return []; }
 }
@@ -133,8 +174,9 @@ export async function findCleanSource(title, year, runtimeMin = 0) {
 
   const wantSec = (Number(runtimeMin) || 0) * 60;
   for (const { d } of ranked) {
+    const id = encodeURIComponent(d.identifier);
     let meta;
-    try { meta = await json(`/ia/meta/${encodeURIComponent(d.identifier)}`); } catch { continue; }
+    try { meta = await json(`https://archive.org/metadata/${id}`, `/ia/meta/${id}`); } catch { continue; }
     if (meta?.is_dark) continue; // withheld by a rights holder — no files, nothing to play
     // The rights statement is the gate, not the shelf. Any visitor can upload a modern film with
     // faked metadata — "Breaking Bad (Castellano)" was on Archive with Vince Gilligan as creator —

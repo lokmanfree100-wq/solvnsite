@@ -13,12 +13,10 @@
  *
  * Two rules follow from that.
  *
- * 1. A fresh install starts with one source, AniGato's embed, so an episode
- *    click plays a real episode on the first visit instead of landing on the
- *    "no source" notice. It is planted at most once per device, removed or
- *    replaced in Settings ▸ Streaming servers like any other entry, and never
- *    added on top of sources a device already has. Real material still comes
- *    only from whoever runs the site.
+ * 1. Nothing is planted. A fresh install has no source of its own, and the watch
+ *    page says so and points at Settings; whoever runs the site either names one
+ *    there, or names the sources every visitor should get once, in
+ *    `lib/defaults.js`. Both go through the same gate below.
  * 2. The frame never gets to move the *site* somewhere else. `FRAME_SANDBOX`
  *    omits `allow-top-navigation` and `allow-popups`, so a player cannot
  *    redirect the tab, open a window, or leave the site behind — whatever it
@@ -43,6 +41,7 @@
  */
 
 import { settings } from './store.js';
+import { DEFAULT_SERVERS } from './defaults.js';
 import { t } from './i18n.js';
 
 /* How long a server stays out of the ladder after it has failed. Half an hour:
@@ -179,8 +178,9 @@ export const serverKind = (server) => (isMediaUrl(server?.url) ? 'media' : 'embe
 
    So an empty ladder is now the honest starting point. The watch page says
    there is no source and points at Settings, and whoever runs the install
-   chooses what Solvn plays — which is the only arrangement where the ads
-   question has an answer. */
+   chooses what Solvn plays — per viewer in Settings, or once for everyone in
+   lib/defaults.js — which is the only arrangement where the ads question has an
+   answer. */
 function pruneBlockedSources() {
   const stored = settings.get('servers');
   if (!Array.isArray(stored)) return;
@@ -190,12 +190,42 @@ function pruneBlockedSources() {
   if (kept.length !== stored.length) settings.set('servers', kept);
 }
 
-/** The sources this device plays from, in the order the ladder should try them. */
-export function extraServers() {
+/** The sources this device was told about, and nothing else. */
+function storedServers() {
   pruneBlockedSources();
   const list = settings.get('servers');
   return (Array.isArray(list) ? list : []).filter((s) => s && templateProblem(s.url) === null);
 }
+
+/** A stable identity for a deploy-time entry: the stats map remembers a failure
+    against this id, so an address must keep the same one on every visit. */
+const siteId = (url) => `site:${encodeURIComponent(String(url)).slice(0, 60)}`;
+
+/**
+ * Everything this browser may play from: what the viewer added in Settings, then
+ * what whoever deployed the site named in lib/defaults.js.
+ *
+ * Device entries keep their order and their priority — a source chosen here
+ * beats a stranger configured elsewhere — and an address that appears twice is
+ * listed once. A default that fails the same gate a typed entry fails is not
+ * used at all: a blocked host stays blocked even when it was typed into the
+ * repo, because the gate is about what that page serves, not about who pasted it.
+ */
+export function extraServers() {
+  const mine = storedServers();
+  const seen = new Set(mine.map((s) => String(s.url)));
+  const site = [];
+  for (const s of Array.isArray(DEFAULT_SERVERS) ? DEFAULT_SERVERS : []) {
+    const url = String(s?.url || '').trim();
+    if (!url || seen.has(url) || templateProblem(url) !== null) continue;
+    seen.add(url);
+    site.push({ ...s, url, id: s.id || siteId(url), site: true });
+  }
+  return [...mine, ...site];
+}
+
+/** Is this row one the device could delete, or one that came with the site? */
+export const isSiteServer = (server) => !!server?.site;
 
 /**
  * Everything the anime ladder may use.
@@ -346,9 +376,12 @@ export function serverName(server) {
 export function addServer({ name = '', url = '', tracks = [] } = {}) {
   const problem = templateProblem(url);
   if (problem) return problem;
-  const list = extraServers();
+  /* Written to the device list only. Saving what this browser typed must not
+     freeze the site's own defaults into storage, or a later change to
+     lib/defaults.js would never reach this viewer again. */
+  const list = storedServers();
   const clean = url.trim();
-  if (list.some((s) => s.url === clean)) return t('That server is already listed.');
+  if (extraServers().some((s) => s.url === clean)) return t('That server is already listed.');
   const carried = TRACK_IDS.filter((id) => tracks.includes(id));
   list.push({
     id: `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
@@ -365,7 +398,9 @@ export function addServer({ name = '', url = '', tracks = [] } = {}) {
 }
 
 export function removeServer(id) {
-  const rest = extraServers().filter((s) => s.id !== id);
+  /* Only this device's own entries: a row that came with the site is not stored
+     here, so there is nothing to delete, and Settings does not offer the button. */
+  const rest = storedServers().filter((s) => s.id !== id);
   settings.set('servers', rest);
 }
 

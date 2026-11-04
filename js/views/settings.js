@@ -6,7 +6,7 @@ import { accentId, accentValue, paintAccent, previewAccent } from '../lib/accent
 import { parseHex, toHex } from '../lib/color.js';
 import { clearCache, apiStatus, checkNow } from '../lib/anilist.js';
 import { isSignedIn, tellDiscord, staticHost } from '../lib/account.js';
-import { FAILOVER_CHOICES, MEDIA_HINT, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, removeServer, serverKind, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
+import { FAILOVER_CHOICES, MEDIA_HINT, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, isSiteServer, removeServer, serverKind, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
 import { toast, confirmSheet } from '../lib/ui.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
 import { cloudConfig, cloudActive, clearCloudConfig, testCloudConnection } from '../lib/cloud.js';
@@ -612,8 +612,9 @@ export async function SettingsView() {
      address pointing at a file the watch page plays in its own player, or an
      address pointing at somebody else's player page, framed. What is drawn
      inside a framed page belongs to that page — its controls, its quality choice
-     and its corner mark cannot be taken out from here. A fresh install starts
-     with one entry, and each entry is tried in the order it is listed. */
+     and its corner mark cannot be taken out from here. Nothing starts here on its
+     own: what the site ships with lives in js/lib/defaults.js and reads as a
+     locked row, and what is added below is stored in this browser only. */
   const serversBody = h('div');
   const hostOf = (url) => {
     try {
@@ -730,7 +731,7 @@ export async function SettingsView() {
               'div.set-row',
               {},
               h('div.ico', {}, icon('alert')),
-              h('div.txt', {}, h('b', {}, t('No source configured yet')), h('span', {}, t('The player has nothing to play until an address is added below.'))),
+              h('div.txt', {}, h('b', {}, t('No source configured yet')), h('span', {}, t('The player has nothing to play until an address is added below, or in js/lib/defaults.js for every visitor.'))),
             ),
           ]),
       ...extra.map((s) =>
@@ -741,24 +742,29 @@ export async function SettingsView() {
           h('div.txt', {}, h('b', {}, serverName(s)), h('span', {}, hostOf(s.url))),
           h('span.badge', {}, serverKind(s) === 'media' ? t('In-house player') : t('Framed page')),
           h('span.badge', {}, trackMarks(s)),
-          h(
-            'button.btn.btn--sm',
-            {
-              onclick: () =>
-                confirmSheet({
-                  heading: t('Remove this server?'),
-                  body: t('{name} leaves the failover ladder. Nothing else changes.', { name: serverName(s) }),
-                  confirmLabel: t('Remove'),
-                  onConfirm: () => {
-                    removeServer(s.id);
-                    toast(t('Server removed'), { tone: 'ok', iconName: 'check' });
-                    paintServers();
-                  },
-                }),
-            },
-            icon('trash'),
-            t('Remove'),
-          ),
+          /* A row that came with the deployment is not this browser's to delete —
+             it lives in lib/defaults.js, and the button that would only look like
+             it works is not drawn. */
+          isSiteServer(s)
+            ? h('span.badge', {}, icon('lock'), t('Site default'))
+            : h(
+                'button.btn.btn--sm',
+                {
+                  onclick: () =>
+                    confirmSheet({
+                      heading: t('Remove this server?'),
+                      body: t('{name} leaves the failover ladder. Nothing else changes.', { name: serverName(s) }),
+                      confirmLabel: t('Remove'),
+                      onConfirm: () => {
+                        removeServer(s.id);
+                        toast(t('Server removed'), { tone: 'ok', iconName: 'check' });
+                        paintServers();
+                      },
+                    }),
+                },
+                icon('trash'),
+                t('Remove'),
+              ),
         ),
       ),
       h(
