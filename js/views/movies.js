@@ -1,0 +1,659 @@
+/**
+ * Movies & Series hub — the TMDB half of the site.
+ *
+ * `/movies`            → hub: hero, continue watching, rails, genre strip
+ * `/movies?type=tv`    → the Series hub
+ * `/movies?list=…`     → a paginated grid for one rail ("View all")
+ * `/movies?genre=…`    → a paginated genre grid
+ * `/movies?q=…`        → its own search results grid
+ *
+ * All data comes through the /tmdb proxy; the key never reaches the browser.
+ */
+
+import { h, icon, scrollMax, scrollPos, scrollInlineBy } from '../lib/dom.js';
+import { go } from '../lib/router.js';
+import { t } from '../lib/i18n.js';
+import { sheet } from '../lib/ui.js';
+import { errorState } from '../components/media.js';
+import {
+  api, poster, backdrop, nameOf, yearOf, rating, runtimeText, genreMap,
+  firstTrailer, movieContinueWatching, movieWatchlist, movieProgress, proxyNotice,
+} from '../lib/tmdb.js';
+
+/* ---- one honest notice per page ---------------------------------------
+   Every rail fails the same way when the host has no /tmdb endpoint, so the
+   first one says it plainly and the rest disappear rather than stacking five
+   copies of the same paragraph. */
+
+let proxyWarned = false;
+
+function failRail(root, err) {
+  const notice = proxyNotice(err);
+  if (!notice || proxyWarned) {
+    root.remove();
+    return;
+  }
+  proxyWarned = true;
+  root.replaceChildren(errorState(t('Movies'), null, notice));
+}
+
+/* ---- links ------------------------------------------------------------ */
+
+const detailHref = (t2, id) => `#/movie/${id}?type=${t2}`;
+const watchHref = (t2, id, s = 1, e = 1) =>
+  t2 === 'tv' ? `#/mwatch/${id}?type=tv&s=${s}&e=${e}` : `#/mwatch/${id}?type=movie`;
+
+const typeOf = (t2) => (t2?.media_type === 'tv' || t2?.first_air_date || t2?.name ? 'tv' : 'movie');
+
+/* ---- trailer sheet ------------------------------------------------------ */
+
+export function openTrailer(key, title) {
+  sheet({
+    heading: title,
+    sub: t('Trailer'),
+    width: 920,
+    render: () =>
+      h(
+        'div.trailer-frame',
+        {},
+        h('iframe', {
+          src: `https://www.youtube-nocookie.com/embed/${key}?autoplay=1&rel=0`,
+          allow: 'autoplay; fullscreen; picture-in-picture',
+          allowfullscreen: true,
+          title: `${title} — ${t('Trailer')}`,
+        }),
+      ),
+  });
+}
+
+/* ---- poster card -------------------------------------------------------- */
+
+export function mCard(t2, { eager = false, wide = false } = {}) {
+  const type = t2.media_type || typeOf(t2);
+  const title = nameOf(t2);
+  const href = t2._href || detailHref(type, t2.id);
+  const prog = movieProgress(t2.id);
+  const pct = prog?.duration && prog?.seconds ? Math.min(100, (prog.seconds / prog.duration) * 100) : null;
+  const score = Number(t2.vote_average);
+
+  return h(
+    `a.card.m-card${wide ? '.is-wide' : ''}`,
+    { href, 'aria-label': title },
+    h(
+      'div.card-art',
+      {},
+      poster(t2.poster_path, 'w342')
+        ? h('img', {
+            src: poster(t2.poster_path, 'w342'),
+            alt: '',
+            loading: eager ? 'eager' : 'lazy',
+            decoding: 'async',
+            fetchpriority: eager ? 'high' : null,
+            onload: (e) => e.target.classList.add('is-loaded'),
+            onerror: (e) => {
+              e.target.remove();
+            },
+          })
+        : h('span.card-ph', {}, icon('film')),
+      prog?.episode ? h('span.flag', {}, icon('history'), t('Ep {n}', { n: prog.episode })) : null,
+      score ? h('span.card-score', {}, icon('star'), rating(score)) : null,
+      h('div.card-play', {}, h('span', {}, icon('play'))),
+      pct != null ? h('div.card-progress', {}, h('i', { style: { width: `${pct}%` } })) : null,
+    ),
+    h(
+      'div.card-body',
+      {},
+      h('div.card-title.clamp-2', {}, title),
+      h(
+        'div.card-meta',
+        {},
+        h('span', {}, type === 'tv' ? t('Series') : t('Movie')),
+        yearOf(t2) ? h('span.dot') : null,
+        yearOf(t2) ? h('span.tnum', {}, String(yearOf(t2))) : null,
+      ),
+    ),
+  );
+}
+
+function mSkeletons(n) {
+  return Array.from({ length: n }, () =>
+    h('div.card.m-card', { 'aria-hidden': 'true' }, h('div.sk.sk--poster'), h('div.sk.sk--text'), h('div.sk.sk--text.w60')),
+  );
+}
+
+/* ---- rail ----------------------------------------------------------------
+   Same contract as the anime rows: vertical scrolling belongs to the page, the
+   rail moves with a horizontal swipe/drag or its own visible 44px arrows. */
+
+export function mRail({ heading, sub, viewAll, fetcher }) {
+  const track = h('div.row.no-scrollbar.m-track', { role: 'list' });
+  const root = h('section.section.row-wrap');
+  const fill = (items) => {
+    if (!items.length) {
+      track.replaceChildren(h('p.muted', { style: { padding: '20px 0', fontSize: '14px' } }, t('Nothing to show here right now.')));
+      return;
+    }
+    track.replaceChildren();
+    items.forEach((m, i) => {
+      const wrap = h('div', { role: 'listitem', style: { display: 'contents' } });
+      wrap.append(mCard(m, { eager: i < 4 }));
+      track.append(wrap);
+    });
+  };
+  track.append(...mSkeletons(8));
+
+  const prev = h('button.row-arrow.prev', { 'aria-label': t('Scroll backwards'), hidden: true }, icon('chevronLeft', { cls: 'flip' }));
+  const next = h('button.row-arrow.next', { 'aria-label': t('Scroll forwards'), hidden: true }, icon('chevronRight', { cls: 'flip' }));
+  const update = () => {
+    const max = scrollMax(track);
+    const pos = scrollPos(track);
+    prev.hidden = pos <= 4;
+    next.hidden = max <= 4 || pos >= max - 4;
+  };
+  const nudge = (dir) => scrollInlineBy(track, dir * Math.max(track.clientWidth * 0.8, 220));
+  prev.addEventListener('click', () => nudge(-1));
+  next.addEventListener('click', () => nudge(1));
+  track.addEventListener('scroll', update, { passive: true });
+  new ResizeObserver(update).observe(track);
+  requestAnimationFrame(update);
+
+  root.replaceChildren(
+    h(
+      'div.section-head',
+      {},
+      h('h2', {}, heading),
+      sub ? h('span.sub', {}, sub) : null,
+      h('span.spacer'),
+      viewAll ? h('a.link-all', { href: viewAll }, t('View all'), icon('chevronRight', { cls: 'flip' })) : null,
+    ),
+    track,
+    prev,
+    next,
+  );
+
+  fetcher()
+    .then(fill)
+    .catch((err) => failRail(root, err));
+  return root;
+}
+
+/* ---- grid (one list, paginated) ------------------------------------------ */
+
+function mGrid({ title, sub, type, fetcher }) {
+  const box = h('div.m-grid', { role: 'list' });
+  let page = 1;
+  let done = false;
+  let loading = false;
+  const more = h('button.btn.btn--glass.m-more', { type: 'button' }, icon('plus'), t('Load more'));
+
+  const append = (items, atPage) => {
+    items.forEach((m) => {
+      m.media_type = type;
+      const wrap = h('div', { role: 'listitem', style: { display: 'contents' } });
+      wrap.append(mCard(m));
+      box.append(wrap);
+    });
+    if (atPage === 1 && !items.length) {
+      box.replaceChildren(h('p.muted', { style: { padding: '24px 0' } }, t('Nothing to show here right now.')));
+      more.hidden = true;
+    }
+  };
+
+  const load = async () => {
+    if (loading || done) return;
+    loading = true;
+    more.classList.add('is-busy');
+    more.setAttribute('aria-busy', 'true');
+    try {
+      const r = await fetcher(page);
+      const items = Array.isArray(r) ? r : (r?.results || []);
+      if (items.length < 20) done = true;
+      page += 1;
+      append(items, page - 1);
+    } catch (err) {
+      done = true;
+      const notice = proxyNotice(err);
+      if (notice && !proxyWarned) {
+        proxyWarned = true;
+        box.replaceChildren(errorState(t('Movies'), null, notice));
+      } else if (notice) {
+        box.replaceChildren(h('p.muted', { style: { padding: '24px 0' } }, t('Nothing to show here right now.')));
+      } else {
+        more.replaceChildren(t('Could not load more — try again?'));
+      }
+    } finally {
+      loading = false;
+      more.classList.remove('is-busy');
+      more.removeAttribute('aria-busy');
+      more.hidden = done;
+    }
+  };
+
+  more.addEventListener('click', load);
+  load();
+
+  return h(
+    'section.section',
+    {},
+    h(
+      'div.section-head',
+      {},
+      h('h2', {}, title),
+      sub ? h('span.sub', {}, sub) : null,
+      h('span.spacer'),
+      h('a.link-all', { href: `#/movies?type=${type}` }, icon('chevronLeft', { cls: 'flip' }), type === 'tv' ? t('Back to Series') : t('Back to Movies')),
+    ),
+    box,
+    h('div.m-more-wrap', {}, more),
+  );
+}
+
+/* ---- hero -----------------------------------------------------------------
+   The same contract as the anime spotlight: 5s crossfade, held while pointed
+   at, touched, focused or hidden, silent under reduced motion, 44px arrows and
+   dots. Reuses the site's own .hero classes so it looks like the same banner. */
+
+const ROTATE_MS = 5000;
+const FADE_OUT_MS = 900;
+
+function mHero(items, { onCleanup }) {
+  const slides = items.slice(0, 6);
+  if (!slides.length) return h('div');
+
+  const reduceQ = matchMedia('(prefers-reduced-motion: reduce)');
+  let index = 0;
+  let current = null;
+  let timer = 0;
+  let hovering = false;
+  let focused = false;
+  let touching = false;
+
+  const stage = h('div.hero');
+  const dots = h('div.hero-dots', { role: 'tablist', 'aria-label': t('Featured titles') });
+
+  slides.forEach((d, i) =>
+    dots.append(
+      h('button', {
+        role: 'tab',
+        type: 'button',
+        'aria-selected': i === 0 ? 'true' : 'false',
+        'aria-label': nameOf(d),
+        onclick: () => go(i),
+      }),
+    ),
+  );
+
+  function content(d) {
+    const type = typeOf(d);
+    const trailer = firstTrailer((d.videos || {}).results);
+    const metaBits = [];
+    if (d.vote_average) metaBits.push(h('span', { class: 'tnum' }, icon('star'), ` ${rating(d.vote_average)}`));
+    const y = yearOf(d);
+    if (y) metaBits.push(h('span', { class: 'tnum' }, String(y)));
+    if (type === 'movie' && d.runtime) metaBits.push(h('span', {}, runtimeText(d.runtime)));
+    if (type === 'tv' && d.number_of_seasons) metaBits.push(h('span', {}, `${d.number_of_seasons} ${t('seasons')}`));
+
+    return h(
+      'div.hero-content',
+      {},
+      h('div.hero-eyebrow', {}, icon('trending'), t('Trending this week')),
+      h('h2.hero-title.display', {}, nameOf(d)),
+      h(
+        'div.hero-meta',
+        {},
+        ...metaBits.flatMap((bit, i) => (i ? [h('span.sep', {}, '·'), bit] : [bit])),
+      ),
+      h('p.hero-desc.clamp-2', {}, d.overview || t('No synopsis available yet.')),
+      (d.genres || []).length
+        ? h(
+            'div.hero-genres',
+            {},
+            ...d.genres.slice(0, 3).map((g) => h('a.hero-chip', { href: `#/movies?type=${type}&genre=${g.id}` }, g.name)),
+          )
+        : null,
+      h(
+        'div.hero-actions',
+        {},
+        h('a.btn.btn--primary.btn--lg', { href: watchHref(type, d.id) }, icon('play'), t('Start watching')),
+        h('a.btn.btn--glass.btn--lg', { href: detailHref(type, d.id) }, icon('info'), t('Details')),
+        trailer ? h('button.btn.btn--glass.btn--lg', { type: 'button', onclick: () => openTrailer(trailer.key, nameOf(d)) }, icon('play'), t('Trailer')) : null,
+      ),
+      h('div.hero-foot', {}, dots),
+    );
+  }
+
+  function art(d, eager) {
+    const banner = backdrop(d.backdrop_path, 'w1280');
+    if (banner) {
+      const imgEl = h('img.hero-banner', { src: banner, alt: '', decoding: 'async', fetchpriority: eager ? 'high' : null });
+      imgEl.addEventListener(
+        'error',
+        () => {
+          d.backdrop_path = null;
+          if (slides[index] === d) show(index, { animate: false });
+        },
+        { once: true },
+      );
+      return h('div.hero-art', {}, imgEl, h('div.hero-scrim'));
+    }
+    const p = poster(d.poster_path, 'w780');
+    return h(
+      'div.hero-art.is-fallback',
+      {},
+      p ? h('img.hero-blur', { src: p, alt: '', decoding: 'async' }) : null,
+      p ? h('img.hero-poster', { src: p, alt: '', decoding: 'async' }) : null,
+      h('div.hero-scrim'),
+    );
+  }
+
+  function show(i, { animate = true } = {}) {
+    index = (i + slides.length) % slides.length;
+    const d = slides[index];
+    const next = h('div.hero-slide', {}, art(d, index === 0), content(d));
+
+    if (!animate || reduceQ.matches) {
+      next.classList.add('is-instant');
+      stage.replaceChildren(next);
+      current = next;
+      requestAnimationFrame(() => next.classList.add('is-in'));
+    } else {
+      const leaving = current;
+      leaving?.classList.remove('is-in');
+      stage.append(next);
+      void next.offsetWidth;
+      requestAnimationFrame(() => next.classList.add('is-in'));
+      current = next;
+      if (leaving) {
+        const drop = () => leaving.remove();
+        leaving.addEventListener('transitionend', drop, { once: true });
+        setTimeout(drop, FADE_OUT_MS);
+      }
+    }
+
+    [...dots.children].forEach((d2, n) => d2.setAttribute('aria-selected', String(n === index)));
+  }
+
+  function go(i) {
+    show(i);
+    start();
+  }
+
+  function advance() {
+    if (document.hidden || hovering || focused || touching) return;
+    show(index + 1);
+  }
+
+  function start() {
+    clearInterval(timer);
+    timer = 0;
+    if (slides.length < 2 || reduceQ.matches) return;
+    timer = setInterval(advance, ROTATE_MS);
+  }
+
+  const onReduce = () => start();
+  reduceQ.addEventListener('change', onReduce);
+
+  const wrap = h(
+    'section.hero-wrap',
+    {},
+    stage,
+    h(
+      'div.hero-controls',
+      {},
+      h('button.hero-nav.prev', { type: 'button', 'aria-label': t('Previous spotlight'), onclick: () => go(index - 1) }, icon('chevronLeft', { cls: 'flip' })),
+      h('button.hero-nav.next', { type: 'button', 'aria-label': t('Next spotlight'), onclick: () => go(index + 1) }, icon('chevronRight', { cls: 'flip' })),
+    ),
+  );
+
+  wrap.addEventListener('pointerenter', () => { hovering = true; });
+  wrap.addEventListener('pointerleave', () => { hovering = false; });
+  wrap.addEventListener('focusin', () => { focused = true; });
+  wrap.addEventListener('focusout', () => { focused = false; });
+  wrap.addEventListener('touchstart', () => { touching = true; }, { passive: true });
+  const lift = () => {
+    if (!touching) return;
+    touching = false;
+    start();
+  };
+  wrap.addEventListener('touchend', lift, { passive: true });
+  wrap.addEventListener('touchcancel', lift, { passive: true });
+
+  show(0, { animate: false });
+  start();
+
+  onCleanup?.(() => {
+    clearInterval(timer);
+    timer = 0;
+    reduceQ.removeEventListener('change', onReduce);
+  });
+
+  return wrap;
+}
+
+/* ---- hub sections --------------------------------------------------------- */
+
+const listLabel = (list) =>
+  ({
+    trending: t('Trending This Week'),
+    popular: t('Popular'),
+    top: t('Top Rated'),
+    now: t('Now Playing'),
+    upcoming: t('Upcoming'),
+    airing: t('Airing Today'),
+    onair: t('On The Air'),
+  })[list] || t('Popular');
+
+const listFetcher = (list, type, page = 1) => {
+  const take = (r) => (r?.results || []).map((m) => ({ ...m, media_type: type }));
+  switch (list) {
+    case 'trending': return api.trending('week', page).then((r) => take(r).filter((m) => typeOf(m) === type));
+    case 'popular': return type === 'tv' ? api.popularTv(page).then(take) : api.popularMovies(page).then(take);
+    case 'top': return type === 'tv' ? api.topTv(page).then(take) : api.topMovies(page).then(take);
+    case 'now': return api.nowPlaying(page).then(take);
+    case 'upcoming': return api.upcoming(page).then(take);
+    case 'airing': return api.airingToday(page).then(take);
+    case 'onair': return api.onTheAir(page).then(take);
+    default: return api.discover(type, { sort_by: 'popularity.desc', page }).then(take);
+  }
+};
+
+const genreFetcher = (genre, type, page = 1) =>
+  api.discover(type, { with_genres: genre, sort_by: 'popularity.desc', 'vote_count.gte': 60, page });
+
+const GENRE_ROWS = {
+  movie: [
+    ['28,12', 'Action & Adventure'],
+    ['35', 'Comedy'],
+    ['27,53', 'Horror & Thriller'],
+    ['878', 'Sci-Fi'],
+    ['16', 'Animation'],
+    ['99', 'Documentaries'],
+  ],
+  tv: [
+    ['80,18', 'Crime & Drama'],
+    ['10765', 'Sci-Fi & Fantasy'],
+    ['16', 'Animation'],
+    ['35', 'Comedy'],
+    ['9648', 'Mystery'],
+    ['99', 'Documentaries'],
+  ],
+};
+
+const LIST_ROWS = {
+  movie: [
+    ['trending', 'Trending This Week', 'What everyone is watching right now.'],
+    ['popular', 'Popular Movies', 'The most-watched films on the catalogue.'],
+    ['top', 'Top Rated Movies', 'The best-scoring films, in order.'],
+    ['now', 'Now Playing', 'Fresh in cinemas and already streaming.'],
+    ['upcoming', 'Upcoming', 'Releases worth the wait.'],
+  ],
+  tv: [
+    ['trending', 'Trending This Week', 'What everyone is watching right now.'],
+    ['popular', 'Popular Series', 'The most-watched series on the catalogue.'],
+    ['top', 'Top Rated Series', 'The best-scoring series, in order.'],
+    ['airing', 'Airing Today', 'Episodes dropping today.'],
+    ['onair', 'On The Air', 'Seasons running right now.'],
+  ],
+};
+
+/* ---- the view -------------------------------------------------------------- */
+
+export async function MoviesView(ctx) {
+  const { query } = ctx.route;
+  const type = query.type === 'tv' ? 'tv' : 'movie';
+  const wrap = h('div.page-movies');
+  proxyWarned = false;
+
+  /* ---- grid modes ---- */
+  if (query.q) {
+    const q = String(query.q).trim();
+    return mGrid({
+      title: t('Search results for “{q}”', { q }),
+      sub: type === 'tv' ? t('Series') : t('Movies'),
+      type,
+      fetcher: (page) => api.search(q, type, page),
+    });
+  }
+
+  if (query.genre) {
+    let label = String(query.genre);
+    try {
+      const map = await genreMap();
+      if (map[label]) label = map[label];
+    } catch { /* label stays numeric */ }
+    return mGrid({
+      title: label,
+      sub: type === 'tv' ? t('Series') : t('Movies'),
+      type,
+      fetcher: (page) => genreFetcher(query.genre, type, page),
+    });
+  }
+
+  if (query.list) {
+    return mGrid({
+      title: listLabel(query.list),
+      sub: type === 'tv' ? t('Series') : t('Movies'),
+      type,
+      fetcher: (page) => listFetcher(query.list, type, page),
+    });
+  }
+
+  /* ---- hub ---- */
+  const seg = h(
+    'div.m-seg',
+    { role: 'group', 'aria-label': t('Catalogue') },
+    h('button.m-seg-btn', {
+      type: 'button',
+      class: type === 'movie' ? 'is-active' : '',
+      'aria-pressed': String(type === 'movie'),
+      onclick: () => go('/movies?type=movie'),
+    }, icon('film'), t('Movies')),
+    h('button.m-seg-btn', {
+      type: 'button',
+      class: type === 'tv' ? 'is-active' : '',
+      'aria-pressed': String(type === 'tv'),
+      onclick: () => go('/movies?type=tv'),
+    }, icon('tv'), t('Series')),
+  );
+  wrap.append(seg);
+
+  /* its own search box — the header field searches anime, this one the TMDB side */
+  const searchInput = h('input.m-search', {
+    type: 'search',
+    placeholder: type === 'tv' ? t('Search series…') : t('Search movies…'),
+    'aria-label': type === 'tv' ? t('Search series') : t('Search movies'),
+    autocomplete: 'off',
+    spellcheck: false,
+  });
+  const searchField = h(
+    'div.m-searchbar',
+    { role: 'search' },
+    h('span.s-ico', {}, icon('search')),
+    searchInput,
+  );
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const q = searchInput.value.trim();
+    go(q ? `/movies?type=${type}&q=${encodeURIComponent(q)}` : `/movies?type=${type}`);
+  });
+  wrap.append(searchField);
+
+  const heroSlot = h('div.home-hero-slot', {}, h('section.hero-wrap', {}, h('div.hero.sk', { style: { minHeight: '420px', borderRadius: 'var(--r-xl)' } })));
+  wrap.append(heroSlot);
+
+  /* continue watching — local, tmdb-prefixed, never collides with anime ids */
+  const cw = movieContinueWatching(14);
+  if (cw.length) {
+    wrap.append(mRail({
+      heading: t('Continue Watching'),
+      sub: t('Movies & series you started.'),
+      fetcher: async () => cw.map((p) => ({
+        id: p.id,
+        media_type: p.type,
+        title: p.title,
+        name: p.title,
+        poster_path: p.poster,
+        vote_average: 0,
+        _href: watchHref(p.type, p.id, p.season || 1, p.episode || 1),
+      })),
+    }));
+  }
+
+  /* watchlist — the films/series saved from their detail pages */
+  const wl = movieWatchlist();
+  if (wl.length) {
+    wrap.append(mRail({
+      heading: t('My Movies Watchlist'),
+      sub: t('Saved from detail pages.'),
+      fetcher: async () => wl.map((e) => ({
+        id: e.id,
+        media_type: e.type,
+        title: e.title,
+        name: e.title,
+        poster_path: e.poster,
+        vote_average: 0,
+      })),
+    }));
+  }
+
+  /* the rails */
+  for (const [list, heading, sub] of LIST_ROWS[type]) {
+    wrap.append(mRail({
+      heading: t(heading),
+      sub: t(sub),
+      viewAll: `#/movies?type=${type}&list=${list}`,
+      fetcher: () => listFetcher(list, type).then((r) => r.slice(0, 18)),
+    }));
+  }
+
+  /* genre rows */
+  const genreSlot = h('div.m-genre-rows');
+  wrap.append(genreSlot);
+  genreMap()
+    .then((map) => {
+      for (const [ids, heading] of GENRE_ROWS[type]) {
+        const names = ids.split(',').map((gid) => map[gid]).filter(Boolean);
+        genreSlot.append(mRail({
+          heading: t(heading),
+          sub: names.slice(0, 2).join(' · '),
+          viewAll: `#/movies?type=${type}&genre=${ids.split(',')[0]}`,
+          fetcher: () => genreFetcher(ids, type).then((r) => (r.results || []).slice(0, 18)),
+        }));
+      }
+    })
+    .catch(() => genreSlot.remove());
+
+  /* hero last-in: trending picks with details for the trailer button */
+  Promise.all([
+    api.trending('week').then((r) => (r.results || []).filter((m) => typeOf(m) === type).slice(0, 6)).catch(() => []),
+  ])
+    .then(async ([picks]) => {
+      const details = await Promise.all(picks.map((p) => api.details(typeOf(p), p.id).catch(() => p)));
+      for (const d of details) if (!d.media_type) d.media_type = typeOf(d);
+      heroSlot.replaceChildren(mHero(details.filter((d) => d.backdrop_path || d.poster_path), { onCleanup: ctx.onCleanup }));
+    })
+    .catch(() => heroSlot.remove());
+
+  return wrap;
+}

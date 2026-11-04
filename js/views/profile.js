@@ -30,6 +30,7 @@ import { reportAction } from '../components/report.js';
 import { mediaCard, stillImage, emptyState, errorState, loadingGrid } from '../components/media.js';
 import { favouriteEntries, listEntries, nowWatching } from '../lib/store.js';
 import { inboxUsable } from '../lib/dms.js';
+import { inboxPanel } from './mailbox.js';
 
 /* The private shelves, straight off this device's library. */
 const TABS = [
@@ -1273,6 +1274,9 @@ export async function ProfileView(ctx) {
   wrap.append(body);
 
   let tab = TABS[0][0];
+  /* Mail became a shelf on this page rather than a page of its own, and the nav
+     links straight to it, so an arriving ?tab=mail opens the box. */
+  if (ctx.route?.query?.tab === 'mail') tab = 'mail';
   /* A tab click re-paints the whole page, hero included. The intro belongs to
      arriving, not to scrolling your own lists, so it runs once. */
   let introDone = false;
@@ -1496,25 +1500,30 @@ export async function ProfileView(ctx) {
     const playlists = data.playlists || [];
     const active = TABS.find(([key]) => key === tab) || TABS[0];
 
+    const chip = (key, label, count) =>
+      h(
+        `button.chip${tab === key ? '.is-active' : ''}`,
+        {
+          role: 'tab',
+          'aria-selected': String(tab === key),
+          type: 'button',
+          onclick: () => {
+            tab = key;
+            paint();
+          },
+        },
+        t(label),
+        count ? h('span.pf-tab-n.tnum', {}, String(count)) : null,
+      );
+
     const tabs = h(
       'div.list-tabs',
       { role: 'tablist', 'aria-label': t('Watchlists') },
-      ...TABS.map(([key, label, get]) =>
-        h(
-          `button.chip${tab === key ? '.is-active' : ''}`,
-          {
-            role: 'tab',
-            'aria-selected': String(tab === key),
-            type: 'button',
-            onclick: () => {
-              tab = key;
-              paint();
-            },
-          },
-          t(label),
-          get().length ? h('span.pf-tab-n.tnum', {}, String(get().length)) : null,
-        ),
-      ),
+      ...TABS.map(([key, label, get]) => chip(key, label, get().length)),
+      /* The gift box sits beside the shelves it came from — and it only appears
+         where a server can actually hold gifts, so the tab is never a door onto
+         an empty room. */
+      data.isMe && inboxUsable() ? chip('mail', 'Mail') : null,
     );
 
     const create = h(
@@ -1531,7 +1540,7 @@ export async function ProfileView(ctx) {
       cardShowcase(user, { canEdit: data.isMe, onChanged: () => paint() }),
       favouriteCard(user, { canEdit: data.isMe, onChanged: () => paint() }),
       data.isMe ? tabs : null,
-      data.isMe ? listPanel(active[2]()) : null,
+      data.isMe ? (tab === 'mail' ? inboxPanel() : listPanel(active[2]())) : null,
       data.isMe ? nowCard() : null,
       h(
         'section.pl-section',

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Fortune wheel — five spins a day, and the odds printed as the truth.
+   Fortune wheel — two spins a day, and the odds printed as the truth.
    The wheel is the only decorative object on this site, so it gets an arena: a
    lit floor, a metal housing, a gem pointer that never moves, and underneath it
    the exact table the draw ran on. Everything that animates here is a transform
@@ -61,7 +61,7 @@
 /* The wheel stands on a lit floor rather than sitting in a card: a violet bloom
    behind the disc, a grid running to a horizon, and a border that catches the
    same light. Every layer here is static — only the disc and the result move,
-   which is what keeps five turns a day cheap on a phone. */
+   which is what keeps two turns a day cheap on a phone. */
 .fw-stage {
   position: relative;
   isolation: isolate;
@@ -424,7 +424,7 @@
   gap: var(--sp-2);
   width: min(100%, 430px);
 }
-/* Five pips are the cap made visible before the button says it in words: each
+/* The pips are the cap made visible before the button says it in words: each
    one is a turn spent, so the countdown to the cap is one glance. */
 .fw-pips {
   display: flex;

@@ -182,7 +182,7 @@ export async function CollectionView(ctx) {
         'header.page-head',
         {},
         h('div.eyebrow', {}, t('CARD BINDER')),
-        h('h1.display', {}, t('Twenty-five tiers, one roll')),
+        h('h1.display', {}, t('Fifteen tiers, one roll')),
         h(
           'p',
           {},

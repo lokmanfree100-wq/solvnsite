@@ -10,8 +10,8 @@
  * tier cannot be over-favoured by the modulo at the end of a smaller draw, and
  * the result cannot be steered from the outside.
  *
- * What a member gets for free is fifteen packs a day, and only once they have an
- * account: a guest would simply be re-handed the same fifteen every time they
+ * What a member gets for free is five packs a day, and only once they have an
+ * account: a guest would simply be re-handed the same five every time they
  * cleared their browser. The day turns at 04:00 local, whatever is left unopened
  * rolls into a bank that does not expire, and a run of consecutive days spent
  * pulling raises a *printed* floor under every pack — see `STREAK_STEPS`. A
@@ -62,9 +62,9 @@ export const RARITIES = [
   { lv: 13, id: 'prismatic', label: 'Prismatic', weight: 300, a: '#2ee6a6', b: '#0b6e52', glow: '#2ee6a6', sheen: true },
   { lv: 14, id: 'celestial', label: 'Celestial', weight: 120, a: '#a85cff', b: '#4a12a0', glow: '#a85cff', sheen: true },
   /* Fifteen tiers, and the last one is allowed to be hard: the whole set is
-     five cards a pack, so 1 in 2,500 is roughly one Rainbow Holo a month. Nine
-     more colours above it used to stretch the same odds thinner without making
-     any of them mean more. */
+     five cards a pack and five packs a day, so 1 in 2,500 is roughly one Rainbow
+     Holo a season. Nine more colours above it used to stretch the same odds
+     thinner without making any of them mean more. */
   { lv: 15, id: 'rainbow', label: 'Rainbow Holo', weight: 40, a: '#ff4fa3', b: '#22e0f5', glow: '#ffffff', holo: true },
 ];
 
@@ -136,9 +136,11 @@ export const ALL_RARITIES = [...RARITIES, ULTIMATE];
 
 /** From this tier up the card wears the printed banner along its middle. */
 export const BANNER_LV = 11;
-/** The ceiling on any hand: what a pack costs, and what a day gives. */
+/** The ceiling on any hand: what a pack costs, and what a day gives.
+    Five packs a day is what keeps a plate worth holding — fifteen filled a binder
+    in a fortnight, and a card nobody has to wait for is not a rare one. */
 export const PACK_CARDS = 5;
-export const DAILY_PACKS = 15;
+export const DAILY_PACKS = 5;
 /** A card whose Power reaches this figure is a live card: the ring prints brighter,
     the rim takes the tier's colour and the foil answers the light. The line sits
     where the bands put it — the last three tiers clear it, and a fused Lv 10–11
@@ -331,15 +333,17 @@ export const starsFor = (lv) => Math.min(5, Math.max(1, Math.ceil(Number(lv) / 3
  * Card artwork comes from the character page while AniList is answering, and
  * from the copy shipped with the build when it is not.
  *
- * Six pages, not two. The face gallery already asks for six, and a binder that
- * draws from a hundred characters shows the same thirty names every day however
- * gently the weights slope — a set of two hundred and fifty is what makes the
- * deep cuts actually turn up. Pages are gathered with `allSettled`, because one
- * blip used to reject the whole batch and hand everyone the small bundled
- * snapshot instead of the live roster they could have had.
+ * Four pages, not six. The set is what a collector is actually chasing, so a
+ * smaller one makes each plate mean more: three hundred characters across five
+ * packs a day is a binder nobody finishes, and a hunter who cannot see the end of
+ * a set stops valuing the cards inside it. Name echoes are folded out anyway, so
+ * this lands at a little over a hundred and fifty distinct people. Pages are
+ * gathered with `allSettled`, because one blip used to reject the whole batch and
+ * hand everyone the small bundled snapshot instead of the live roster they could
+ * have had.
  */
 const SEED_URL = new URL('data/packs.json', document.baseURI).href;
-const POOL_PAGES = 6;
+const POOL_PAGES = 4;
 const POOL_PER_PAGE = 50;
 let pool = null;
 let loading = null;
@@ -718,7 +722,7 @@ export function nextStreakStep(run) {
 
 /* ---- the daily hand --------------------------------------------------- */
 /**
- * Fifteen packs a day, a bank that does not expire, and a day that turns at
+ * Five packs a day, a bank that does not expire, and a day that turns at
  * 04:00. The count follows the account id rather than the browser, so signing in
  * mid-afternoon cannot be answered with a fresh allowance.
  *

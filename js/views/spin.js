@@ -1,5 +1,5 @@
 /**
- * The daily wheel: five spins, and the server decides where each one stops.
+ * The daily wheel: two spins, and the server decides where each one stops.
  *
  * This page cannot roll a prize. It draws the slices it was handed, turns the
  * wheel until the index the server named sits under the pointer, and then prints
@@ -8,10 +8,10 @@
  * somewhere a re-load cannot reach.
  *
  * The counter under the wheel is the one written by `lib/fortune.js` under
- * `solvn_spins_YYYY-MM-DD`: the button locks at five before a sixth request is
- * sent, and the server keeps the same cap for the account. The screen says how
- * many are left, fills a pip for each spent spin, and turns into a limit card
- * with the midnight countdown when the fifth one lands.
+ * `solvn_spins_YYYY-MM-DD`: the button locks at the day's cap before another
+ * request is sent, and the server keeps the same cap for the account. The screen
+ * says how many are left, fills a pip for each spent spin, and turns into a limit
+ * card with the midnight countdown when the last one lands.
  *
  * The odds table underneath is the same table the draw ran on — the weights come
  * back from `GET /api/fortune` as shares of exactly one hundred thousand, so the
@@ -517,7 +517,7 @@ export function SpinView({ onCleanup }) {
       ? t('Fresh spins in {time}', { time: clockText(spinInMs()) })
       : t('{left} of {n} spins left today', { left, n: DAILY_SPINS });
     limit.hidden = !exhausted;
-    if (exhausted) limitBody.textContent = t('Come back in {time} for five new spins.', { time: clockText(spinInMs()) });
+    if (exhausted) limitBody.textContent = t('Come back in {time} for two new spins.', { time: clockText(spinInMs()) });
     spinBtn.disabled = turning || exhausted || !st.loaded || st.failed;
     spinBtn.querySelector('span').textContent = exhausted ? t('Daily Limit Reached') : t('Spin the wheel');
     spinBtn.classList.toggle('is-locked', exhausted);
@@ -619,7 +619,7 @@ export function SpinView({ onCleanup }) {
     .catch(() => null);
   /* One tick a second for a clock nobody can settle by eye, and it only rewrites
      two short strings — no layout, no fetch. At midnight the key under the button
-     changes; the page refetches once so the fresh five appear without a reload. */
+     changes; the page refetches once so the fresh spins appear without a reload. */
   let dayKey = spinDayKey();
   const tick = setInterval(() => {
     if (spinDayKey() !== dayKey) {
@@ -630,7 +630,7 @@ export function SpinView({ onCleanup }) {
     if (spinsLeft() <= 0) {
       const time = clockText(spinInMs());
       spinsText.textContent = t('Fresh spins in {time}', { time });
-      limitBody.textContent = t('Come back in {time} for five new spins.', { time });
+      limitBody.textContent = t('Come back in {time} for two new spins.', { time });
     }
   }, 1000);
   const onAccount = () => refresh();
@@ -648,7 +648,7 @@ export function SpinView({ onCleanup }) {
       'div',
       {},
       h('h1.display', {}, t('Fortune wheel')),
-      h('p.muted.fw-sub', {}, t('Five free spins a day, drawn by the server. The odds printed under the wheel are the odds the draw ran on.')),
+      h('p.muted.fw-sub', {}, t('Two free spins a day, drawn by the server. The odds printed under the wheel are the odds the draw ran on.')),
       h('p.fw-tally.tnum', {}, t('{n} spins taken', { n: Number(fortuneState().spins) || 0 })),
     ),
     faceBtn,

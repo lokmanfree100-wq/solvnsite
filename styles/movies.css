@@ -1,0 +1,720 @@
+/* ==========================================================================
+   Movies & Series section (TMDB catalogue).
+   Cards, rows and the hero reuse the site's own .card / .row / .hero classes;
+   this file only adds what is TMDB-specific.
+   ========================================================================== */
+
+:root {
+  --m-star: #f0b429;
+}
+
+.page-movies {
+  padding-bottom: var(--sp-8);
+}
+
+/* ---- type switcher + local search ------------------------------------- */
+
+.m-seg {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  margin: 0 var(--gutter) var(--sp-3);
+}
+
+.m-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background var(--t-med), color var(--t-med);
+}
+.m-seg-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.m-seg-btn.is-active {
+  background: var(--accent-wash);
+  color: var(--text);
+}
+.m-seg-btn.is-active svg {
+  color: var(--accent);
+}
+@media (hover: hover) {
+  .m-seg-btn:not(.is-active):hover {
+    color: var(--text);
+  }
+}
+
+.m-searchbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 520px;
+  margin: 0 var(--gutter) var(--sp-4);
+}
+.m-searchbar .s-ico {
+  position: absolute;
+  inset-inline-start: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.m-searchbar .s-ico svg {
+  width: 17px;
+  height: 17px;
+}
+.m-search {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  padding-inline-start: 44px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color var(--t-med), box-shadow var(--t-med);
+}
+.m-search::placeholder {
+  color: var(--text-faint);
+}
+.m-search:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+/* ---- poster grid ------------------------------------------------------ */
+
+.m-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-5) var(--sp-4);
+}
+/* Inside a grid a card fills its cell instead of the row's fixed poster width. */
+.m-grid .card {
+  width: auto;
+}
+
+.m-more-wrap {
+  display: grid;
+  place-items: center;
+  padding: var(--sp-6) 0 var(--sp-2);
+}
+
+/* ---- trailer sheet ---------------------------------------------------- */
+
+.trailer-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: #000;
+}
+.trailer-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* ---- detail page ------------------------------------------------------ */
+
+.m-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--sp-5);
+  align-items: start;
+  margin-top: var(--sp-5);
+}
+.m-main {
+  display: grid;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+.m-side {
+  display: grid;
+  gap: var(--sp-5);
+  position: sticky;
+  top: calc(var(--topbar-h, 64px) + var(--sp-3));
+}
+.m-panel {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--glass);
+  padding: var(--sp-4);
+}
+.m-panel h3 {
+  margin: 0 0 var(--sp-3);
+  font-size: 15px;
+  font-weight: 700;
+}
+.m-overview {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 14.5px;
+  line-height: 1.65;
+}
+
+.m-detail-hero {
+  position: relative;
+  margin-inline: calc(var(--gutter) * -1);
+  min-height: 420px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.m-detail-bg {
+  position: absolute;
+  inset: 0;
+}
+.m-detail-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.m-detail-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(3, 4, 6, 0.25) 0%, rgba(3, 4, 6, 0.55) 45%, var(--bg) 100%);
+}
+.m-detail-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: var(--sp-5);
+  align-items: flex-end;
+  padding: var(--sp-6) var(--gutter);
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+}
+.m-detail-poster {
+  flex: none;
+  width: 190px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  box-shadow: var(--sh-3);
+  background: var(--surface-2);
+}
+.m-detail-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.m-detail-head {
+  min-width: 0;
+  display: grid;
+  gap: var(--sp-2);
+}
+.m-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.m-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: rgba(14, 15, 18, 0.72);
+  color: var(--text-dim);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.m-chip.is-type {
+  background: var(--accent-wash);
+  border-color: transparent;
+  color: var(--accent);
+}
+.m-detail-head h1 {
+  font-size: clamp(24px, 3.4vw, 40px);
+  line-height: 1.15;
+  margin: 0;
+}
+.m-detail-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.m-detail-sub .sep {
+  color: var(--text-faint);
+}
+.m-detail-sub .star {
+  color: var(--m-star);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.m-detail-sub .star svg {
+  width: 14px;
+  height: 14px;
+}
+.m-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+/* season tabs */
+.m-season-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--sp-4);
+}
+.m-season-tab {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--glass);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--t-med), color var(--t-med), border-color var(--t-med);
+}
+.m-season-tab.is-active {
+  background: var(--accent-wash);
+  border-color: transparent;
+  color: var(--text);
+}
+
+/* episode rows */
+.m-ep {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--hairline);
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--r-md);
+  transition: background var(--t-med);
+}
+.m-ep:first-child {
+  border-top: 0;
+}
+@media (hover: hover) {
+  .m-ep:hover {
+    background: var(--glass);
+  }
+}
+.m-ep-thumb {
+  position: relative;
+  flex: none;
+  width: 150px;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+}
+.m-ep-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.m-ep-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity var(--t-med);
+  background: rgba(3, 4, 6, 0.4);
+}
+.m-ep-play span {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.m-ep-play svg {
+  width: 16px;
+  height: 16px;
+  margin-inline-start: 2px;
+}
+@media (hover: hover) {
+  .m-ep:hover .m-ep-play {
+    opacity: 1;
+  }
+}
+.m-ep-info {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding-top: 2px;
+}
+.m-ep-name {
+  font-weight: 700;
+  font-size: 15px;
+}
+.m-ep-date {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.m-ep-overview {
+  color: var(--text-faint);
+  font-size: 13.5px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.m-ep-score {
+  margin-inline-start: auto;
+  flex: none;
+  color: var(--text-dim);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* cast strip */
+.m-cast {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 118px;
+  gap: var(--sp-3);
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+}
+.m-cast-item {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  text-align: center;
+}
+.m-cast-item img,
+.m-cast-ph {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+}
+.m-c-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.m-c-char {
+  font-size: 12px;
+  color: var(--text-faint);
+  line-height: 1.3;
+}
+
+/* facts */
+.m-fact {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: 8px 0;
+  border-top: 1px solid var(--hairline);
+  font-size: 13.5px;
+}
+.m-fact:first-child {
+  border-top: 0;
+}
+.m-fact b {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.m-fact span {
+  text-align: end;
+  color: var(--text);
+  min-width: 0;
+}
+
+/* ---- watch page ------------------------------------------------------- */
+
+.mwatch-shell {
+  display: grid;
+  gap: var(--sp-3);
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: 0 var(--gutter);
+}
+.mwatch-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+}
+.mwatch-top h1 {
+  margin: 0;
+  font-size: clamp(16px, 2.4vw, 22px);
+  line-height: 1.2;
+  max-width: 60vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mwatch-ep {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.mwatch-servers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.m-server {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--glass);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--t-med), color var(--t-med), border-color var(--t-med);
+}
+.m-server.is-active {
+  background: var(--accent-wash);
+  border-color: transparent;
+  color: var(--text);
+}
+.m-server.is-ok {
+  border-color: color-mix(in srgb, var(--success) 45%, transparent);
+}
+.m-server.is-down {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+/* segmented engine switch — same shape as the hub switcher */
+.m-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.m-player {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--hairline);
+}
+.m-player iframe,
+.m-player video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.m-player video {
+  background: #000;
+}
+.m-player-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  gap: var(--sp-3);
+  align-content: center;
+  background: rgba(4, 5, 8, 0.86);
+  color: var(--text-dim);
+  font-size: 14px;
+  transition: opacity var(--t-med);
+}
+.m-player-loading.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+.m-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--hairline);
+  border-top-color: var(--accent);
+  animation: mspin 0.9s linear infinite;
+}
+@keyframes mspin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* safety chip */
+.m-safety {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 13px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--glass);
+  color: var(--text-dim);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.m-safety svg {
+  width: 14px;
+  height: 14px;
+}
+.m-safety.is-clean {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+}
+
+.m-safety-panel {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--glass);
+  padding: var(--sp-4);
+  display: grid;
+  gap: var(--sp-3);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.m-safety-about code {
+  color: var(--text);
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+}
+.m-safety-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.m-safety-origin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.m-safety-origin b {
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* fail box */
+.m-fail {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: center;
+  text-align: center;
+  padding: var(--sp-5);
+  color: var(--text-dim);
+  font-size: 13.5px;
+}
+.m-fail h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+}
+.m-fail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: var(--sp-2);
+}
+.btn.is-muted {
+  opacity: 0.55;
+}
+
+/* clean-room watermark: our own chrome over a file we licensed */
+.player-brand {
+  position: absolute;
+  top: 14px;
+  inset-inline-start: 18px;
+  z-index: 3;
+  display: grid;
+  gap: 1px;
+  pointer-events: none;
+}
+.pb-name {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
+.pb-sub {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* ---- responsive ------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .m-detail-hero {
+    min-height: 0;
+  }
+  .m-detail-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: 64px;
+  }
+  .m-detail-poster {
+    width: 130px;
+  }
+  .m-ep-thumb {
+    width: 108px;
+  }
+  .m-layout {
+    grid-template-columns: 1fr;
+  }
+  .m-side {
+    position: static;
+  }
+}

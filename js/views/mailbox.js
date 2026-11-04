@@ -151,8 +151,16 @@ function openGift(gift) {
   });
 }
 
-export async function MailboxView({ onCleanup } = {}) {
-  const wrap = h('div.page-mailbox');
+/**
+ * The box itself, with no page around it.
+ *
+ * Mail stopped being a place of its own: a member looks for anything addressed to
+ * them on their profile, so Profile mounts this as a tab and the old route keeps
+ * working as a thin page around the same node. It paints a "Loading…" line and
+ * replaces it, which is why it does not have to be awaited.
+ */
+export function inboxPanel() {
+  const wrap = h('div.mb-inbox');
 
   if (!isSignedIn()) {
     wrap.append(
@@ -165,14 +173,6 @@ export async function MailboxView({ onCleanup } = {}) {
     );
     return wrap;
   }
-
-  const head = h(
-    'header.page-head',
-    {},
-    h('div.eyebrow', {}, t('MAILBOX')),
-    h('h1.display', {}, t('Gifts')),
-    h('p', {}, t('Cards and bonuses sent from the Solvn Card Studio. Claim one and it joins your binder.')),
-  );
 
   const list = h('div.mb-list');
   const unread = h('span.mb-count', { hidden: true });
@@ -204,8 +204,23 @@ export async function MailboxView({ onCleanup } = {}) {
     }
   }
 
-  wrap.append(head, unread, list);
-  await fill();
+  wrap.append(unread, list);
+  fill();
+  return wrap;
+}
+
+export async function MailboxView({ onCleanup } = {}) {
+  const wrap = h('div.page-mailbox');
+
+  const head = h(
+    'header.page-head',
+    {},
+    h('div.eyebrow', {}, t('MAILBOX')),
+    h('h1.display', {}, t('Gifts')),
+    h('p', {}, t('Cards and bonuses sent from the Solvn Card Studio. Claim one and it joins your binder.')),
+  );
+
+  wrap.append(head, inboxPanel());
   onCleanup?.(() => {});
   return wrap;
 }

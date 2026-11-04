@@ -124,8 +124,37 @@ export function serverTracks(server) {
   return declared.length ? TRACK_IDS.filter((id) => declared.includes(id)) : ['sub'];
 }
 
-const PLACEHOLDERS = ['anilist', 'episode', 'audio', 'next', 'accent'];
+const PLACEHOLDERS = ['anilist', 'tmdb', 'episode', 'audio', 'next', 'accent'];
 const MAX_URL = 500;
+
+/* ---- hosts Solvn will not play from, whoever pastes them ----------------
+   AniGato is the source this build used to plant on every fresh device, and it
+   is the reason a member who clicked play got a pop-under of porn before the
+   episode did: the ads are not in Solvn, they are inside that company's page,
+   and a frame we do not own cannot be filtered from outside — the browser will
+   not let us read it. So the block lives at the gate every source passes before
+   it is ever stored or framed: the address is refused, the ladder skips it, and
+   the Settings field says why. Drop a domain in here and it stops being a
+   source on every device, not just a disabled row somebody could re-enable. */
+const BLOCKED_HOSTS = ['anigato.lol', 'anig.to'];
+
+/** The host an address points at, or '' when it is not a whole https address. */
+function hostOf(url) {
+  const raw = String(url || '').trim();
+  if (!/^https:\/\/[^\s]+$/i.test(raw)) return '';
+  try {
+    return new URL(raw).hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+/** Blocked outright, including anything served under the banned domain. */
+export function blockedHost(url) {
+  const host = hostOf(url);
+  if (!host) return null;
+  return BLOCKED_HOSTS.find((b) => host === b || host.endsWith(`.${b}`)) || null;
+}
 
 /* ---- what a server actually is ----------------------------------------
    Decided from the address, never from a guess about the host: a file Solvn can
@@ -141,69 +170,49 @@ export const isMediaUrl = (url) => HLS_URL.test(String(url || '')) || FILE_URL.t
 /** `media` plays inside Solvn; `embed` is somebody else's page, framed. */
 export const serverKind = (server) => (isMediaUrl(server?.url) ? 'media' : 'embed');
 
-/* ---- the opening source ------------------------------------------------
-   A fresh install has an empty server list, and an empty list means every
-   episode click lands on the "no source" notice — technically correct, useless
-   to a new operator. So the first read of the list plants the source this build
-   ships with: AniGato's embed, addressed the way its contract spells it out —
-   the AniList id and the episode number in the path, the audio track, the
-   auto-next flag and the highlight colour in the query. A card click therefore
-   plays a real episode on the first visit. It is planted at most once per
-   device, only on a device that has nothing usable, and removing it (or every
-   source) in Settings is permanent. */
-const DEFAULT_SOURCE = {
-  id: 'anigato-embed',
-  name: 'AniGato',
-  url: 'https://anigato.lol/embed/anime/{anilist}/{episode}?audio={audio}&next={next}&accent={accent}',
-  tracks: ['sub', 'dub'],
-};
+/* ---- a device that has configured nothing ------------------------------
+   An earlier build planted AniGato's embed here so a first visit could play
+   something without any setup. That plant is gone, and it is not coming back:
+   seeding it would hand every new member precisely the pop-unders and adult
+   ads the site has been asked to stop, because those live inside that company's
+   page and cannot be filtered from a frame we do not own.
 
-/* The open test stream an earlier build planted. It is only named here so that
-   a device still holding it can be moved onto the real source in place. */
-const LEGACY_DEMO_ID = 'demo-test-stream';
-
-const DEFAULT_SEEDED_KEY = 'defaultSourceSeeded';
-
-const defaultSource = () => ({ ...DEFAULT_SOURCE, tracks: [...DEFAULT_SOURCE.tracks] });
-
-function seedDefaultOnce() {
+   So an empty ladder is now the honest starting point. The watch page says
+   there is no source and points at Settings, and whoever runs the install
+   chooses what Solvn plays — which is the only arrangement where the ads
+   question has an answer. */
+function pruneBlockedSources() {
   const stored = settings.get('servers');
-  let list = Array.isArray(stored) ? stored : [];
-
-  /* A build before this one seeded a test stream whose picture is not an
-     episode. A device that still has it gets the real source in that same slot,
-     once, so the ladder does not carry the leftover frame forever. */
-  if (list.some((s) => s && s.id === LEGACY_DEMO_ID)) {
-    list = list.map((s) => (s && s.id === LEGACY_DEMO_ID ? defaultSource() : s));
-    settings.set('servers', list);
-  }
-
-  if (settings.get(DEFAULT_SEEDED_KEY)) return;
-  /* Usable, not merely stored: a device whose list holds only broken templates
-     has no server at all, even though the list itself is not empty. */
-  settings.set(DEFAULT_SEEDED_KEY, true);
-  const usable = list.filter((s) => s && templateProblem(s.url) === null);
-  if (!usable.length) settings.set('servers', [defaultSource()]);
+  if (!Array.isArray(stored)) return;
+  /* A device that already carries the old plant gets it removed, not left in the
+     list as a row that can never play. Same for any other host banned later. */
+  const kept = stored.filter((s) => s && !blockedHost(s.url));
+  if (kept.length !== stored.length) settings.set('servers', kept);
 }
 
 /** The sources this device plays from, in the order the ladder should try them. */
 export function extraServers() {
-  seedDefaultOnce();
+  pruneBlockedSources();
   const list = settings.get('servers');
   return (Array.isArray(list) ? list : []).filter((s) => s && templateProblem(s.url) === null);
 }
 
 /**
- * Everything the ladder may use.
+ * Everything the anime ladder may use.
  *
- * An install that has configured nothing gets the opening source (see
- * `seedDefaultOnce`), so the watch page only says "nothing to play" when every
- * server was removed on purpose — and then it offers a route to Settings
- * rather than framing a stranger to fill the silence: Solvn only plays what
- * whoever runs it has chosen to point it at.
+ * Nothing is planted here. The watch page says "nothing to play" until whoever
+ * runs the install points it at a source in Settings, and it offers that route
+ * rather than framing a stranger to fill the silence: Solvn only plays what the
+ * operator chose, and a blocked host never becomes a source by accident.
+ *
+ * One thing is filtered out: a template that asks for `{tmdb}` is a film
+ * address, and an anime episode carries no TMDB id to put in it — so leaving it
+ * in this ladder means clicking episode 4 and getting whatever that address
+ * happens to hold. The movies page reads those entries for itself, and Settings
+ * still lists every entry, because it reads `extraServers`.
  */
 export function servers() {
-  return extraServers();
+  return extraServers().filter((s) => !String(s.url).includes('{tmdb}'));
 }
 
 /* What this device has seen each server do: `{ id: { ok, bad, at } }`. It is
@@ -262,6 +271,10 @@ export function templateProblem(url) {
   if (!raw) return t('Add a player address.');
   if (raw.length > MAX_URL) return t('That address is too long.');
   if (!/^https:\/\/[^\s]+$/i.test(raw)) return t('It must start with https://');
+  /* Checked before anything else, and before the file-address shortcut: a
+     banned host is banned whether it hands over a player page or a raw stream. */
+  const blocked = blockedHost(raw);
+  if (blocked) return t('{host} is blocked on Solvn — its player page serves the pop-ups and adult ads members reported.', { host: blocked });
   /* A direct file address names the episode in its own path and needs no
      placeholder at all; anything else — a player page — has to be told how to
      receive the id, the number and the track. */
@@ -295,12 +308,16 @@ const safe = {
  * address is never handed a track it does not declare, because the answer to
  * that is not an error but a player that sits there showing nothing.
  */
-export function serverUrl(server, { id, episode = 1, audio = 'sub', autoNext = true, accent = '' }) {
+export function serverUrl(server, { id, tmdb = '', episode = 1, audio = 'sub', autoNext = true, accent = '' }) {
   const wanted = asTrack(audio);
   const carried = serverTracks(server);
   const track = carried.includes(wanted) ? wanted : carried[0];
   const values = {
     anilist: safe.num(id),
+    /* `{tmdb}` is what lets one Settings list feed the movies page too: the
+       films and series live in TMDB, not AniList, and an address that names the
+       id it actually needs is an address that can be played. */
+    tmdb: safe.num(tmdb),
     episode: safe.num(episode) || '1',
     audio: track,
     next: safe.flag(autoNext),
@@ -319,7 +336,10 @@ export function serverUrl(server, { id, episode = 1, audio = 'sub', autoNext = t
  */
 export function serverName(server) {
   const n = String(server?.name || '').trim();
-  return n ? n.slice(0, 28) : t('Solvn Stream {n}', { n: servers().indexOf(server) + 1 });
+  /* Numbered against the list the operator actually sees in Settings, so an
+     unnamed entry never lands on a number that skips one, and a film-only
+     template is never numbered from the ladder that excludes it. */
+  return n ? n.slice(0, 28) : t('Solvn Stream {n}', { n: extraServers().indexOf(server) + 1 });
 }
 
 /** Add a server; returns null on success or the reason it was refused. */
@@ -347,9 +367,6 @@ export function addServer({ name = '', url = '', tracks = [] } = {}) {
 export function removeServer(id) {
   const rest = extraServers().filter((s) => s.id !== id);
   settings.set('servers', rest);
-  /* Emptying the list is a choice: the opening source does not sneak back
-     afterwards. */
-  if (!rest.length) settings.set(DEFAULT_SEEDED_KEY, true);
 }
 
 /** The speeds the settings card offers, seconds. */

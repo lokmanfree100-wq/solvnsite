@@ -26,17 +26,28 @@ import { ProfileView } from './views/profile.js';
 import { CollectionView } from './views/collection.js';
 import { LeaderboardView } from './views/leaderboard.js';
 import { MessagesView } from './views/messages.js';
-import { MailboxView } from './views/mailbox.js';
+import { RoomsView } from './views/rooms.js';
 import { TradesView } from './views/trades.js';
 import { ArenaView } from './views/arena.js';
 import { SpinView } from './views/spin.js';
 import { TopView } from './views/top.js';
 import { AdminView } from './views/admin.js';
+import { MoviesView } from './views/movies.js';
+import { MovieDetailView } from './views/mdetail.js';
+import { MovieWatchView } from './views/mwatch.js';
 import { restore, pushStats, staticHost, takeRecovery, account } from './lib/account.js';
 import { verifyCloudSchema } from './lib/cloud.js';
 import { beat, markAway } from './lib/presence.js';
 import { askAboutAccount, resetSheet } from './components/account.js';
 import { leaveForHome } from './lib/domain.js';
+
+/* Mail became a shelf on the profile page. The old /mailbox address stays alive
+   for bookmarks and saved links, and does one thing: carries the visitor to
+   where the box actually lives now. */
+function openProfileMail() {
+  setTimeout(() => go('/profile?tab=mail'), 0);
+  return h('div.p-muted', {}, t('Opening your profile…'));
+}
 
 const ROUTES = [
   { match: /^\/$/, view: HomeView, nav: true },
@@ -51,7 +62,10 @@ const ROUTES = [
   { match: /^\/packs$/, view: CollectionView, nav: true },
   { match: /^\/leaderboard$/, view: LeaderboardView, nav: true },
   { match: /^\/messages$/, view: MessagesView, nav: true },
-  { match: /^\/mailbox$/, view: MailboxView, nav: true },
+  { match: /^\/rooms$/, view: RoomsView, nav: true },
+  /* Mail moved onto the profile page, so an old bookmark or a saved link lands
+     where the box actually lives now instead of on a page that only repeats it. */
+  { match: /^\/mailbox$/, view: openProfileMail, nav: true },
   { match: /^\/trades$/, view: TradesView, nav: true },
   { match: /^\/arena$/, view: ArenaView, nav: true },
   { match: /^\/spin$/, view: SpinView, nav: true },
@@ -59,6 +73,11 @@ const ROUTES = [
   { match: /^\/admin$/, view: AdminView, nav: true },
   { match: /^\/anime\/(\d+)/, view: DetailView, nav: true },
   { match: /^\/watch\/(\d+)/, view: WatchView, nav: false },
+  /* Movies & Series: the TMDB half of the site, played by the same two engines
+     (embed pool / clean room) on the /mwatch page. */
+  { match: /^\/movies$/, view: MoviesView, nav: true },
+  { match: /^\/movie\/(\d+)/, view: MovieDetailView, nav: true },
+  { match: /^\/mwatch\/(\d+)/, view: MovieWatchView, nav: false },
 ];
 
 const root = () => qs('#view');
@@ -147,7 +166,7 @@ async function mount(route) {
   }
 
   /* AniList ids are numbers; a member id is an opaque string. */
-  const idMatch = route.path.match(/^\/(anime|watch|profile)\/([^/?#]+)/);
+  const idMatch = route.path.match(/^\/(anime|watch|profile|movie|mwatch)\/([^/?#]+)/);
   const ctx = {
     route,
     params: idMatch ? { id: idMatch[1] === 'profile' ? idMatch[2] : Number(idMatch[2]) } : {},
@@ -199,6 +218,7 @@ const PAGE_TITLES = {
   packs: 'Card Binder — Solvn',
   leaderboard: 'Leaderboard — Solvn',
   messages: 'Messages — Solvn',
+  rooms: 'Rooms — Solvn',
   mailbox: 'Mailbox — Solvn',
   trades: 'Trades — Solvn',
   arena: 'Arena — Solvn',
@@ -207,6 +227,9 @@ const PAGE_TITLES = {
   admin: 'Admin — Solvn',
   anime: 'Details — Solvn',
   watch: 'Watch — Solvn',
+  movies: 'Movies & Series — Solvn',
+  movie: 'Details — Solvn',
+  mwatch: 'Watch — Solvn',
 };
 const pageTitle = (seg) => t(PAGE_TITLES[seg] || PAGE_TITLES['']);
 

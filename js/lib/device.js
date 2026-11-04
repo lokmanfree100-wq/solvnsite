@@ -116,7 +116,7 @@ const SPIN_PRIZES = [
   { id: 'card-13', kind: 'card', amount: 13, weight: 250 },
   { id: 'card-15', kind: 'card', amount: 15, weight: 50 },
 ];
-const SPIN_LIMIT = 5;
+const SPIN_LIMIT = 2;
 const SPIN_FACE_BANK = 5;
 
 /* Watch Together: a room moves the episode and the track, never a playhead. */
@@ -2354,7 +2354,7 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     if (user.muted) fail(403, 'This account cannot spin right now.');
     const day = spinDay();
     const used = user.fortune?.day === day ? Number(user.fortune.spinsToday) || 0 : 0;
-    if (used >= SPIN_LIMIT) fail(409, 'All five spins are used. Come back tomorrow.');
+    if (used >= SPIN_LIMIT) fail(409, `All ${SPIN_LIMIT} spins are used. Come back tomorrow.`);
     const drawn = rollPrize();
     const won = { ...drawn.prize, index: drawn.at };
 

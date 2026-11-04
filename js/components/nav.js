@@ -11,7 +11,8 @@ import { logoMark } from '../lib/brand.js';
 import { accountChip } from './account.js';
 import { inboxState, inboxUsable, subscribeInbox } from '../lib/dms.js';
 import { tradeUsable } from '../lib/trades.js';
-import { duelsUsable, fortuneUsable, isStaff } from '../lib/account.js';
+import { partyUsable } from '../lib/rooms.js';
+import { fortuneUsable, isStaff } from '../lib/account.js';
 import { mountLiveSearch, disposeLiveSearch } from './searchlive.js';
 import { noticeBell, disposeBell } from './notices.js';
 
@@ -31,6 +32,7 @@ function tabFor(path) {
   if (path === '/') return 'home';
   if (path.startsWith('/search') || path.startsWith('/top')) return 'discover';
   if (path.startsWith('/anime') || path.startsWith('/watch')) return null;
+  if (path.startsWith('/movies') || path.startsWith('/movie') || path.startsWith('/mwatch')) return null;
   const seg = path.split('/')[1];
   if (seg === 'settings' || seg === 'updates' || seg === 'packs' || seg === 'leaderboard' || seg === 'messages' || seg === 'mailbox' || seg === 'trades' || seg === 'arena' || seg === 'spin') return 'profile';
   return NAV.some((n) => n.id === seg) ? seg : null;
@@ -109,13 +111,15 @@ function languagePicker() {
   return btn;
 }
 
-function sideLink({ label, path, iconName, count, active }) {
+function sideLink({ label, path, iconName, count, badge: withBadge, active }) {
   return h(
     `a.side-link${active ? '.is-active' : ''}`,
     { href: `#${path}`, 'aria-current': active ? 'page' : null },
     icon(iconName),
     h('span.grow', {}, label),
-    count ? h('span.count.tnum', {}, String(count)) : null,
+    /* A badge link always carries its node, hidden when there is nothing to
+       count — the rail paints that one text node instead of rebuilding. */
+    withBadge ? h('span.count.tnum', { hidden: true }, '') : count ? h('span.count.tnum', {}, String(count)) : null,
   );
 }
 
@@ -124,7 +128,12 @@ function sideLink({ label, path, iconName, count, active }) {
    go looking for it, so the rail keeps one node pointed at the inbox number and
    the store paints that node instead of rebuilding the whole navigation — a
    rebuild would throw away the header search box mid-type for something that is
-   one text node away. */
+   one text node away.
+
+   The number moved onto Profile with the inbox it counts: private lines are read
+   from the More sheet and gifts are opened under Profile ▸ Mail, so the one
+   place that can honestly say "there is something waiting for you" is the link
+   to the page that holds both. */
 let badge = null;
 
 function paintBadge() {
@@ -132,23 +141,7 @@ function paintBadge() {
   const n = inboxState().unread;
   badge.textContent = n > 99 ? '99+' : String(n);
   badge.hidden = !n;
-}
-
-function inboxLink(active) {
-  return h(
-    `a.side-link${active ? '.is-active' : ''}`,
-    {
-      href: '#/messages',
-      title: t('Friends and private chats'),
-      'aria-current': active ? 'page' : null,
-      ref: (el) => {
-        badge = el.querySelector('.count');
-      },
-    },
-    icon('chat'),
-    h('span.grow', {}, t('Messages')),
-    h('span.count.tnum', { hidden: true }, ''),
-  );
+  badge.title = n ? t('{n} unread in your inbox', { n }) : '';
 }
 
 /* The rail wears whatever number the inbox holds, so it repaints on every emit:
@@ -225,9 +218,10 @@ function moreSheet() {
         group(t('Browse'), [
           row(api, { href: '/search', iconName: 'search', label: t('Search anime'), on: onPath('/search') }),
           row(api, { href: '/updates', iconName: 'calendarStar', label: t('Airing schedule'), on: onPath('/updates') }),
-          row(api, { href: '/top', iconName: 'trophy', label: t('Top 100'), on: onPath('/top') }),
           row(api, { href: '/toons', iconName: 'tv', label: t('Classic & Toons'), on: onPath('/toons') }),
           row(api, { href: '/discover', iconName: 'compass', label: t('Discover'), on: onPath('/discover') }),
+          row(api, { href: '/movies', iconName: 'film', label: t('Movies'), on: path.startsWith('/movies') && query.type !== 'tv' }),
+          row(api, { href: '/movies?type=tv', iconName: 'tv', label: t('Series'), on: path.startsWith('/movies') && query.type === 'tv' }),
         ]),
         group(t('Library'), [
           row(api, { href: '/library', iconName: 'library', label: t('Everything'), on: onPath('/library') && !query.tab }),
@@ -237,16 +231,19 @@ function moreSheet() {
         ]),
         group(t('Play'), [
           row(api, { href: '/packs', iconName: 'sparkles', label: t('Card binder'), on: onPath('/packs') }),
-          row(api, { href: '/leaderboard', iconName: 'crown', label: t('Leaderboard'), on: onPath('/leaderboard') }),
           fortuneUsable()
             ? row(api, { href: '/spin', iconName: 'star', label: t('Fortune wheel'), on: onPath('/spin') })
             : null,
-          duelsUsable() ? row(api, { href: '/arena', iconName: 'bolt', label: t('Arena'), on: onPath('/arena') }) : null,
+          partyUsable()
+            ? row(api, { href: '/rooms', iconName: 'users', label: t('Rooms'), on: onPath('/rooms') })
+            : null,
           inboxUsable()
             ? row(api, { href: '/messages', iconName: 'chat', label: t('Messages & friends'), on: onPath('/messages') })
             : null,
+          /* The gift inbox opens where a member expects to find anything
+             addressed to them: on their own profile. */
           inboxUsable()
-            ? row(api, { href: '/mailbox', iconName: 'gift', label: t('Mailbox'), on: onPath('/mailbox') })
+            ? row(api, { href: '/profile?tab=mail', iconName: 'gift', label: t('Mail in your profile'), on: path.startsWith('/profile') && query.tab === 'mail' })
             : null,
           tradeUsable()
             ? row(api, { href: '/trades', iconName: 'swap', label: t('Trades'), on: onPath('/trades') })
@@ -367,13 +364,21 @@ export function renderNav() {
   );
 
   /* ---------------- side nav ---------------- */
+  /* Built before the rail so the badge can be pointed at its node: the inbox
+     number is painted after the mount, not guessed while the link is written. */
+  const profileLink = sideLink({ label: t('Profile'), path: '/profile', iconName: 'user', badge: true, active: path.startsWith('/profile') });
+  badge = profileLink.querySelector('.count');
+  /* The TMDB half of the site: one rail entry per catalogue. A title's own pages
+     (detail/watch) keep the entry lit by the type in the URL. */
+  const onMovies = (p) => path.startsWith('/movies') || p.startsWith('/movie') || p.startsWith('/mwatch');
   qs('#sidenav').replaceChildren(
     brand(true),
     sideLink({ label: t('Home'), path: '/', iconName: 'home', active: tab === 'home' }),
     sideLink({ label: t('Discover'), path: '/discover', iconName: 'compass', active: tab === 'discover' }),
     sideLink({ label: t('Classic & Toons'), path: '/toons', iconName: 'tv', active: path === '/toons' }),
-    /* No Search entry: the header field is the way in, and a second one in the
-       rail only asked the same question twice. */
+    h('div.side-sep'),
+    sideLink({ label: t('Movies'), path: '/movies', iconName: 'film', active: onMovies(path) && query.type !== 'tv' }),
+    sideLink({ label: t('Series'), path: '/movies?type=tv', iconName: 'tv', active: onMovies(path) && query.type === 'tv' }),
     h('div.side-sep'),
     /* One Library entry, not one per list: the tabs inside the page already say
        watching, completed and plan to watch, and a rail that repeats them turns
@@ -381,26 +386,27 @@ export function renderNav() {
     sideLink({ label: t('Library'), path: '/library', iconName: 'library', count: totalListCount(), active: onLibrary }),
     h('div.side-sep'),
     sideLink({ label: t('Airing schedule'), path: '/updates', iconName: 'calendarStar', active: path === '/updates' }),
-    sideLink({ label: t('Top 100'), path: '/top', iconName: 'trophy', active: path === '/top' }),
     sideLink({ label: t('Card binder'), path: '/packs', iconName: 'sparkles', active: path.startsWith('/packs') }),
-    sideLink({ label: t('Leaderboard'), path: '/leaderboard', iconName: 'crown', active: path === '/leaderboard' }),
-    /* Messages only earns a rail entry where a message can be stored; the link
-       would otherwise open a page whose only honest answer is that it has no
-       inbox to show. */
-    inboxUsable() ? inboxLink(path === '/messages') : null,
-    inboxUsable() ? sideLink({ label: t('Mailbox'), path: '/mailbox', iconName: 'gift', active: path === '/mailbox' }) : null,
+    /* Rooms holds the seat a friend invited you to. It takes the rail place that
+       Messages used to keep: private chats stay one tap away in the More sheet,
+       and a room is the thing a member actually walks back to mid-episode. */
+    partyUsable() ? sideLink({ label: t('Rooms'), path: '/rooms', iconName: 'users', active: path === '/rooms' }) : null,
+    /* The gift inbox lives inside Profile now, so it has no rail entry of its
+       own: one place to look for anything addressed to this member. */
     /* A deal is written on the server that runs this site, for the same reason a
        message is — so the link appears and disappears with the same capability. */
     tradeUsable() ? sideLink({ label: t('Trades'), path: '/trades', iconName: 'swap', active: path === '/trades' }) : null,
-    /* A fight and a spin are both settled by the server, so both links appear and
-       disappear with the same capability a trade does. */
-    duelsUsable() ? sideLink({ label: t('Arena'), path: '/arena', iconName: 'bolt', active: path === '/arena' }) : null,
+    /* A spin is settled by the server, so the link appears and disappears with
+       the same capability a trade does. */
     fortuneUsable() ? sideLink({ label: t('Fortune wheel'), path: '/spin', iconName: 'star', active: path === '/spin' }) : null,
-    sideLink({ label: t('Profile'), path: '/profile', iconName: 'user', active: path.startsWith('/profile') }),
+    /* The rail's unread number rides on Profile now, because that is where the
+       inbox it counts lives — private lines and gifted cards alike. */
+    profileLink,
     sideLink({ label: t('Settings'), path: '/settings', iconName: 'settings', active: path === '/settings' }),
     staff ? sideLink({ label: t('Admin'), path: '/admin', iconName: 'lock', active: path === '/admin' }) : null,
     h('div.side-foot', {}, t('Free HD anime streaming.'), h('br'), t('Solvn does not store files on its own servers.')),
   );
+  paintBadge();
 
   /* ---------------- tab bar ---------------- */
   qs('#tabbar').replaceChildren(

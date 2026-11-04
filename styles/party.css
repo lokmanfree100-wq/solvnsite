@@ -255,3 +255,134 @@
     animation: none;
   }
 }
+
+/* ==========================================================================
+   Rooms — the page that answers an invite.
+   The panel above is a sidebar guest; this is a page, so it takes the site's
+   own measure: a stacked list of rows at the content width, each one a title,
+   who is holding it and the two moves that are real from here (go back in, or
+   step out). The join field is the only thing on the page that asks for text,
+   so it is the loudest thing on the page.
+   ========================================================================== */
+
+.page-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--gutter) var(--sp-8);
+  max-width: 760px;
+}
+
+.room-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.room-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--glass);
+}
+
+.room-line {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.room-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-sub {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* The seat tally reads as a fraction, not a stat: it is about room left, not
+   about how many people a member has met. */
+.room-seats {
+  flex: none;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  padding: 3px 9px;
+}
+
+.room-actions {
+  display: flex;
+  flex: none;
+  gap: var(--sp-2);
+}
+
+.room-join {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-md);
+  background: var(--accent-wash);
+}
+
+.room-join-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.room-join-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+/* A code is uppercase letters and digits, so the field shows it that way before
+   the server does; a pasted invite link is trimmed by parseCode either way. */
+.room-join-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.room-join-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.room-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+
+/* A row is title, tally, then actions — but on a thumb-width screen the two
+   buttons would crush the name, so the actions drop under it. */
+@media (max-width: 560px) {
+  .room-row {
+    flex-wrap: wrap;
+  }
+  .room-actions {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+  }
+}

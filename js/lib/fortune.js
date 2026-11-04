@@ -1,5 +1,5 @@
 /**
- * The daily wheel: five spins, and the server decides where each one stops.
+ * The daily wheel: two spins, and the server decides where each one stops.
  *
  * The roll cannot happen in the browser. A wheel a page can re-run until it likes
  * the answer is a slot machine with a reset button on the back, and the whole
@@ -15,10 +15,10 @@
  * the server has already put it on the account, since that is where the shelf of
  * unlocked themes is kept.
  *
- * Five spins a day, counted in this browser under `solvn_spins_YYYY-MM-DD` so the
+ * Two spins a day, counted in this browser under `solvn_spins_YYYY-MM-DD` so the
  * button knows the cap before any request goes out. The server keeps the same cap
  * per account and hands back its count with every read, because a cleared key must
- * not become a sixth spin — the local counter is the display, not the permission.
+ * not buy another spin — the local counter is the display, not the permission.
  * The day turns at local midnight, which is the same edge the key is named after.
  */
 
@@ -26,8 +26,10 @@ import { fortuneRead, fortuneSpin, fortuneUsable, fortuneFace, isSignedIn, refre
 import { bankPacks, grantTier } from './cards.js';
 import { awardXp } from './level.js';
 
-/** The cap the wheel enforces, client and server. */
-export const DAILY_SPINS = 5;
+/** The cap the wheel enforces, client and server. Two is deliberate: the wheel is
+    the one hand that can hand over a high tier outright, so a bigger daily count
+    would print the rare end of the binder faster than the packs ever could. */
+export const DAILY_SPINS = 2;
 
 const KEY_PREFIX = 'solvn_spins_';
 const pad = (n) => String(n).padStart(2, '0');
