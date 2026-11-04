@@ -1,11 +1,13 @@
 /**
  * TMDB catalogue client for the Movies & Series section.
  *
- * Every call goes through the site's own /tmdb proxy (serve-solvn.mjs holds the
- * key), so the token never reaches the browser. Results are cached in memory for
- * the life of the page: TMDB pages are stable, and the same home rail re-fetched
- * per mount would only hammer the proxy.
+ * Every call goes through the /tmdb proxy (see lib/proxy.js for where that
+ * lives), which holds the key, so the token never reaches the browser. Results
+ * are cached in memory for the life of the page: TMDB pages are stable, and the
+ * same home rail re-fetched per mount would only hammer the proxy.
  */
+
+import { proxyUrl } from './proxy.js';
 
 const BASE = '/tmdb';
 const memCache = new Map();
@@ -22,7 +24,7 @@ export class ProxyMissing extends Error {
 
 export async function tmdb(path, params = {}) {
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''));
-  const url = `${BASE}${path}?${qs}`;
+  const url = proxyUrl(`${BASE}${path}?${qs}`);
   if (memCache.has(url)) return memCache.get(url);
   const res = await fetch(url);
   if (!res.ok) throw new Error(`TMDB ${res.status} on ${path}`);
@@ -42,7 +44,7 @@ export async function tmdb(path, params = {}) {
    succeed: retrying does not install the endpoint. */
 export const PROXY_NOTICE = {
   heading: 'No catalogue proxy on this host',
-  body: 'Movies & Series read TMDB through the site’s own /tmdb endpoint. This address does not answer it, so there is nothing to list. Running the site with serve-solvn.mjs (or any host that proxies /tmdb) fills these pages.',
+  body: 'Movies & Series read TMDB through a /tmdb endpoint that runs beside the site, and this address does not answer it, so there is nothing to list. This repo carries netlify.toml and netlify/functions/proxy.mjs: deploy them, set TMDB_API_KEY on that host, and write its address into js/lib/proxy.js — then these pages fill. Until then, the anime side is unaffected.',
 };
 
 export const proxyNotice = (err) => (err instanceof ProxyMissing ? PROXY_NOTICE : null);

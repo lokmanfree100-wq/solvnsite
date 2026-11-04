@@ -2135,8 +2135,8 @@ const ui = {
   'Direct stream: this site read the file address from a provider list it controls, and the video bytes go straight into our own <video>. None of their page loads — no document, no script, no frame — so there is no third-party player here to put an ad, a pop-up or a download in front of you. When the ladder names no file for a title, the page says which provider failed and why, and hands you the other two engines.':
     'البث المباشر: قرأ هذا الموقع عنوان الملف من قائمة مزوّدين يتحكّم بها، وتذهب بيانات الفيديو مباشرة إلى عنصر <video> الخاص بنا. لا تُحمَّل أي صفحة من صفحاتهم — لا مستند ولا سكربت ولا إطار — فلا وجود لمشغّل خارجي هنا يضع إعلانًا أو نافذة منبثقة أو تنزيلًا أمامك. وعندما لا تجد القائمة ملفًا لعنوان معيّن، توضح الصفحة أيّ مزوّد فشل ولماذا، وتترك لك المحرّكين الآخرين.',
   'No catalogue proxy on this host': 'لا يوجد وسيط لقاعدة البيانات على هذا الاستضاف',
-  'Movies & Series read TMDB through the site’s own /tmdb endpoint. This address does not answer it, so there is nothing to list. Running the site with serve-solvn.mjs (or any host that proxies /tmdb) fills these pages.':
-    'يقرأ قسم «الأفلام والمسلسلات» بيانات TMDB عبر نقطة ‎/tmdb‎ الخاصة بالموقع نفسه. هذا العنوان لا يردّ عليها، فلا يوجد ما يُعرض. تشغيل الموقع عبر serve-solvn.mjs (أو أي استضاف يوجّه ‎/tmdb‎) هو ما يملأ هذه الصفحات.',
+  'Movies & Series read TMDB through a /tmdb endpoint that runs beside the site, and this address does not answer it, so there is nothing to list. This repo carries netlify.toml and netlify/functions/proxy.mjs: deploy them, set TMDB_API_KEY on that host, and write its address into js/lib/proxy.js — then these pages fill. Until then, the anime side is unaffected.':
+    'يقرأ قسم «الأفلام والمسلسلات» بيانات TMDB عبر نقطة ‎/tmdb‎ تعمل بجانب الموقع، وهذا العنوان لا يردّ عليها، فلا يوجد ما يُعرض. يحتوي هذا المستودع على netlify.toml و netlify/functions/proxy.mjs: انشرهما، ثم ضع TMDB_API_KEY على ذلك الاستضاف واكتب عنوانه في js/lib/proxy.js — عندها تمتلئ هذه الصفحات. وحتى يحدث ذلك، لا يتأثر قسم الأنمي أبداً.',
 
 };
 

@@ -2,8 +2,10 @@
    The Internet Archive open catalogue holds feature films that are public domain or CC-licensed,
    as plain MP4 files. We stream those files into Solvn's own <video> element, so the player
    chrome, the scripts and the click handling all stay ours. Nothing from the embed pool is used.
-   Metadata goes through the local /ia proxy; the video bytes come straight from archive.org,
-   which CSP allows only through `media-src` (never `frame-src` or `script-src`). */
+   Metadata goes through the site's /ia proxy (see lib/proxy.js); the video bytes come straight
+   from archive.org, which CSP allows only through `media-src` (never `frame-src` or `script-src`). */
+
+import { proxyUrl } from './proxy.js';
 
 const norm = (s) => String(s || '').toLowerCase()
   .replace(/\(.*?\)|\[[^\]]*\]/g, ' ')
@@ -68,7 +70,7 @@ function pickVideo(meta, id, wantSec) {
 }
 
 async function json(url) {
-  const r = await fetch(url, { cache: 'no-store' });
+  const r = await fetch(proxyUrl(url), { cache: 'no-store' });
   if (!r.ok) throw new Error('ia http ' + r.status);
   return r.json();
 }

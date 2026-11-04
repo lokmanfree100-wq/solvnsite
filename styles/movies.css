@@ -678,6 +678,11 @@
   gap: 1px;
   pointer-events: none;
 }
+/* `display: grid` above beats the `hidden` attribute, and this chip is a claim
+   about who is playing — it must actually disappear over a third-party frame. */
+.player-brand[hidden] {
+  display: none;
+}
 .pb-name {
   font-size: 13px;
   font-weight: 800;

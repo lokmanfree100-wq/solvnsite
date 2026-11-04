@@ -18,5 +18,41 @@ What this copy does:
   - The bell asks AniList for air dates directly and compares them against this
     device's saved list, so episode notices work without any server.
 
+MOVIES & SERIES NEED ONE SERVER ROUTE — read this before judging the section.
+
+The anime half runs on AniList, which answers browsers directly. The film half
+reads TMDB, and a TMDB key cannot be put inside a page: whoever opens DevTools
+would own it. So every film call goes to a /tmdb endpoint that runs beside the
+site, and four sibling routes do the rest: /ia (public-domain copies), /health
+(which embed host answers this title) and /stream (the direct-file resolver).
+
+GitHub Pages — what www.solvn.site points at today — runs no server code, so all
+four answer 404 there and the film pages say "No catalogue proxy on this host"
+instead of pretending to be empty. The anime side is unaffected either way.
+
+To turn the film half on, deploy the same folder on Netlify instead (netlify.toml
+and netlify/functions/proxy.mjs in this repo are the whole server):
+
+  1. app.netlify.com ▸ Add new site ▸ Import an existing project ▸ GitHub ▸
+     pick lokmanfree100-wq/solvnsite. Build command: leave empty. Publish
+     directory: leave as the repository root.
+  2. Site configuration ▸ Environment variables ▸ Add another variable:
+     TMDB_API_KEY = the v3 key from your TMDB account, tick "Secret".
+     (This is the same value the dev server reads from tmdb.key. It never goes
+     into this repo, and the function refuses to answer without it.)
+  3. Site details ▸ Domain management ▸ Add a domain ▸ www.solvn.site. Netlify
+     then shows one CNAME target. At Namecheap ▸ Advanced DNS, edit the existing
+     www CNAME (it points at <repo>.github.io now) to that Netlify target, and
+     delete the CNAME file from this repo once the certificate is issued.
+  4. One line of code so every visitor uses that host, not only yours: open
+     js/lib/proxy.js and set
+       export const API_HOST = 'https://<the-name>.netlify.app';
+     commit and push. Leave it as '' if the routes are same-origin instead.
+
+Steps 1-3 are account buttons; nobody can click them for you, and nothing here
+changes the live site until they are. The alternative, if you would rather keep
+Pages: run serve-solvn.mjs on any small server you own, at the same address the
+site is served from — that answers all four routes without step 4.
+
 After uploading, open the site once and press Ctrl+F5 so the old copies held in
 your browser are replaced by these files.

@@ -1,0 +1,53 @@
+# Solvn on Netlify — the hosting this site actually needs for Movies & Series.
+#
+# solvn.site is served by GitHub Pages today (see CNAME), and Pages runs no
+# server code at all: /tmdb, /ia, /health and /stream answer 404 there, which is
+# why the film pages show "No catalogue proxy on this host". This file plus
+# netlify/functions/proxy.mjs is the other half: Netlify serves the static bundle
+# AND the four routes, with the TMDB key kept as a secret it holds, never a file
+# in this repo.
+#
+# Two things to do in the Netlify dashboard — the code cannot do them:
+#   1. Add site → import lokmanfree100-wq/solvnsite. Build command: none.
+#      Publish directory: the repository root. It picks this file up itself.
+#   2. Site configuration → Environment variables → add TMDB_API_KEY with the
+#      value from the key file you hold privately (the same one serve-solvn.mjs
+#      reads as tmdb.key). Tick "Secret" so it never appears in build logs.
+#      Optional: SOLVN_ORIGINS, a comma-separated list of extra addresses
+#      allowed to call these routes (deploy previews, a staging host).
+#
+# Then the site has to be told where its server lives. One line:
+# js/lib/proxy.js  →  export const API_HOST = 'https://<your-site>.netlify.app'
+# Leave it empty and everything keeps working against a same-origin proxy, which
+# is what serve-solvn.mjs gives you while developing.
+
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Each route forwards to the one function. The query params the page put on the
+# original request (page, language, url, tmdb …) travel with it, so the function
+# only needs to know which route was asked and which sub-path follows.
+
+[[redirects]]
+  from = "/tmdb/*"
+  to = "/.netlify/functions/proxy?kind=tmdb&path=:splat"
+  status = 200
+
+[[redirects]]
+  from = "/ia/*"
+  to = "/.netlify/functions/proxy?kind=ia&path=:splat"
+  status = 200
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/proxy?kind=health"
+  status = 200
+
+[[redirects]]
+  from = "/stream"
+  to = "/.netlify/functions/proxy?kind=stream"
+  status = 200

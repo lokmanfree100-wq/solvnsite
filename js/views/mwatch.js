@@ -26,6 +26,7 @@ import { errorState } from '../components/media.js';
 import { api, nameOf, setMovieProgress, proxyNotice } from '../lib/tmdb.js';
 import { findCleanSource, loadReport } from '../lib/cleanroom.js';
 import { createStage } from '../lib/playback.js';
+import { proxyUrl } from '../lib/proxy.js';
 import { extraServers as allServers, serverKind, serverUrl, serverName } from '../lib/sources.js';
 
 /* A whole https address that names a stream file: the only shape a video
@@ -69,9 +70,9 @@ const SERVER_KEYS = Object.keys(SERVERS);
 const PLAYER_BRAND = 'Solvn';
 
 /* ---- health ----------------------------------------------------------------
-   Per embed URL: the local /health proxy HEADs the real stream URL and reports
-   status + latency, so we pick a server that can serve THIS title, not one whose
-   homepage merely resolves. A no-cors favicon probe is the fallback. */
+   Per embed URL: the site's /health proxy requests the real stream URL and
+   reports status + latency, so we pick a server that can serve THIS title, not
+   one whose homepage merely resolves. A no-cors favicon probe is the fallback. */
 const healthCache = new Map();
 const HEALTH_TTL = 5 * 60 * 1000;
 
@@ -80,7 +81,7 @@ async function checkHealth(url) {
   if (hit && Date.now() - hit.at < HEALTH_TTL) return hit;
   let out;
   try {
-    const r = await fetch(`/health?url=${encodeURIComponent(url)}`, { cache: 'no-store' });
+    const r = await fetch(proxyUrl(`/health?url=${encodeURIComponent(url)}`), { cache: 'no-store' });
     const j = await r.json();
     out = { ok: !!j.ok, status: Number(j.status) || 0, ms: Number(j.ms) || 0, via: 'http' };
   } catch {
@@ -179,7 +180,7 @@ export async function MovieWatchView(ctx) {
 
   /* ---------- player ---------- */
   const loadingText = h('span');
-  const brandSub = h('span.pb-sub', {}, t('clean room'));
+  const brandSub = h('span.pb-sub');
   const player = h(
     'div.m-player',
     {},
@@ -391,7 +392,7 @@ export async function MovieWatchView(ctx) {
       }
       let r = null;
       try {
-        const resp = await fetch(`/stream?${q}`, { cache: 'no-store' });
+        const resp = await fetch(proxyUrl(`/stream?${q}`), { cache: 'no-store' });
         r = await resp.json();
       } catch {
         r = null; // the route itself is unreachable; the box below says so
@@ -766,6 +767,9 @@ export async function MovieWatchView(ctx) {
     video.poster = src.thumb;
     video.src = src.url;
     video.hidden = false;
+    /* The chip says who is playing, so each engine writes its own line: leaving
+       the initial text here would say "clean room" over the operator's own file. */
+    brandSub.textContent = t('clean room');
     brand.hidden = false;
     loadLabel().textContent = t('Buffering from archive.org…');
     paintCleanMeta();
