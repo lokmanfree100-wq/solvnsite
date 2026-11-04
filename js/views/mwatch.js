@@ -22,6 +22,7 @@
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { toast } from '../lib/ui.js';
+import { settings } from '../lib/store.js';
 import { errorState } from '../components/media.js';
 import { api, nameOf, setMovieProgress, proxyNotice } from '../lib/tmdb.js';
 import { findCleanSource, loadReport } from '../lib/cleanroom.js';
@@ -214,6 +215,37 @@ export async function MovieWatchView(ctx) {
   shell.append(metaRow);
   const safetyPanel = h('div.m-safety-panel');
   shell.append(safetyPanel);
+
+  /* ---- what to expect --------------------------------------------------
+     Saying this once, in the viewer's own language, is the difference between
+     an ad that reads as a warning and an ad that reads as an ad. The frame is
+     locked from the outside, so the honest promise is small and specific — and
+     the honest warning is the one about downloads, which is where a stranger's
+     page actually tries to reach a person. Shown the first time that engine
+     plays; one press retires it for good on this device. */
+  let advisory = null;
+  function showAdvisory() {
+    if (advisory || settings.get('poolAdvisorySeen')) return;
+    const dismiss = () => {
+      settings.set('poolAdvisorySeen', true);
+      advisory.classList.add('is-gone');
+      setTimeout(() => advisory.remove(), 320);
+    };
+    advisory = h(
+      'div.m-advisory',
+      { role: 'note' },
+      icon('info'),
+      h(
+        'div.m-advisory-copy',
+        {},
+        h('p.m-advisory-title', {}, t('This player belongs to another site')),
+        h('p.m-advisory-body', {}, t('Its own banners and pauses come with the picture — that is normal, so step back and just watch. The frame is locked: it cannot pull you off Solvn, open a window or start a download. So a page that tells you to install an app, update a codec or fix your browser is an ad, not us. Never tap it, and never allow a download from here.')),
+      ),
+      h('button.btn.btn--glass.btn--sm', { type: 'button', onclick: dismiss }, t('Got it, play')),
+    );
+    shell.insertBefore(advisory, player);
+    ctx.onCleanup(() => { advisory = null; });
+  }
 
   /* ---------- safety readout ---------- */
   function paintSafety() {
@@ -499,6 +531,7 @@ export async function MovieWatchView(ctx) {
   function setSrc(key) {
     srcSetAt = Date.now();
     ensureFrame().src = srcFor(key);
+    showAdvisory();
     paintSafety();
   }
 
@@ -759,16 +792,19 @@ export async function MovieWatchView(ctx) {
     if (seq !== cleanSeq || mode !== 'clean') return;
     if (!src) {
       loadLabel().textContent = '';
+      /* This panel sends the viewer to the pool, so the note about what the
+         pool is like has to already be on the page above it. */
+      showAdvisory();
       const box = h(
         'div.m-fail',
         {},
-        h('h3', {}, t('No licensed copy in the catalogue')),
+        h('h3', {}, t('The clean room has no copy of this title')),
         h(
           'p',
           {},
           isTv
-            ? t('Nothing on Archive carries an explicit public-domain or Creative-Commons statement for this episode. Almost no TV episodes have had their rights expire or been gifted — which is exactly why the clean room stays ad-free. Use the embed pool for this one.')
-            : t('This title has no copy on Archive with an explicit public-domain mark or CC licence. The clean room refuses anything else, including fan uploads of the real film, because that is the only way it can stay legal and ad-free.'),
+            ? t('Hardly any TV episodes have had their rights expire or been given away, so this shelf holds very few series. Watch this one in the embed pool — its player belongs to another site, and the note above says what to expect.')
+            : t('This film has no copy on Archive carrying a public-domain mark or a Creative-Commons licence, and only files whose rights are genuinely free are played here. Watch this one in the embed pool — its player belongs to another site, and the note above says what to expect.'),
         ),
         h(
           'div.m-fail-actions',

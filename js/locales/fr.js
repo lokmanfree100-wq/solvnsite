@@ -2135,7 +2135,6 @@ const ui = {
   'file': 'fichier',
   'Buffering from archive.org…': 'Mise en mémoire tampon depuis archive.org…',
   'Searching the public-domain catalogue…': 'Recherche dans le catalogue du domaine public…',
-  'No licensed copy in the catalogue': 'Aucune copie sous licence dans le catalogue',
   'Use the embed pool': 'Utiliser les lecteurs externes',
   'Find similar titles': 'Trouver des titres similaires',
   'The licensed file will not play here': 'Le fichier sous licence ne se lit pas ici',
@@ -2240,8 +2239,6 @@ const ui = {
   'Rights': 'Droits',
   'Licence': 'Licence',
   'File': 'Fichier',
-  'Nothing on Archive carries an explicit public-domain or Creative-Commons statement for this episode. Almost no TV episodes have had their rights expire or been gifted — which is exactly why the clean room stays ad-free. Use the embed pool for this one.': 'Rien dans l’Archive ne porte de mention explicite de domaine public ou de licence Creative Commons pour cet épisode. Presque aucun épisode de série n’a vu ses droits expirer ou être cédés — c’est précisément ce qui garde la salle propre sans publicité. Utilisez le pool d’intégration pour celui-ci.',
-  'This title has no copy on Archive with an explicit public-domain mark or CC licence. The clean room refuses anything else, including fan uploads of the real film, because that is the only way it can stay legal and ad-free.': 'Ce titre n’a pas de copie sur l’Archive portant une mention explicite de domaine public ou une licence CC. La salle propre refuse tout le reste, y compris les téléversements de fans du film réel, car c’est le seul moyen de rester légale et sans publicité.',
   'clean room': 'salle propre',
   'Archive.org refused the stream for this browser. Try the embed pool instead.': 'Archive.org a refusé le flux pour ce navigateur. Essayez le pool d’intégration à la place.',
   'Embed pool: the player is a page owned by the server you picked, but it runs sandboxed — it cannot redirect this tab, open windows or download files, no matter what it asks for. We also choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.': 'Pool d’intégration : le lecteur est une page appartenant au serveur que vous avez choisi, mais il s’exécute en environnement cloisonné — il ne peut ni rediriger cet onglet, ni ouvrir de fenêtres, ni télécharger de fichiers, quoi qu’il demande. Nous plaçons d’abord les hôtes calmes et ne leur transmettons que notre référent. Le navigateur nous cache les requêtes internes de ce cadre : cette liste peut donc être incomplète, jamais exagérée.',
@@ -2318,6 +2315,18 @@ const ui = {
   'Nothing in the offline catalogue matches this. Deploy the /tmdb proxy beside the site for the full database.':
     'Rien dans le catalogue hors ligne ne correspond. Déployez le proxy /tmdb à côté du site pour obtenir la base complète.',
   'Sci-Fi': 'Science-fiction',
+  'This player belongs to another site':
+    'Ce lecteur appartient à un autre site',
+  'Its own banners and pauses come with the picture — that is normal, so step back and just watch. The frame is locked: it cannot pull you off Solvn, open a window or start a download. So a page that tells you to install an app, update a codec or fix your browser is an ad, not us. Never tap it, and never allow a download from here.':
+    'Ses bannières et ses pauses font partie de l’image — c’est normal, prenez du recul et regardez tranquillement. Le cadre est verrouillé : il ne peut ni vous arracher du site, ni ouvrir une fenêtre, ni lancer un téléchargement. Toute page qui vous demande d’installer une application, de mettre à jour un codec ou votre navigateur est une publicité, pas nous. Ne la touchez jamais et n’autorisez aucun téléchargement depuis ici.',
+  'Got it, play':
+    'Compris, lecture',
+  'The clean room has no copy of this title':
+    'La salle propre n’a aucune copie de ce titre',
+  'Hardly any TV episodes have had their rights expire or been given away, so this shelf holds very few series. Watch this one in the embed pool — its player belongs to another site, and the note above says what to expect.':
+    'Presque aucun épisode de série n’a vu ses droits expirer ou être cédés : cette étagère reste très mince. Regardez celui-ci dans le pool d’intégration — son lecteur appartient à un autre site, et l’encart ci-dessus dit à quoi s’attendre.',
+  'This film has no copy on Archive carrying a public-domain mark or a Creative-Commons licence, and only files whose rights are genuinely free are played here. Watch this one in the embed pool — its player belongs to another site, and the note above says what to expect.':
+    'Ce film n’a pas de copie sur l’Archive portant une mention explicite de domaine public ou une licence CC, et seules les œuvres réellement libres sont lues ici. Regardez-le dans le pool d’intégration — son lecteur appartient à un autre site, et l’encart ci-dessus dit à quoi s’attendre.',
 };
 
 export default ui;

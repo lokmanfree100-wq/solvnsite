@@ -2095,7 +2095,6 @@ const ui = {
   'file': 'ملف',
   'Buffering from archive.org…': 'جارٍ التحميل من archive.org…',
   'Searching the public-domain catalogue…': 'جارٍ البحث في كتالوج الملكية العامة…',
-  'No licensed copy in the catalogue': 'لا توجد نسخة مرخّصة في الكتالوج',
   'Use the embed pool': 'استخدم مجموعة المواقع الخارجية',
   'Find similar titles': 'ابحث عن أعمال مشابهة',
   'The licensed file will not play here': 'الملف المرخّص لا يعمل هنا',
@@ -2200,8 +2199,6 @@ const ui = {
   'Rights': 'الحقوق',
   'Licence': 'الرخصة',
   'File': 'الملف',
-  'Nothing on Archive carries an explicit public-domain or Creative-Commons statement for this episode. Almost no TV episodes have had their rights expire or been gifted — which is exactly why the clean room stays ad-free. Use the embed pool for this one.': 'لا شيء في الأرشيف يحمل بيانًا صريحًا بملك عام أو رخصة مشاع إبداعي لهذه الحلقة. ندرة حلقات المسلسلات التي سقطت حقوقها أو أُهديت هي بعينها سبب بقاء الغرفة النظيفة بلا إعلانات. استخدم مجموعة التضمين لهذه الحلقة.',
-  'This title has no copy on Archive with an explicit public-domain mark or CC licence. The clean room refuses anything else, including fan uploads of the real film, because that is the only way it can stay legal and ad-free.': 'ليست لهذا العمل نسخة في الأرشيف تحمل علامة ملك عام صريحة أو رخصة المشاع الإبداعي. ترفض الغرفة النظيفة كل ما عداها، بما في ذلك رفعات المعجبين للفيلم نفسه، لأن ذلك السبيل الوحيد لبقائها قانونية وبلا إعلانات.',
   'clean room': 'الغرفة النظيفة',
   'Archive.org refused the stream for this browser. Try the embed pool instead.': 'رفض Archive.org البث لهذا المتصفح. جرّب مجموعة التضمين بدلًا منه.',
   'Embed pool: the player is a page owned by the server you picked, but it runs sandboxed — it cannot redirect this tab, open windows or download files, no matter what it asks for. We also choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.': 'مجموعة التضمين: المشغّل صفحة يملكها الخادم الذي اخترته، لكنها تعمل داخل صندوق عزل — لا تستطيع إعادة توجيه هذا التبويب ولا فتح نوافذ ولا تنزيل ملفات مهما طلبت. نقدّم المضيفين الأهدأ أولًا ولا نرسل لهم سوى مرجعنا. المتصفح يخفي عنّا طلبات ذلك الإطار الداخلية، لذا هذه القائمة قد تنقص — لكنها لا تزيد أبدًا.',
@@ -2278,6 +2275,18 @@ const ui = {
   'Nothing in the offline catalogue matches this. Deploy the /tmdb proxy beside the site for the full database.':
     'لا شيء في الفهرس غير المتصل يطابق هذا. انشر وسيط /tmdb بجانب الموقع لتحصل على القاعدة كاملة.',
   'Sci-Fi': 'خيال علمي',
+  'This player belongs to another site':
+    'هذا المشغّل يخصّ موقعًا آخر',
+  'Its own banners and pauses come with the picture — that is normal, so step back and just watch. The frame is locked: it cannot pull you off Solvn, open a window or start a download. So a page that tells you to install an app, update a codec or fix your browser is an ad, not us. Never tap it, and never allow a download from here.':
+    'شعاراته وإعلاناته جزء من الصورة — هذا طبيعي، فتراجَع وشاهد بهدوء. الإطار مقفل: لا يستطيع إبعادك عن Solvn ولا فتح نافذة ولا بدء تنزيل. فأي صفحة تطلب منك تثبيت تطبيق أو ترقية مكوّن فكّ الترميز أو متصفحك هي إعلانٌ لا نحن. لا تضغطها أبدًا، ولا تسمح بأي تنزيل من هنا.',
+  'Got it, play':
+    'فهمت، شغّل',
+  'The clean room has no copy of this title':
+    'لا نسخة من هذا العمل في الغرفة النظيفة',
+  'Hardly any TV episodes have had their rights expire or been given away, so this shelf holds very few series. Watch this one in the embed pool — its player belongs to another site, and the note above says what to expect.':
+    'قلّما تسقط حقوق حلقات المسلسلات أو تُهدى، لذا يبقى هذا الرفّ قليل الأعمال. شاهد هذه الحلقة في مجموعة التضمين — مشغّلها يخصّ موقعًا آخر، والشرح أعلاه يقول ماذا تتوقّع.',
+  'This film has no copy on Archive carrying a public-domain mark or a Creative-Commons licence, and only files whose rights are genuinely free are played here. Watch this one in the embed pool — its player belongs to another site, and the note above says what to expect.':
+    'لا نسخة من هذا الفيلم في Archive تحمل علامة ملك عام أو رخصة مشاع إبداعي، ولا يُشغَّل هنا إلا ما كانت حقوقه حرّة فعلًا. شاهد هذا الفيلم في مجموعة التضمين — مشغّله يخصّ موقعًا آخر، والشرح أعلاه يقول ماذا تتوقّع.',
 };
 
 export default ui;

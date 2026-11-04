@@ -83,6 +83,73 @@
   color: var(--text-dim);
 }
 
+/* ---- the "this player is not ours" note ----------------------------------
+   Sits above the player box and never over the picture: a viewer who is mid
+   scene must not have to dismiss anything to keep watching. */
+
+.m-advisory {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin: 0 var(--gutter) var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  transition: opacity var(--t-med), transform var(--t-med), max-height var(--t-med);
+  max-height: 320px;
+}
+.m-advisory > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.m-advisory-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.m-advisory-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.m-advisory-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-dim);
+  max-width: 78ch;
+}
+.m-advisory .btn {
+  flex: none;
+  align-self: center;
+}
+.m-advisory.is-gone {
+  opacity: 0;
+  transform: translateY(-6px);
+  max-height: 0;
+  padding-block: 0;
+  margin-block: 0;
+  border-color: transparent;
+  overflow: hidden;
+}
+@media (max-width: 700px) {
+  .m-advisory {
+    flex-wrap: wrap;
+  }
+  .m-advisory .btn {
+    align-self: flex-start;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .m-searchbar {
   position: relative;
   display: flex;
