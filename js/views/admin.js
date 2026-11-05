@@ -9,7 +9,7 @@
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
-import { account, isStaff, adminUsers, adminPatchUser, adminReports, adminPatchReport, adminComments, removeComment, adminGift } from '../lib/account.js';
+import { account, isStaff, adminUsers, adminAnalytics, adminPatchUser, adminReports, adminPatchReport, adminComments, removeComment, adminGift } from '../lib/account.js';
 import { cloudConfig, cloudActive, cloudApi, cloudDirectLogin, cloudSignOut } from '../lib/cloud.js';
 import { BADGES, rankOf } from '../lib/ranks.js';
 import { statsLocked, setStatsLock } from '../lib/store.js';
@@ -755,6 +755,7 @@ export async function AdminView({ onCleanup } = {}) {
 
   const totals = h('div.metric-grid');
   const analyticsBox = h('section.ad-analytics.glass');
+  const centralBox = h('section.ad-central-stats.glass');
   const studio = h('section.ad-studio.glass');
   const pulseBox = h('section.ad-pulse.glass');
   const hold = h('div.ad-hold');
@@ -812,6 +813,139 @@ export async function AdminView({ onCleanup } = {}) {
             h('span.tnum', {}, String(d.day).slice(5)),
           ),
         ),
+      ),
+      h(
+        'p.ad-pulse-note.faint',
+        {},
+        t('Counted on this device, by this browser, from the visits it has itself seen. The panel below is the one that counts everybody.'),
+      ),
+    );
+  }
+
+  /* ---- the numbers that are not this browser's --------------------------------
+     Everything above this line is what one device remembers, and it says so.
+     This panel is the real one: page views counted in the central database, and
+     the members whose heartbeat is current there. It is the same desk's own
+     account that reads it — the answer is built by kitsune_analytics(), which
+     refuses in SQL before it selects anything for anybody the database does not
+     know as staff, so a visitor holding the publishable key gets nothing.
+     What it shows about a person is a handle, a route and a moment. No country,
+     no city, no address: nothing here can say where anybody is. */
+  async function paintCentral() {
+    centralBox.replaceChildren(
+      h('h2.panel-title', {}, icon('globe'), t('Real site numbers')),
+      h('p.muted', {}, t('Asking the central database…')),
+    );
+    let a;
+    try {
+      a = (await adminAnalytics())?.analytics;
+    } catch (err) {
+      centralBox.replaceChildren(
+        h('h2.panel-title', {}, icon('globe'), t('Real site numbers')),
+        h('p.muted', {}, say(err)),
+        h(
+          'p.ad-pulse-note.faint',
+          {},
+          t('These figures can only come from the central database. Until its tables exist — the SQL file in docs/supabase.sql — no visitor is counted anywhere but this browser, and the Traffic panel above is one device remembering itself.'),
+        ),
+      );
+      return;
+    }
+    const T = a.totals || {};
+    const online = Array.isArray(a.online_list) ? a.online_list : [];
+    const recent = Array.isArray(a.recent) ? a.recent : [];
+    const pages = Array.isArray(a.pages) ? a.pages : [];
+    const days = Array.isArray(a.days) ? a.days : [];
+    const max = Math.max(1, ...days.map((d) => Number(d.n) || 0));
+    /* The same table the pulse panel uses, with the same four columns: a handle,
+       a page, a moment. There is no fifth column because there is nothing to put
+       in one — the database holds no place anybody is. */
+    const cell = (text, cls) => h(`span${cls ? `.${cls}` : ''}`, { role: 'cell' }, text);
+    const personTable = (rows, head) =>
+      h(
+        'div.ad-table',
+        { role: 'table', 'aria-label': head },
+        h(
+          'div.ad-tr.is-head',
+          { role: 'row' },
+          h('span', { role: 'columnheader' }, t('Member')),
+          h('span', { role: 'columnheader' }, t('Handle')),
+          h('span', { role: 'columnheader' }, t('Page')),
+          h('span', { role: 'columnheader' }, t('Last seen')),
+        ),
+        ...rows.map((r) =>
+          h(
+            'div.ad-tr',
+            { role: 'row' },
+            cell(r.displayName || r.username || '—'),
+            cell(r.username ? `@${r.username}` : '—', 'ad-handle'),
+            h('span.ad-page', { role: 'cell', title: r.path || '/' }, r.path || '/'),
+            cell(relativeTime(Number(r.at) || 0), 'ad-when tnum'),
+          ),
+        ),
+      );
+
+    centralBox.replaceChildren(
+      h('h2.panel-title', {}, icon('globe'), t('Real site numbers')),
+      h(
+        'div.metric-grid',
+        {},
+        statTile({ iconName: 'eye', value: String(Number(T.visits) || 0), label: t('Page views') }),
+        statTile({ iconName: 'clock', value: String(Number(T.day) || 0), label: t('Last 24 hours') }),
+        statTile({ iconName: 'trending', value: String(Number(T.week) || 0), label: t('Last 7 days') }),
+        statTile({ iconName: 'globe', value: String(Number(T.month) || 0), label: t('Last 30 days') }),
+        statTile({ iconName: 'users', value: String(Number(T.members) || 0), label: t('Members') }),
+        statTile({ iconName: 'sparkles', value: String(Number(T.new_week) || 0), label: t('New this week') }),
+        statTile({ iconName: 'bolt', value: String(Number(T.online) || 0), label: t('Online now') }),
+      ),
+      days.length
+        ? h(
+            'div.an-days',
+            { role: 'img', 'aria-label': t('Page views over the last 7 days') },
+            ...days.map((d) =>
+              h(
+                'div.an-day',
+                { title: `${d.d}: ${d.n}` },
+                h('b.tnum', {}, String(d.n)),
+                h('div.an-bar', { style: { height: `${Math.max(3, Math.round((Number(d.n) / max) * 64))}px` } }),
+                h('span.tnum', {}, String(d.d)),
+              ),
+            ),
+          )
+        : h('p.ad-pulse-note.faint', {}, t('No page view has reached the database yet.')),
+      h('h3.ad-sub', {}, icon('bolt'), t('Signed in right now')),
+      online.length
+        ? personTable(online, t('Signed in right now'))
+        : h('p.ad-pulse-note.faint', {}, t('Nobody is signed in on another device at this moment.')),
+      h('h3.ad-sub', {}, icon('history'), t('Members, most recent first')),
+      recent.length
+        ? personTable(recent, t('Members, most recent first'))
+        : h('p.ad-pulse-note.faint', {}, t('No member has checked in yet. A stamp appears when somebody signs in and opens a page.')),
+      h('h3.ad-sub', {}, icon('eye'), t('Most-opened pages')),
+      pages.length
+        ? h(
+            'div.ad-table',
+            { role: 'table', 'aria-label': t('Most-opened pages') },
+            h(
+              'div.ad-tr.is-head',
+              { role: 'row' },
+              h('span', { role: 'columnheader' }, t('Page')),
+              h('span', { role: 'columnheader' }, t('Views')),
+            ),
+            ...pages.map((p) =>
+              h(
+                'div.ad-tr',
+                { role: 'row' },
+                h('span.ad-page', { role: 'cell', title: p.path || '/' }, p.path || '/'),
+                cell(String(Number(p.n) || 0), 'tnum'),
+              ),
+            ),
+          )
+        : null,
+      h(
+        'p.ad-pulse-note.faint',
+        {},
+        t('A handle, a page and a time — that is all this stores about a person. Nothing here records where anybody is: there is no country, no city and no address in the database, and the count of visits is kept without a name attached to it.'),
       ),
     );
   }
@@ -918,9 +1052,10 @@ export async function AdminView({ onCleanup } = {}) {
     );
 
     paintPulse();
+    paintCentral();
   }
 
-  wrap.append(head, totals, analyticsBox, studio, pulseBox, hold, central, roster, reportBox, commentBox);
+  wrap.append(head, totals, analyticsBox, centralBox, studio, pulseBox, hold, central, roster, reportBox, commentBox);
   paintHold();
   await fill();
   const pulseTimer = setInterval(paintPulse, 15_000);

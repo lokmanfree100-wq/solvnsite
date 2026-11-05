@@ -74,7 +74,7 @@ function brand() {
       h('span.foot-mark', {}, logoMark(44)),
       h('span.foot-word', {}, 'SOLVN'),
     ),
-    h('p.foot-tagline', {}, t('Solvn — Your ultimate destination for ultra-high-definition anime streaming. Experience next-gen player technology with zero limits.')),
+    h('p.foot-tagline', {}, t('Solvn — anime, films & series in HD')),
     actions(),
   );
 }
@@ -89,7 +89,6 @@ function dmca() {
     'section.foot-dmca',
     {},
     h('h3.foot-h', {}, t('DMCA')),
-    h('p.foot-dmca-line', {}, t('Solvn does not store files on server')),
     h(
       'p',
       {},

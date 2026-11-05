@@ -105,6 +105,26 @@ export async function verifyCloudSchema() {
 
 export const cloudSchemaMissing = () => schema.state === 'missing';
 
+/* The one check that is currently on its way, so a second caller waits for it
+   instead of starting a third request or reading "wait" as "missing". */
+let checkInFlight = null;
+
+/** Proven, not merely configured: the tables answered. This is the only state in
+ *  which an account write or an anonymous page view belongs to the cloud.
+ *
+ *  The check is awaited rather than sampled — the first paint can land while the
+ *  question is still travelling, and a wrong "no database" is worse than the
+ *  moment it takes to get the right answer. Calls made during one check share it. */
+export function cloudSchemaReady() {
+  if (schema.state !== 'wait') return Promise.resolve(schema.state === 'live');
+  if (!checkInFlight) {
+    checkInFlight = verifyCloudSchema().finally(() => {
+      checkInFlight = null;
+    });
+  }
+  return checkInFlight;
+}
+
 /** Saved but not yet proven — the Google button waits for `verified`. */
 export function saveCloudConfig({ url, key }) {
   const base = baseUrl(url || '');
@@ -498,6 +518,10 @@ function toUser(row) {
       completed: Number(row.completed) || 0,
       titles: Number(row.titles) || 0,
     },
+    /* The duels board prints the record under the name and the division chip
+       beside it, so the row has to carry the same shape device.js's publicUser()
+     gives it or the cloud board shows 0–0 for a member who has fought. */
+    duel: row.duel && typeof row.duel === 'object' ? row.duel : null,
   };
 }
 
@@ -685,6 +709,10 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
         p_completed: body.completed,
         p_titles: body.titles,
         p_badges: body.badges,
+        /* The duels board ranks on this, so a member's record has to travel with
+           their watch hours — `p_duel` defaults to null in the SQL, so a bundle
+           that does not send it keeps its old record. */
+        p_duel: body.duel ?? null,
       },
     });
     return { user: toUser(rows) };
@@ -721,6 +749,35 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
   if (seg[0] === 'admin' && seg[1] === 'core-roster' && method === 'GET') {
     const data = await req(cfg, '/rest/v1/rpc/kitsune_core_roster');
     return { users: (data?.users || []).map(toRosterRow).filter(Boolean) };
+  }
+
+  /* The desk's real numbers. The function answers `ok:false` for anybody the
+     database does not know as staff, so a stranger holding the publishable key
+     reads an empty object rather than a member list. */
+  if (seg[0] === 'admin' && seg[1] === 'analytics' && method === 'GET') {
+    /* POST because the function prunes the two traffic tables on its way out,
+       which makes it volatile — and PostgREST refuses a volatile call over GET. */
+    const data = await req(cfg, '/rest/v1/rpc/kitsune_analytics', { method: 'POST', body: {} });
+    if (!data || data.ok !== true) {
+      throw Object.assign(new Error(data?.error || 'Please sign in first.'), { status: 403, code: 'not-staff' });
+    }
+    return { analytics: data };
+  }
+
+  /* One page view. The visitor id the device backend uses to spot a return visit
+     is deliberately not sent: `kitsune_visit` takes a path and nothing that could
+     be joined back to a person, which is what keeps the count free. */
+  if (seg[0] === 'pulse' && method === 'POST') {
+    const path = String(body?.path || '/').slice(0, 120);
+    if (token()) {
+      await req(cfg, '/rest/v1/rpc/kitsune_online', { method: 'POST', body: { p_path: path } }).catch(() => {});
+    }
+    await req(cfg, '/rest/v1/rpc/kitsune_visit', {
+      method: 'POST',
+      auth: Boolean(token()),
+      body: { p_path: path, p_via: String(body?.via || '').slice(0, 120) },
+    });
+    return { ok: true, counted: true };
   }
 
   /* -- playlists -- */
@@ -808,6 +865,28 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
         collectors: Number(data?.totals?.collectors) || 0,
         pulls: Number(data?.totals?.pulls) || 0,
         highest: Number(data?.totals?.highest) || 0,
+      },
+    };
+  }
+
+  if (seg[0] === 'community' && seg[1] === 'ranked') {
+    /* The duels board. Same shape as the collectors board — the RPC prints the
+       place onto each row so the number it sorted by and the number it shows are
+       one number. `duel` travels only as the win rate and place the page prints,
+       never as a record of who fought whom. */
+    const data = await req(cfg, '/rest/v1/rpc/kitsune_ranked', {
+      method: 'POST',
+      body: { p_limit: Number(params.get('n')) || 20 },
+    });
+    const placed = (row) => (row ? { ...toUser(row), place: Number(row.place) || 0, winRate: Number(row.winRate) || 0 } : null);
+    return {
+      users: (data?.users || []).map(placed).filter(Boolean),
+      me: placed(data?.me),
+      totals: {
+        members: Number(data?.totals?.members) || 0,
+        duellists: Number(data?.totals?.duellists) || 0,
+        fights: Number(data?.totals?.fights) || 0,
+        runs: Number(data?.totals?.runs) || 0,
       },
     };
   }

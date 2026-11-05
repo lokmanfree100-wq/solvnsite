@@ -11,6 +11,7 @@ import {
   captureFromRedirect,
   cloudActive,
   cloudApi,
+  cloudSchemaReady,
   requestPasswordReset,
   updatePassword,
 } from './cloud.js';
@@ -121,7 +122,7 @@ const AUTH_ROUTE = /^account\/(signup|login|logout)$/;
    community boards read from the cloud too, because on solvn.site the cloud
    IS the site's database — a board that only counted this browser's accounts
    would be a shadow of the real one. */
-const CLOUD_OWN = /^account\/(me|avatar|stats|cards)$|^favourite$|^playlists|^users\/|^members$|^community\/(collectors|leaderboard|playlists)$/;
+const CLOUD_OWN = /^account\/(me|avatar|stats|cards)$|^favourite$|^playlists|^users\/|^members$|^community\/(collectors|leaderboard|ranked|playlists)$|^pulse$|^admin\/(analytics|core-roster)$/;
 
 const wrapCloud = async (path, opts) => {
   try {
@@ -572,6 +573,20 @@ export const reportFlag = ({ kind, id, reason }) =>
 /* These four routes only exist on the local server, and only answer for a
    name in ADMIN_NAMES. Cloud mode simply gets a 403 back. */
 export const adminUsers = () => api('admin/users');
+/** The desk's real numbers, from the central database: page views, return days
+ *  and the members whose heartbeat is current. Nothing in the answer is a
+ *  location — the visitor table it reads holds a route and a moment.
+ *
+ *  Asked of the cloud and never of `lib/device.js`, because a device cannot
+ *  answer "how many people visited": it has only ever seen itself. Saying so
+ *  here, instead of letting the desk fall through to a local route, is what
+ *  keeps the panel from printing one browser and calling it the site. */
+export async function adminAnalytics() {
+  if (!(await cloudSchemaReady())) {
+    throw new ApiError(409, 'The central database is not set up yet — run the SQL in docs/supabase.sql.', 'no-schema');
+  }
+  return wrapCloud('admin/analytics', { method: 'GET' });
+}
 export const adminPatchUser = (id, patch) => api(`admin/users/${id}`, { method: 'PATCH', body: patch });
 export const adminReports = () => api('admin/reports');
 export const adminPatchReport = (id, status) => api(`admin/reports/${id}`, { method: 'PATCH', body: { status } });
@@ -604,21 +619,40 @@ function visitorId() {
 }
 
 export function pulse(path) {
+  /* Where the count is kept depends on which backend this copy is standing on.
+     A live cloud schema is asked, and asked for one thing only: the route. The
+     `visitor` id below is what makes a return visit countable on a device with
+     no server, and it never travels to the cloud — a column of anonymous page
+     names is all the desk needs, and sending a per-browser token to a database
+     that could join it to a session would turn a counter into a tracker. */
   const body = { visitor: visitorId(), path: String(path || '/').slice(0, 120) };
-  /* The count lives with the backend that owns the session: this browser when
-     there is no server, our own API when there is one. A verified cloud project
-     has no view counter, so it is never asked for one. */
-  if (staticHost()) {
-    wrapDevice('pulse', { method: 'POST', body }).catch(() => {});
-    return;
-  }
-  fetch('/api/pulse', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }).catch(() => { /* a route change is not the place for an error */ });
+  /* The first beat can arrive while the schema question is still travelling.
+     A moment's wait is cheaper than recording the visit in the wrong place. */
+  cloudSchemaReady()
+    .then((live) => {
+      if (live) {
+        wrapCloud('pulse', { method: 'POST', body: { path: body.path, via: lastRoute } }).catch(() => {});
+        lastRoute = body.path;
+        return;
+      }
+      if (staticHost()) {
+        wrapDevice('pulse', { method: 'POST', body }).catch(() => {});
+        return;
+      }
+      fetch('/api/pulse', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).catch(() => { /* a route change is not the place for an error */ });
+    })
+    .catch(() => {});
 }
+
+/* The route the visitor came from, for the desk's "where did they go" list. It
+   is a path from this tab's own history, not a referring site: nothing outside
+   the browser is asked for it. */
+let lastRoute = '';
 
 /* ---- comments ------------------------------------------------------- */
 /* Threads are per episode on this server only. A Supabase project has no

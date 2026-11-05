@@ -136,7 +136,7 @@ function welcomeBanner() {
     h(
       'div.welcome-copy',
       {},
-      h('p.welcome-title', {}, t('Welcome to Solvn – Free HD Anime Streaming')),
+      h('p.welcome-title', {}, t('Welcome to Solvn — anime, films & series in HD')),
       h('p.welcome-sub', {}, t('Trending picks and all-time favourites, streaming in crisp HD.')),
     ),
     h('button.welcome-close', { type: 'button', 'aria-label': t('Dismiss this banner'), onclick: dismiss }, icon('x')),

@@ -207,7 +207,7 @@ function toTop() {
 }
 
 const PAGE_TITLES = {
-  '': 'Solvn — Watch Anime',
+  '': 'Solvn — anime, films & series in HD',
   discover: 'Discover — Solvn',
   toons: 'Classic & Toons — Solvn',
   search: 'Search — Solvn',
@@ -264,7 +264,7 @@ function syncChrome() {
   const skip = qs('.skip-link');
   if (skip) skip.textContent = t('Skip to content');
   const desc = qs('meta[name="description"]');
-  if (desc) desc.content = t('Solvn — browse, search and watch anime with polished episode pages.');
+  if (desc) desc.content = t('Solvn — anime, films & series in HD. One player, no installs, nothing to pay for.');
   const label = t('Primary navigation');
   for (const id of ['sidenav', 'tabbar']) qs(`#${id}`)?.setAttribute('aria-label', label);
 }

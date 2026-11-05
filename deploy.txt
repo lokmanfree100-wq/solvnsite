@@ -9,14 +9,64 @@ What this copy does:
   - Search, browse, details pages, the player, watch history, favourites,
     settings and all 12 languages work as normal.
   - On solvn.site the central Supabase project is built in: accounts, profiles,
-    card binders, packs and XP sync to the one Solvn database automatically, so
-    a member who signs in on another device meets their own binder again, and
-    the site owner's admin desk sees every member live.
+    card binders, packs and XP sync to the one Solvn database — once its tables
+    exist. Until they do, the site quietly keeps everything in the browser that
+    made it, which is why the leaderboard can look empty. The next section is the
+    one paste that switches the real thing on.
   - A browser that has not signed into the central cloud keeps a local copy of
     everything (lib/device.js), so cards and messages still work between
     sign-ins; Settings ▸ Cloud sync carries that data up with one tap.
   - The bell asks AniList for air dates directly and compares them against this
     device's saved list, so episode notices work without any server.
+
+ACCOUNTS, THE LEADERBOARD, THE VISITOR COUNTER — one thing to switch on.
+
+Nothing in this folder is a server, so the central database is a Supabase project
+the pages talk to directly. Its address is already compiled in (js/lib/cloud.js:31
+— the public "publishable" key beside it is public by design; the tables answer
+only what the SQL below allows). The project has no tables yet, which is the whole
+reason sign-ups stay on one browser and the numbers on the admin desk are honest
+but local. One paste fixes it:
+
+  1. Open supabase.com and sign in with the account that owns that project.
+     If you never made it, make one now: New project, any name, any region, then
+     do step 3 and put the new Project URL and publishable key (Project Settings
+     ▸ Data API) into js/lib/cloud.js:31, commit and push. That is the only edit
+     the site needs.
+  2. Inside the project: SQL Editor ▸ New query.
+  3. Open docs/supabase.sql from this folder, select all of it, paste, press Run.
+     It creates six tables, the functions every page calls and the rules that say
+     who may read them. Running it twice is safe — it changes nothing the second
+     time.
+  4. Authentication ▸ Providers ▸ Email: however you leave "Confirm email", the
+     signup works. With confirmation on, the member confirms and the profile row
+     is made for them automatically by the trigger in that file.
+  5. Prove it: open https://solvn.site in a private window, sign up once, then
+     look at the leaderboard in your normal window. The new name is there. If the
+     admin desk says the database is not set up, step 3 did not run.
+
+Your own admin access: the locked functions in that file answer one address,
+fakelokman36@gmail.com, and any row you mark is_staff = true by hand in the Table
+Editor. Sign in on solvn.site with that address. If the desk says "Please sign in
+as the owner", the browser holds a local session, not a database one — open the
+admin desk and use the Central cloud panel's Connect button, which signs that
+browser into Supabase itself.
+
+What the counter counts, and what it deliberately does not:
+  - Page views: the address of the page and the moment. No name, no e-mail, no
+    IP, no country, nothing that points back at a person. A visitor does not
+    need an account to be counted, and nobody learns that a specific person was
+    on a page.
+  - Who is signed in right now: handle, the page they are on, and the time.
+    Members only — an anonymous visitor never appears in that list.
+  - Both are readable by you alone, in the admin desk. The database refuses the
+    same question from anybody else, including a signed-in member.
+  - No location of any kind is stored or displayed, for anybody — including you.
+  - One honest trade: a page view has to be writable by a visitor who has no
+    account, so that one insert is open to the internet. It writes a route and a
+    moment and nothing else, the desk keeps 90 days of it, and nobody — not even
+    you — can read or change anything else through it. Someone determined to be
+    annoying can inflate the totals; they cannot see or touch a member's data.
 
 MOVIES & SERIES — what works today, and what a server would add.
 

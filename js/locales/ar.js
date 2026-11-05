@@ -231,9 +231,8 @@ const ui = {
   'Server added': 'تمت إضافة الخادم',
   'Server name': 'اسم الخادم',
   'Server removed': 'تمت إزالة الخادم',
-  'Solvn — browse, search and watch anime with polished episode pages.':
-    'Solvn — تصفّح الأنمي وابحث عنه وشاهده بصفحات حلقات أنيقة.',
-  'Solvn — Watch Anime': 'Solvn — شاهد الأنمي',
+  'Solvn — anime, films & series in HD. One player, no installs, nothing to pay for.':
+    'Solvn — أنمي وأفلام ومسلسلات بجودة عالية. مشغّل واحد، بلا تثبيت ولا رسوم.',
   'Solvn home': 'الصفحة الرئيسية في Solvn',
   Language: 'اللغة',
   'Later episodes': 'الحلقات التالية',
@@ -748,16 +747,13 @@ const ui = {
   'That picture is too large. Pick a smaller file.': 'هذه الصورة كبيرة جدًا. اختر ملفًا أصغر.',
   'You already reported that.': 'سبق أن بلغت عن هذا.',
   'Welcome': 'مرحبًا',
-  'Welcome to Solvn – Free HD Anime Streaming': 'مرحبًا بك في Solvn – بث أنمي مجاني بجودة عالية',
+  'Welcome to Solvn — anime, films & series in HD': 'مرحبًا بك في Solvn — أنمي وأفلام ومسلسلات بجودة عالية',
   'Trending picks and all-time favourites, streaming in crisp HD.':
     'الأعمال الرائجة والمفضلة على الدوام، ببثٍّ عالي الوضوح.',
   'Dismiss this banner': 'إخفاء هذا الشريط',
   'Explore': 'استكشاف',
   'Footer navigation': 'تنقّل التذييل',
-  'Solvn — Your ultimate destination for ultra-high-definition anime streaming. Experience next-gen player technology with zero limits.':
-    'Solvn — وجهتك النهائية لمشاهدة الأنمي بجودة فائقة الوضوح. اختبر تقنية مشغّل من الجيل القادم بلا أي حدود.',
   'DMCA': 'DMCA',
-  'Solvn does not store files on server': 'لا يخزّن Solvn أي ملفات على الخادم',
   'Titles and episode sources are indexed from third-party providers. If you hold the rights to something listed here and would like it taken down, write to us and we will remove the links promptly.':
     'تُفهرَس العناوين ومصادر الحلقات من مزوّدين خارجيين. إن كنت تملك حقوق أي محتوى مذكور هنا وترغب في إزالته، راسلنا وستُحذف الروابط دون إبطاء.',
   '© {year} Solvn. All rights reserved. The premier cinematic anime platform.':
@@ -806,13 +802,11 @@ const ui = {
     'صفِّ كل عنوان نتابعه — رتّبه حسب الرائج أو التقييم أو الموسم، ثم ضيّقه حسب النوع والصيغة.',
   'Footer links': 'روابط التذييل',
   'Footer updated': 'تم تحديث التذييل',
-  'Free HD anime streaming.': 'بث أنمي مجاني بجودة عالية.',
   'Main cast, as credited by the source.': 'طاقم الأصوات الرئيسي كما يورده المصدر.',
   'Nothing is airing in this window for this filter.': 'لا شيء يُبث في هذه الفترة بهذا المرشّح.',
   'Nothing is linked to this title yet.': 'لا شيء مرتبط بهذا العمل بعد.',
   'Search suggestions': 'اقتراحات البحث',
   'Search the catalogue…': 'ابحث في الفهرس…',
-  'Solvn does not store files on its own servers.': 'لا يخزّن Solvn أي ملفات على خوادمه.',
   'Solvn plays anime only, and this entry is a printed title.': 'يعرض Solvn الأنمي فقط، وهذا عنوان مطبوع.',
   'That is not a web address.': 'هذا ليس عنوان ويب.',
   'That is not an email address.': 'هذا ليس بريدًا إلكترونيًا.',
@@ -1395,6 +1389,8 @@ const ui = {
   'Find a member': 'ابحث عن عضو',
   'Give that a moment before the next message.': 'امنح نفسك لحظة قبل الرسالة التالية.',
   'Inbox': 'صندوق الوارد',
+  'Mail in your profile': 'البريد في ملفك',
+  'Rooms': 'الغرف',
   'Message': 'رسالة',
   'Messages': 'الرسائل',
   'Messages — Solvn': 'الرسائل — Solvn',
@@ -1594,6 +1590,7 @@ const ui = {
   /* جرس الإشعارات — components/notices.js */
   'Notifications': 'الإشعارات',
   '{n} unread notices': '{n} إشعارات غير مقروءة',
+  '{n} unread in your inbox': '{n} رسائل غير مقروءة في صندوقك',
   'No notices yet.': 'لا إشعارات بعد.',
   'New episodes of the titles you save show up here.': 'تظهر هنا الحلقات الجديدة للعناوين التي تحفظها.',
   'Checking the schedule…': 'جارٍ فحص الجدول…',
@@ -2287,6 +2284,27 @@ const ui = {
     'قلّما تسقط حقوق حلقات المسلسلات أو تُهدى، لذا يبقى هذا الرفّ قليل الأعمال. شاهد هذه الحلقة في مجموعة التضمين — مشغّلها يخصّ موقعًا آخر، والشرح أعلاه يقول ماذا تتوقّع.',
   'This film has no copy on Archive carrying a public-domain mark or a Creative-Commons licence, and only files whose rights are genuinely free are played here. Watch this one in the embed pool — its player belongs to another site, and the note above says what to expect.':
     'لا نسخة من هذا الفيلم في Archive تحمل علامة ملك عام أو رخصة مشاع إبداعي، ولا يُشغَّل هنا إلا ما كانت حقوقه حرّة فعلًا. شاهد هذا الفيلم في مجموعة التضمين — مشغّله يخصّ موقعًا آخر، والشرح أعلاه يقول ماذا تتوقّع.',
+  'Counted on this device, by this browser, from the visits it has itself seen. The panel below is the one that counts everybody.': 'عُدَّت على هذا الجهاز، بواسطة هذا المتصفح، من الزيارات التي رآها بنفسه. اللوحة أسفله هي التي تعدّ الجميع.',
+  'A handle, a page and a time — that is all this stores about a person. Nothing here records where anybody is: there is no country, no city and no address in the database, and the count of visits is kept without a name attached to it.': 'اسم مستخدم، وصفحة، ولحظة — هذا كل ما يُخزَّن هنا عن شخص. لا يُسجَّل أي مكان لأحد: لا دولة ولا مدينة ولا عنوان في القاعدة، ويُحفَظ عدد الزيارات بلا اسم مُرفَق به.',
+  'Views': 'مشاهدات',
+  'Most-opened pages': 'الصفحات الأكثر فتحًا',
+  'No member has checked in yet. A stamp appears when somebody signs in and opens a page.': 'لم يسجّل أي عضو حضوره بعد. تظهر العلامة حين يدخل أحدهم ويفتح صفحة.',
+  'Members, most recent first': 'الأعضاء، الأحدث أولًا',
+  'Nobody is signed in on another device at this moment.': 'لا أحد مسجَّل الدخول على جهاز آخر في هذه اللحظة.',
+  'Signed in right now': 'المسجَّل دخولهم الآن',
+  'No page view has reached the database yet.': 'لم تصل أي مشاهدة صفحة إلى القاعدة بعد.',
+  'Page views over the last 7 days': 'مشاهدات الصفحات خلال آخر 7 أيام',
+  'Online now': 'متصل الآن',
+  'New this week': 'جديد هذا الأسبوع',
+  'Last 30 days': 'آخر 30 يومًا',
+  'Last 7 days': 'آخر 7 أيام',
+  'Last 24 hours': 'آخر 24 ساعة',
+  'Page views': 'مشاهدات الصفحات',
+  'These figures can only come from the central database. Until its tables exist — the SQL file in docs/supabase.sql — no visitor is counted anywhere but this browser, and the Traffic panel above is one device remembering itself.': 'لا يمكن أن تأتي هذه الأرقام إلا من القاعدة المركزية. ما لم تُنشَأ جداولها — ملف SQL في docs/supabase.sql — لا يُحسَب أي زائر خارج هذا المتصفح، ولوحة «الزيارات» أعلاه مجرد جهاز يتذكّر نفسه.',
+  'Asking the central database…': 'نَسأل القاعدة المركزية…',
+  'Real site numbers': 'أرقام الموقع الحقيقية',
+  'Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device, and the leaderboard can only list what this one holds.': 'اسمك وصورتك وقوائمك محفوظة في هذا المتصفح — وفي هذا المتصفح فقط. لم تُفعَّل القاعدة المركزية لهذا الموقع بعد، لذلك لا يستطيع حسابك مرافقتك إلى جهاز آخر، ولا يمكن لوحة المتصدّرين إلا أن تعرض ما يحفظه هذا الجهاز وحده.',
+  'Solvn — anime, films & series in HD': 'Solvn — أنمي وأفلام ومسلسلات بجودة عالية',
 };
 
 export default ui;

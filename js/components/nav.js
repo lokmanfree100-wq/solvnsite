@@ -404,7 +404,7 @@ export function renderNav() {
     profileLink,
     sideLink({ label: t('Settings'), path: '/settings', iconName: 'settings', active: path === '/settings' }),
     staff ? sideLink({ label: t('Admin'), path: '/admin', iconName: 'lock', active: path === '/admin' }) : null,
-    h('div.side-foot', {}, t('Free HD anime streaming.'), h('br'), t('Solvn does not store files on its own servers.')),
+    h('div.side-foot', {}, t('Solvn — anime, films & series in HD')),
   );
   paintBadge();
 

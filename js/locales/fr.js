@@ -233,9 +233,8 @@ const ui = {
   'Server added': 'Serveur ajouté',
   'Server name': 'Nom du serveur',
   'Server removed': 'Serveur retiré',
-  'Solvn — browse, search and watch anime with polished episode pages.':
-    'Solvn — parcourir, chercher et regarder des animés avec des fiches soignées.',
-  'Solvn — Watch Anime': 'Solvn — Regarder des animés',
+  'Solvn — anime, films & series in HD. One player, no installs, nothing to pay for.':
+    'Solvn — animés, films et séries en HD. Un seul lecteur, rien à installer, rien à payer.',
   'Solvn home': 'Accueil Solvn',
   Language: 'Langue',
   'Later episodes': 'Épisodes suivants',
@@ -774,16 +773,13 @@ const ui = {
     'Ce projet n’autorise pas cette méthode de connexion.',
   'You already reported that.': 'Vous avez déjà signalé cela.',
   'Welcome': 'Bienvenue',
-  'Welcome to Solvn – Free HD Anime Streaming': 'Bienvenue sur Solvn – streaming d’anime gratuit en HD',
+  'Welcome to Solvn — anime, films & series in HD': 'Bienvenue sur Solvn — animés, films et séries en HD',
   'Trending picks and all-time favourites, streaming in crisp HD.':
     'Les tendances et les favoris de toujours, en streaming HD.',
   'Dismiss this banner': 'Masquer cette bannière',
   'Explore': 'Explorer',
   'Footer navigation': 'Navigation de bas de page',
-  'Solvn — Your ultimate destination for ultra-high-definition anime streaming. Experience next-gen player technology with zero limits.':
-    'Solvn — votre destination ultime pour le streaming d’anime en ultra-haute définition. Découvrez une technologie de lecteur nouvelle génération, sans aucune limite.',
   'DMCA': 'DMCA',
-  'Solvn does not store files on server': 'Solvn ne stocke aucun fichier sur son serveur',
   'Titles and episode sources are indexed from third-party providers. If you hold the rights to something listed here and would like it taken down, write to us and we will remove the links promptly.':
     'Les titres et les sources d’épisodes sont indexés auprès de fournisseurs tiers. Si vous détenez des droits sur un contenu listé ici et souhaitez son retrait, écrivez-nous et nous supprimerons les liens rapidement.',
   '© {year} Solvn. All rights reserved. The premier cinematic anime platform.':
@@ -832,13 +828,11 @@ const ui = {
     'Filtrez tous les titres suivis — par tendance, note ou saison, puis affinez par genre et format.',
   'Footer links': 'Liens du pied de page',
   'Footer updated': 'Pied de page mis à jour',
-  'Free HD anime streaming.': 'Streaming d’anime HD gratuit.',
   'Main cast, as credited by the source.': 'Distribution principale, telle que créditée par la source.',
   'Nothing is airing in this window for this filter.': 'Rien à diffuser sur cette période avec ce filtre.',
   'Nothing is linked to this title yet.': 'Aucun titre n’est lié à celui-ci pour l’instant.',
   'Search suggestions': 'Suggestions de recherche',
   'Search the catalogue…': 'Rechercher dans le catalogue…',
-  'Solvn does not store files on its own servers.': 'Solvn ne stocke aucun fichier sur ses propres serveurs.',
   'Solvn plays anime only, and this entry is a printed title.':
     'Solvn ne lit que des anime, et cette entrée est un titre imprimé.',
   'That is not a web address.': 'Ce n’est pas une adresse web.',
@@ -1427,6 +1421,8 @@ const ui = {
   'Find a member': 'Rechercher un membre',
   'Give that a moment before the next message.': 'Patientez un instant avant le message suivant.',
   'Inbox': 'Boîte de réception',
+  'Mail in your profile': 'Le courrier dans votre profil',
+  'Rooms': 'Salles',
   'Message': 'Message',
   'Messages': 'Messages',
   'Messages — Solvn': 'Messages — Solvn',
@@ -1630,6 +1626,7 @@ const ui = {
   /* the notice bell — components/notices.js */
   'Notifications': 'Notifications',
   '{n} unread notices': '{n} notifications non lues',
+  '{n} unread in your inbox': '{n} messages non lus dans votre boîte',
   'No notices yet.': 'Aucune notification pour le moment.',
   'New episodes of the titles you save show up here.': 'Les nouveaux épisodes des titres que vous enregistrez apparaissent ici.',
   'Checking the schedule…': 'Vérification du planning…',
@@ -2327,6 +2324,27 @@ const ui = {
     'Presque aucun épisode de série n’a vu ses droits expirer ou être cédés : cette étagère reste très mince. Regardez celui-ci dans le pool d’intégration — son lecteur appartient à un autre site, et l’encart ci-dessus dit à quoi s’attendre.',
   'This film has no copy on Archive carrying a public-domain mark or a Creative-Commons licence, and only files whose rights are genuinely free are played here. Watch this one in the embed pool — its player belongs to another site, and the note above says what to expect.':
     'Ce film n’a pas de copie sur l’Archive portant une mention explicite de domaine public ou une licence CC, et seules les œuvres réellement libres sont lues ici. Regardez-le dans le pool d’intégration — son lecteur appartient à un autre site, et l’encart ci-dessus dit à quoi s’attendre.',
+  'Counted on this device, by this browser, from the visits it has itself seen. The panel below is the one that counts everybody.': 'Compté sur cet appareil, par ce navigateur, à partir des visites qu’il a lui-même vues. Le panneau ci-dessous est celui qui compte tout le monde.',
+  'A handle, a page and a time — that is all this stores about a person. Nothing here records where anybody is: there is no country, no city and no address in the database, and the count of visits is kept without a name attached to it.': 'Un pseudonyme, une page et un instant : voilà tout ce qui est stocké ici sur une personne. Rien n’enregistre où elle se trouve — aucun pays, aucune ville, aucune adresse dans la base — et le comptage des visites se fait sans nom qui y soit attaché.',
+  'Views': 'Vues',
+  'Most-opened pages': 'Pages les plus ouvertes',
+  'No member has checked in yet. A stamp appears when somebody signs in and opens a page.': 'Aucun membre ne s’est encore signalé. Une empreinte apparaît quand quelqu’un se connecte et ouvre une page.',
+  'Members, most recent first': 'Membres, plus récents d’abord',
+  'Nobody is signed in on another device at this moment.': 'Personne n’est connecté sur un autre appareil pour l’instant.',
+  'Signed in right now': 'Connectés en ce moment',
+  'No page view has reached the database yet.': 'Aucune page vue n’a encore atteint la base.',
+  'Page views over the last 7 days': 'Pages vues sur les 7 derniers jours',
+  'Online now': 'En ligne maintenant',
+  'New this week': 'Nouveaux cette semaine',
+  'Last 30 days': '30 derniers jours',
+  'Last 7 days': '7 derniers jours',
+  'Last 24 hours': 'Dernières 24 heures',
+  'Page views': 'Pages vues',
+  'These figures can only come from the central database. Until its tables exist — the SQL file in docs/supabase.sql — no visitor is counted anywhere but this browser, and the Traffic panel above is one device remembering itself.': 'Ces chiffres ne peuvent venir que de la base de données centrale. Tant que ses tables n’existent pas — le fichier SQL dans docs/supabase.sql — aucun visiteur n’est compté ailleurs que dans ce navigateur, et le panneau Trafic ci-dessus est un appareil qui se souvient de lui-même.',
+  'Asking the central database…': 'Interrogation de la base centrale…',
+  'Real site numbers': 'Vrais chiffres du site',
+  'Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device, and the leaderboard can only list what this one holds.': 'Votre nom, votre image et vos listes sont enregistrés dans ce navigateur — et dans ce navigateur seulement. La base de données centrale de ce site n’est pas encore activée : un compte ne peut donc pas vous suivre sur un autre appareil, et le classement ne peut afficher que ce que cet appareil conserve.',
+  'Solvn — anime, films & series in HD': 'Solvn — animés, films et séries en HD',
 };
 
 export default ui;

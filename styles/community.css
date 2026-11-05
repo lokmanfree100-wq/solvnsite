@@ -512,6 +512,10 @@ label.pick-file { cursor: pointer; }
 
 /* site pulse */
 .ad-pulse { display: grid; gap: var(--sp-3); padding: var(--sp-4); }
+/* The central desk panel: same stack as the pulse, because it shows the same
+   kind of thing — a headline, tiles, then rows of who and where-in-the-site. */
+.ad-central-stats { display: grid; gap: var(--sp-3); padding: var(--sp-4); }
+.ad-central-stats .metric-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .ad-pulse-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ad-pulse-head .panel-title { margin: 0; }
 .ad-live-pill {
