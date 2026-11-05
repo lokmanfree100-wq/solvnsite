@@ -32,14 +32,14 @@ export const genres = {
 };
 
 const ui = {
-  'Accounts, binders, packs and XP live in the one Solvn database — the owner sees every member live. This device keeps its own copy too, so cards still open between sign-ins.':
-    'Comptes, classeurs, boosters et XP vivent dans la seule base Solvn — le propriétaire voit chaque membre en direct. Cet appareil garde aussi sa propre copie, donc les cartes restent ouvertes entre deux connexions.',
+  'Accounts, binders and packs live in the one Solvn database — the owner sees every member live. This device keeps its own copy too, so cards still open between sign-ins.':
+    'Comptes, classeurs et boosters vivent dans la seule base Solvn — le propriétaire voit chaque membre en direct. Cet appareil garde aussi sa propre copie, donc les cartes restent ouvertes entre deux connexions.',
   'Admin email': 'E-mail admin',
   'Backup restored.': 'Sauvegarde restaurée.',
   'Backup saved.': 'Sauvegarde enregistrée.',
   'Central cloud': 'Cloud central',
-  'Central cloud in use — every pull, pack and level syncs to solvn.site.':
-    'Cloud central actif — chaque tirage, booster et niveau se synchronise sur solvn.site.',
+  'Central cloud in use — every pull and pack syncs to solvn.site.':
+    'Cloud central actif — chaque tirage et booster se synchronise sur solvn.site.',
   'Connect': 'Connecter',
   'Connected to the central cloud.': 'Connecté au cloud central.',
   'Enter the owner email and password.': 'Saisissez l’e-mail et le mot de passe du propriétaire.',
@@ -51,8 +51,8 @@ const ui = {
   'Packs': 'Boosters',
   'Restore a backup': 'Restaurer une sauvegarde',
   'Save a backup': 'Enregistrer une sauvegarde',
-  'Sign in and this device carries its binder, packs and XP into the central cloud.':
-    'Connectez-vous et cet appareil emporte son classeur, ses boosters et son XP dans le cloud central.',
+  'Sign in and this device carries its binder and packs into the central cloud.':
+    'Connectez-vous et cet appareil emporte son classeur et ses boosters dans le cloud central.',
   'Sign in as the owner to see every member, binder and pack in the one Solvn database.':
     'Connectez-vous en tant que propriétaire pour voir chaque membre, classeur et booster de la base Solvn unique.',
   'Sign in to the central cloud first.': 'Connectez-vous d’abord au cloud central.',
@@ -567,8 +567,6 @@ const ui = {
   'This member has not shared a list yet.': 'Ce membre n’a pas encore partagé de liste.',
   Unlike: 'Ne plus aimer',
   'Your playlists': 'Vos playlists',
-  'The leaderboard and the trending lists live on this server, and it is not answering.':
-    'Le classement et les playlists populaires vivent sur ce serveur, qui ne répond pas.',
   'That profile and its lists live on this server, and it is not answering.':
     'Ce profil et ses listes vivent sur ce serveur, qui ne répond pas.',
   /* chat, quality target, discord, ranking, schedule */
@@ -1316,24 +1314,8 @@ const ui = {
   'Your {n}-day streak lifted this pack: nothing in it printed below Lv {floor}.':
     'Votre série de {n} jours a relevé ce pack : rien dedans sous le palier {floor}.',
   'Yours': 'À vous',
-  'LEADERBOARD': 'CLASSEMENT',
-  'Leaderboard': 'Classement',
-  'Top Collectors': 'Meilleurs collectionneurs',
-  'best Power': 'meilleure Puissance',
-  'Collectors ranked': 'Collectionneurs classés',
-  'Highest Power': 'Puissance maximale',
-  'No card published': 'Aucune carte publiée',
-  'Nobody has published a binder yet': 'Personne n\'a encore publié d\'album',
   'Open {name}': 'Ouvrir {name}',
-  'Open a pack, then pin your strongest card from the binder to appear here.':
-    'Ouvrez un pack, puis épinglez votre carte la plus forte depuis l\'album pour apparaître ici.',
   'Open the card binder': 'Ouvrir l\'album de cartes',
-  'Ranked by the highest card Power each member owns — not by how many cards their binder holds.':
-    'Classé selon la Puissance de carte la plus élevée que possède chaque membre — et non selon le nombre de cartes de son album.',
-  'The board': 'Le classement',
-  'Your binder is not on the board yet — it starts the moment you open your first pack.':
-    'Votre album n\'est pas encore au classement — il commence dès votre premier pack ouvert.',
-  'Your place': 'Votre place',
 
   /* ---- la vitrine de cartes du profil ---- */
   'Card showcase': 'Vitrine de cartes',
@@ -1425,7 +1407,6 @@ const ui = {
   'Pathfinder': 'Explorateur',
   'Powerhouse': 'Colosse',
   'Pull a card worth {n} Power': 'Tirez une carte valant {n} en Puissance',
-  'Reach level {n}': 'Atteignez le niveau {n}',
   'Rising Star': 'Étoile montante',
   'Solvn Master': 'Maître Solvn',
   'That title does not exist.': 'Ce titre n’existe pas.',
@@ -1667,7 +1648,6 @@ const ui = {
 
   /* Arena and duels */
   'Arena': 'Arène',
-  'Ranked board': 'Classement',
   'Waiting': 'En attente',
   'Ready to fight': 'Prêt à combattre',
   'Fought': 'Combattu',
@@ -1831,8 +1811,6 @@ const ui = {
   'Try to keep up.': 'Essayez de suivre.',
   'Let us see what your binder is worth.': 'Voyons ce que vaut votre classeur.',
 
-  'Level {n} — {levels} levels up, {packs} packs banked': 'Niveau {n} — {levels} niveaux gagnés, {packs} boosters déposés',
-  'Level {n} — {packs} packs banked': 'Niveau {n} — {packs} boosters déposés',
   '{n} packs': '{n} boosters',
 
   /* Présentation, échelle de niveaux, divisions et classement compétitif */
@@ -1882,27 +1860,10 @@ const ui = {
   'Neon horizon': 'Horizon néon',
   'Koi pond': 'Bassin de koïs',
   'Crystal grid': 'Réseau cristallin',
-  'Level {n}': 'Niveau {n}',
-  'Level {n} — the top of the ladder': 'Niveau {n} — le sommet de l’échelle',
-  'Level ladder': 'Échelle de niveaux',
-  'LV': 'NV',
-  'Progress to level {n}': 'Progression vers le niveau {n}',
-  'Top of the ladder': 'Sommet de l’échelle',
-  '{left} XP to level {n} · {into} of {need}': '{left} XP avant le niveau {n} · {into} sur {need}',
-  '{n} XP earned on this device': '{n} XP gagnés sur cet appareil',
-  'What the next levels pay': 'Ce que paient les niveaux suivants',
-  'Collect {n} XP': 'Récupérer {n} XP',
-  'Nothing to collect.': 'Rien à récupérer.',
-  'Quests banked — {n} XP added': 'Quêtes enregistrées — {n} XP ajoutés',
-  'The day turns at 04:00, the same hour the packs use.': 'Le jour se renouvelle à 04h00, la même heure que les packs.',
-  'You are at the top of the ladder — nothing left to climb.': 'Vous êtes au sommet de l’échelle — plus rien à gravir.',
-  'Every level pays packs into your bank, and a badge every tenth.': 'Chaque niveau verse des packs dans votre réserve, et un badge tous les dix niveaux.',
-  'XP comes from packs and quests — and every level pays out.': 'L’XP vient des packs et des quêtes — et chaque niveau paie.',
   'Open 5 packs': 'Ouvrir 5 packs',
   'Watch an episode': 'Regarder un épisode',
   'Fight a duel': 'Disputer un duel',
   'Win a duel': 'Gagner un duel',
-  '{a} of {b}': '{a} sur {b}',
   'Level 10': 'Niveau 10',
   'Level 20': 'Niveau 20',
   'Level 30': 'Niveau 30',
@@ -1929,23 +1890,9 @@ const ui = {
   'Elite': 'Élite',
   'Champion': 'Champion',
   'Legend of the Arena': 'Légende de l’arène',
-  'Boards': 'Classements',
-  'Collectors': 'Collectionneurs',
-  'Ranked': 'Compétitif',
   'RANKED': 'COMPÉTITIF',
   'Highest card Power': 'Puissance de carte la plus élevée',
   'Duel record': 'Bilan de duels',
-  'Duelists ranked': 'Duellistes classés',
-  'Duels settled': 'Duels terminés',
-  'Longest run': 'Plus longue série',
-  'Nobody has settled a duel yet': 'Aucun duel n’a encore été terminé',
-  'Pick two cards, commit them, and the arena files the first row on this board.': 'Choisissez deux cartes, validez-les, et l’arène inscrit la première ligne de ce classement.',
-  'The ranked board': 'Le classement compétitif',
-  'Top Duelists': 'Meilleurs duellistes',
-  'Division first — Bronze to Grandmaster — then the highest card Power in the binder, then the record that earned the division.': 'La division d’abord — de Bronze à Grandmaster — puis la plus haute Puissance du classeur, puis le bilan qui a valu cette division.',
-  'best Power': 'meilleure Puissance',
-  'Enter the arena': 'Entrer dans l’arène',
-  'You have not settled a duel yet — the arena files a record after both line-ups are committed.': 'Vous n’avez pas encore terminé de duel — l’arène inscrit un bilan une fois les deux alignements validés.',
 
   /* Friends and user IDs. */
   Accept: 'Accepter',
@@ -1995,8 +1942,7 @@ const ui = {
   'Nothing has happened here yet.': 'Rien ne s’est encore passé ici.',
 
   /* The Card Studio and the mailbox. */
-  'A bundle needs at least one pack or some XP.': 'Un lot doit contenir au moins un pack ou de l’XP.',
-  'A bundle needs packs or XP.': 'Un lot doit contenir des packs ou de l’XP.',
+  'A bundle needs at least one pack.': 'Un lot doit contenir au moins un pack.',
   'A gift card needs a name and a portrait.': 'Une carte cadeau a besoin d’un nom et d’un portrait.',
   'A gift needs a card, a bundle or both.': 'Un cadeau doit contenir une carte, un lot ou les deux.',
   'A note that arrives with the gift (up to 180 characters)': 'Une note qui accompagne le cadeau (180 caractères maximum)',
@@ -2027,7 +1973,6 @@ const ui = {
   'No card in this gift.': 'Pas de carte dans ce cadeau.',
   'Open the studio': 'Ouvrir le studio',
   'Overall (0–99999)': 'Général (0–99999)',
-  'Packs & XP': 'Packs et XP',
   'Packs (0–50)': 'Packs (0–50)',
   'Pick a member to send this to. Reload the list and try again.': 'Choisissez le membre destinataire. Rechargez la liste et réessayez.',
   'Plate title': 'Titre de la carte',
@@ -2047,7 +1992,7 @@ const ui = {
   'Studio card': 'Carte Studio',
   'Technique (0–999)': 'Technique (0–999)',
   'That gift is not in your mailbox.': 'Ce cadeau n’est pas dans votre boîte.',
-  "The card joins the receiver's binder when they claim it. A bundle hands over its packs and XP the same way.": 'La carte rejoint la collection du destinataire quand il la récupère. Un lot remet ses packs et son XP de la même façon.',
+  "The card joins the receiver's binder when they claim it. A bundle hands over its packs the same way.": 'La carte rejoint la collection du destinataire quand il la récupère. Un lot remet ses packs de la même façon.',
   'The mailbox will not open': 'La boîte aux lettres ne s’ouvre pas',
   'The server that keeps gifts is not answering.': 'Le serveur qui conserve les cadeaux ne répond pas.',
   Traffic: 'Trafic',
@@ -2056,15 +2001,13 @@ const ui = {
   'Visits over the last 14 days': 'Visites des 14 derniers jours',
   Visits: 'Visites',
   'When the studio sends a card or a bundle, it lands in this box.': 'Quand le studio envoie une carte ou un lot, il arrive dans cette boîte.',
-  'XP (0–5000)': 'XP (0–5000)',
-  XP: 'XP',
   'online now': 'en ligne maintenant',
   'seen {when}': 'vu {when}',
   'your mailbox': 'votre boîte aux lettres',
   '{name} is in your binder.': '{name} est dans votre collection.',
   '{n} new': '{n} nouveaux',
   '{n} visits': '{n} visites',
-  '{packs} packs and {xp} XP claimed.': '{packs} packs et {xp} XP récupérés.',
+  '{packs} packs claimed.': '{packs} packs récupérés.',
   'The site address has been updated to solvn.site': 'L’adresse du site est maintenant solvn.site.',
   'Go to solvn.site now': 'Aller sur solvn.site maintenant',
   'Movies': 'Films',
@@ -2324,7 +2267,7 @@ const ui = {
   'These figures can only come from the central database. Until its tables exist — the SQL file in docs/supabase.sql — no visitor is counted anywhere but this browser, and the Traffic panel above is one device remembering itself.': 'Ces chiffres ne peuvent venir que de la base de données centrale. Tant que ses tables n’existent pas — le fichier SQL dans docs/supabase.sql — aucun visiteur n’est compté ailleurs que dans ce navigateur, et le panneau Trafic ci-dessus est un appareil qui se souvient de lui-même.',
   'Asking the central database…': 'Interrogation de la base centrale…',
   'Real site numbers': 'Vrais chiffres du site',
-  'Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device, and the leaderboard can only list what this one holds.': 'Votre nom, votre image et vos listes sont enregistrés dans ce navigateur — et dans ce navigateur seulement. La base de données centrale de ce site n’est pas encore activée : un compte ne peut donc pas vous suivre sur un autre appareil, et le classement ne peut afficher que ce que cet appareil conserve.',
+  'Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device.': 'Votre nom, votre image et vos listes sont enregistrés dans ce navigateur — et dans ce navigateur seulement. La base de données centrale de ce site n’est pas encore activée : un compte ne peut donc pas vous suivre sur un autre appareil.',
   'Solvn — anime, films & series in HD': 'Solvn — animés, films et séries en HD',
   'Opening your profile…': 'Ouverture de votre profil…',
   Off: 'Désactivées',

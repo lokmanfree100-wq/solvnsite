@@ -9,7 +9,7 @@
  * it is the one shared account utility with no store dependency.
  */
 
-import { storage, viewLog, listCount, favouriteEntries } from './store.js';
+import { viewLog, listCount, favouriteEntries } from './store.js';
 
 /* Same thresholds as TIERS in account-api.js. */
 export const TIERS = [
@@ -141,39 +141,6 @@ export const BADGES = [
 
 export const badgeById = (id) => BADGES.find((b) => b.id === id) || null;
 
-/* ---- the ladder -------------------------------------------------------
- * The curve itself lives in `lib/level.js`, which owns the storage key. All this
- * module needs is the two numbers a badge rule reads, so it takes them straight
- * out of that key rather than importing the ladder and pointing it back at the
- * account record. The level is always re-derived from the XP before it is written
- * there, so the pair can never drift apart.
- *
- * Ten levels to a badge, not five: the server stores at most thirty-two ids, and
- * the watch badges already take eleven. Packs pay at every level — that is the
- * reward you can spend — a badge is the one that has to leave room.
- */
-export const LEVEL_STEP = 10;
-export const MAX_LEVEL = 100;
-
-export function levelNumbers() {
-  const raw = storage.read('level', null);
-  if (!raw || typeof raw !== 'object') return { xp: 0, level: 1 };
-  return {
-    xp: Math.max(0, Number(raw.xp) || 0),
-    level: Math.max(1, Math.min(MAX_LEVEL, Number(raw.level) || 1)),
-  };
-}
-
-for (let l = LEVEL_STEP; l <= MAX_LEVEL; l += LEVEL_STEP) {
-  BADGES.push({
-    id: `level-${l}`,
-    label: `Level ${l}`,
-    icon: l >= 70 ? 'crown' : 'bolt',
-    hint: `Reached level ${l}.`,
-    test: (s) => s.level >= l,
-  });
-}
-
 const SITTING = 3 * 3600 * 1000;
 
 /* ---- the duel divisions ----------------------------------------------
@@ -239,7 +206,6 @@ export function measure(log = viewLog(), extra = {}) {
   }
   /* One bad record must never drag the scoreboard below zero. */
   const minutes = ordered.reduce((n, e) => n + (Number(e.mins) > 0 ? Number(e.mins) : 0), 0);
-  const ladder = levelNumbers();
   return {
     minutes,
     hours: Math.max(0, Math.round(minutes / 6) / 10),
@@ -251,8 +217,6 @@ export function measure(log = viewLog(), extra = {}) {
     completed: extra.completed ?? listCount('completed'),
     favourites: extra.favourites ?? favouriteEntries().length,
     playlists: extra.playlists ?? 0,
-    xp: ladder.xp,
-    level: ladder.level,
   };
 }
 
@@ -271,8 +235,6 @@ export function localStats(extra = {}) {
     titles: m.titles,
     favourites: m.favourites,
     playlists: m.playlists,
-    xp: m.xp,
-    level: m.level,
     badges: earnedBadges(m),
     rank: rankOf(m.hours),
     measure: m,
@@ -559,8 +521,8 @@ export async function bannerFromImageFile(file) {
    `BANNER_THEMES` in account-api.js — each one is drawn in CSS by `.bk` in
    profile.css, so a name outside the list renders nothing and the server
    refuses it. Labels reach t() through the extractor's indirect list.
-   Every band on the shelf is free: there are no levels to clear and nothing to
-   win, so the picker is a wardrobe rather than a ladder. Forty-six of them, in
+   Every band on the shelf is free: nothing has to be won to wear one, so the
+   picker is a wardrobe rather than a ladder. Forty-six of them, in
    the order the shelf shows them: the founding twenty-four, the eighteen soft
    neon bands, then the four showcase pieces — inferno, rose, thunder and tide. */
 export const BANNER_THEMES = [
@@ -801,10 +763,10 @@ export const TITLES = [
   { id: 'gladiator', label: 'Gladiator', icon: 'sword', hue: 22, fx: 'ember', hint: 'Win {n} duels', need: 10, test: (u) => (Number(duel(u).wins) || 0) >= 10 },
   { id: 'unstoppable', label: 'Unstoppable', icon: 'shield', hue: 300, fx: 'holo', hint: 'Win {n} in a row', need: 10, test: (u) => (Number(duel(u).best) || 0) >= 10 },
   { id: 'champion', label: 'Arena Champion', icon: 'trophy', hue: 348, fx: 'gold', hint: 'Win {n} duels', need: 50, test: (u) => (Number(duel(u).wins) || 0) >= 50 },
-  { id: 'rising', label: 'Rising Star', icon: 'sparkles', hue: 120, fx: 'spark', hint: 'Reach level {n}', need: 10, test: (u) => (Number(stat(u).level) || 1) >= 10 },
+  { id: 'rising', label: 'Rising Star', icon: 'sparkles', hue: 120, fx: 'spark', hint: 'Open {n} packs', need: 10, test: (u) => cards(u).pulls >= 10 },
   { id: 'opener', label: 'Pack Opener', icon: 'grid', hue: 305, fx: 'sweep', hint: 'Open {n} packs', need: 50, test: (u) => cards(u).pulls >= 50 },
   { id: 'binder', label: 'Binder', icon: 'library', hue: 168, fx: 'sweep', hint: 'Own {n} different cards', need: 25, test: (u) => cards(u).unique >= 25 },
-  { id: 'veteran', label: 'Veteran', icon: 'crown', hue: 205, fx: 'holo', hint: 'Reach level {n}', need: 30, test: (u) => (Number(stat(u).level) || 1) >= 30 },
+  { id: 'veteran', label: 'Veteran', icon: 'crown', hue: 205, fx: 'holo', hint: 'Win {n} duels', need: 30, test: (u) => (Number(duel(u).wins) || 0) >= 30 },
   { id: 'chaser', label: 'Card Chaser', icon: 'star', hue: 62, fx: 'gold', hint: 'Pull a card worth {n} Power', need: 500, test: (u) => cards(u).best >= 500 },
   { id: 'powerhouse', label: 'Powerhouse', icon: 'bolt', hue: 178, fx: 'bolt', hint: 'Pull a card worth {n} Power', need: 800, test: (u) => cards(u).best >= 800 },
   { id: 'elite', label: 'Elite Collector', icon: 'crown', hue: 335, fx: 'gold', hint: 'Pull a card worth {n} Power', need: 700, test: (u) => cards(u).best >= 700 },

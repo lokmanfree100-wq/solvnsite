@@ -24,7 +24,6 @@ import { UpdatesView } from './views/updates.js';
 import { SettingsView } from './views/settings.js';
 import { ProfileView } from './views/profile.js';
 import { CollectionView } from './views/collection.js';
-import { LeaderboardView } from './views/leaderboard.js';
 import { MessagesView } from './views/messages.js';
 import { RoomsView } from './views/rooms.js';
 import { TradesView } from './views/trades.js';
@@ -60,7 +59,6 @@ const ROUTES = [
   { match: /^\/profile$/, view: ProfileView, nav: true },
   { match: /^\/profile\/[\w-]+$/, view: ProfileView, nav: true },
   { match: /^\/packs$/, view: CollectionView, nav: true },
-  { match: /^\/leaderboard$/, view: LeaderboardView, nav: true },
   { match: /^\/messages$/, view: MessagesView, nav: true },
   { match: /^\/rooms$/, view: RoomsView, nav: true },
   /* Mail moved onto the profile page, so an old bookmark or a saved link lands
@@ -215,7 +213,6 @@ const PAGE_TITLES = {
   top: 'Top 100 — Solvn',
   profile: 'Profile — Solvn',
   packs: 'Card Binder — Solvn',
-  leaderboard: 'Leaderboard — Solvn',
   messages: 'Messages — Solvn',
   rooms: 'Rooms — Solvn',
   mailbox: 'Mailbox — Solvn',

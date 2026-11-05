@@ -9,17 +9,17 @@ What this copy does:
   - Search, browse, details pages, the player, watch history, favourites,
     settings and all 12 languages work as normal.
   - On solvn.site the central Supabase project is built in: accounts, profiles,
-    card binders, packs and XP sync to the one Solvn database — once its tables
+    card binders and packs sync to the one Solvn database — once its tables
     exist. Until they do, the site quietly keeps everything in the browser that
-    made it, which is why the leaderboard can look empty. The next section is the
-    one paste that switches the real thing on.
+    made it, which is why a binder looks empty on a second device. The next
+    section is the one paste that switches the real thing on.
   - A browser that has not signed into the central cloud keeps a local copy of
     everything (lib/device.js), so cards and messages still work between
     sign-ins; Settings ▸ Cloud sync carries that data up with one tap.
   - The bell asks AniList for air dates directly and compares them against this
     device's saved list, so episode notices work without any server.
 
-ACCOUNTS, THE LEADERBOARD, THE VISITOR COUNTER — one thing to switch on.
+ACCOUNTS, THE CARD BINDER, THE VISITOR COUNTER — one thing to switch on.
 
 Nothing in this folder is a server, so the central database is a Supabase project
 the pages talk to directly. Its address is already compiled in (js/lib/cloud.js:31
@@ -42,8 +42,9 @@ but local. One paste fixes it:
      signup works. With confirmation on, the member confirms and the profile row
      is made for them automatically by the trigger in that file.
   5. Prove it: open https://solvn.site in a private window, sign up once, then
-     look at the leaderboard in your normal window. The new name is there. If the
-     admin desk says the database is not set up, step 3 did not run.
+     look at that member's profile in your normal window. The name is there, and
+     so is the binder, because it came from the database rather than the browser.
+     If the admin desk says the database is not set up, step 3 did not run.
 
 Your own admin access: the locked functions in that file answer one address,
 fakelokman36@gmail.com, and any row you mark is_staff = true by hand in the Table

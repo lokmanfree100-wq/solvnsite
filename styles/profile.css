@@ -85,12 +85,6 @@
   line-height: 1.55;
   color: var(--text-faint);
 }
-/* The ladder keeps to the measure of the text above it — a bar that ran the
-   whole width of the column would read as a loading indicator, not a level. */
-.pf-level {
-  max-width: 420px;
-  min-width: 0;
-}
 
 /* ---- the bio ----------------------------------------------------------
    One line under the name, wrapped rather than truncated: a sentence somebody

@@ -154,11 +154,11 @@ export const FACE_QUESTS = [
     have: (u) => Number(duel(u).wins) || 0,
   },
   {
-    id: 'level-five',
-    label: 'Reach level {n}',
+    id: 'pulls-five',
+    label: 'Open {n} packs',
     icon: 'sparkles',
     need: 5,
-    have: (u) => Number(stat(u).level) || 1,
+    have: (u) => Number(binder(u).pulls) || 0,
   },
   {
     id: 'chaser',

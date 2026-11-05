@@ -4,7 +4,7 @@
  * A gift is a record the backend keeps; it carries a card or a bundle, and the
  * binder is this device's. So claiming is the hand-over: the envelope is marked
  * open on the backend, the card joins the local collection (or the packs land
- * in the bank and the XP on the ladder), and the row keeps the stamp. The same
+ * in the bank), and the row keeps the stamp. The same
  * envelope claimed twice is the same plate once — the gift's id is the card's
  * whole identity in the binder.
  */
@@ -16,12 +16,11 @@ import { sfx } from '../lib/sounds.js';
 import { intlDate } from '../lib/util.js';
 import { isSignedIn, mailbox, claimGift } from '../lib/account.js';
 import { importGiftCard, bankPacks } from '../lib/cards.js';
-import { awardXp } from '../lib/level.js';
 import { gachaCard } from '../components/gacha.js';
 import { authSheet, say } from '../components/account.js';
 import { emptyState, errorState } from '../components/media.js';
 
-const KIND_LABEL = { card: 'Studio card', bundle: 'Packs & XP', both: 'Studio card + bonus' };
+const KIND_LABEL = { card: 'Studio card', bundle: 'Packs', both: 'Studio card + bonus' };
 
 /* The bundle's tile: a wrapped box that says what is inside without opening. */
 function bundleTile(bundle, onClick) {
@@ -30,7 +29,6 @@ function bundleTile(bundle, onClick) {
     { 'aria-hidden': 'true' },
     icon('gift', { cls: 'mb-bundle-ico' }),
     bundle.packs ? h('span.mb-bundle-line', {}, h('b.tnum', {}, String(bundle.packs)), h('span', {}, t('packs'))) : null,
-    bundle.xp ? h('span.mb-bundle-line', {}, h('b.tnum', {}, String(bundle.xp)), h('span', {}, t('XP'))) : null,
   );
   if (onClick) {
     tile.setAttribute('role', 'button');
@@ -85,20 +83,16 @@ function giftRow(gift, onDone) {
           const res = await claimGift(gift.id);
           if (wasNew && res.gift.claimedAt) {
             if (res.gift.card) importGiftCard(res.gift.id, res.gift.card);
-            if (res.gift.bundle) {
-              if (res.gift.bundle.packs) bankPacks(res.gift.bundle.packs);
-              if (res.gift.bundle.xp) awardXp(res.gift.bundle.xp, 'gift');
-            }
-            /* The card arriving is its own little reveal; a bundle that levels
-               plays its own cue, and a flat bundle is quiet — one sound per
-               move, never two. */
+            if (res.gift.bundle?.packs) bankPacks(res.gift.bundle.packs);
+            /* The card arriving is its own little reveal; a flat bundle of packs
+               is quiet — one sound per move, never two. */
             if (res.gift.card) sfx.reveal(0);
           }
           const bundle = res.gift.bundle;
           toast(
             res.gift.card
               ? t('{name} is in your binder.', { name: res.gift.card.name })
-              : t('{packs} packs and {xp} XP claimed.', { packs: bundle?.packs || 0, xp: bundle?.xp || 0 }),
+              : t('{packs} packs claimed.', { packs: bundle?.packs || 0 }),
             { tone: 'ok', iconName: 'check' },
           );
           onDone?.();

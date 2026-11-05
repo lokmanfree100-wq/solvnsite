@@ -33,14 +33,14 @@ export const genres = {
 };
 
 const ui = {
-  'Accounts, binders, packs and XP live in the one Solvn database — the owner sees every member live. This device keeps its own copy too, so cards still open between sign-ins.':
-    'الحسابات والمجموعات والحزم ونقاط XP تعيش في قاعدة بيانات Solvn الواحدة — المالك يرى كل عضو مباشرة. هذا الجهاز يحتفظ بنسخته أيضًا، فتبقى البطاقات متاحة بين عمليات الدخول.',
+  'Accounts, binders and packs live in the one Solvn database — the owner sees every member live. This device keeps its own copy too, so cards still open between sign-ins.':
+    'الحسابات والمجموعات والحزم تعيش في قاعدة بيانات Solvn الواحدة — المالك يرى كل عضو مباشرة. هذا الجهاز يحتفظ بنسخته أيضًا، فتبقى البطاقات متاحة بين عمليات الدخول.',
   'Admin email': 'بريد المدير',
   'Backup restored.': 'تمت استعادة النسخة الاحتياطية.',
   'Backup saved.': 'تم حفظ النسخة الاحتياطية.',
   'Central cloud': 'السحابة المركزية',
-  'Central cloud in use — every pull, pack and level syncs to solvn.site.':
-    'السحابة المركزية نشطة — كل سحب وحزمة ومستوى يتزامن مع solvn.site.',
+  'Central cloud in use — every pull and pack syncs to solvn.site.':
+    'السحابة المركزية نشطة — كل سحب وحزمة يتزامن مع solvn.site.',
   'Connect': 'اتصال',
   'Connected to the central cloud.': 'تم الاتصال بالسحابة المركزية.',
   'Enter the owner email and password.': 'أدخل بريد المالك وكلمة المرور.',
@@ -52,8 +52,8 @@ const ui = {
   'Packs': 'الحزم',
   'Restore a backup': 'استعادة نسخة احتياطية',
   'Save a backup': 'حفظ نسخة احتياطية',
-  'Sign in and this device carries its binder, packs and XP into the central cloud.':
-    'سجّل الدخول وسيحمل هذا الجهاز مجموعته وحزمه ونقاط XP إلى السحابة المركزية.',
+  'Sign in and this device carries its binder and packs into the central cloud.':
+    'سجّل الدخول وسيحمل هذا الجهاز مجموعته وحزمه إلى السحابة المركزية.',
   'Sign in as the owner to see every member, binder and pack in the one Solvn database.':
     'سجّل الدخول كمالك لترى كل عضو ومجموعة وحزمة في قاعدة بيانات Solvn الواحدة.',
   'Sign in to the central cloud first.': 'سجّل الدخول إلى السحابة المركزية أولاً.',
@@ -553,8 +553,6 @@ const ui = {
   'This member has not shared a list yet.': 'لم يشارك هذا العضو قائمة بعد.',
   Unlike: 'إلغاء الإعجاب',
   'Your playlists': 'قوائمك',
-  'The leaderboard and the trending lists live on this server, and it is not answering.':
-    'لوحة الصدارة والقوائم الرائجة على هذا الخادم، وهو لا يستجيب.',
   'That profile and its lists live on this server, and it is not answering.':
     'هذا الملف وقوائمه على هذا الخادم، وهو لا يستجيب.',
   /* chat, quality target, discord, ranking, schedule */
@@ -1284,24 +1282,8 @@ const ui = {
   'Your {n}-day streak lifted this pack: nothing in it printed below Lv {floor}.':
     'سلسلتك الممتدة {n} أيام رفعت هذا الباكيت: لا شيء فيه أقل من المستوى {floor}.',
   'Yours': 'حقّك',
-  'LEADERBOARD': 'لوحة الصدارة',
-  'Leaderboard': 'لوحة الصدارة',
-  'Top Collectors': 'أفضل المقتنين',
-  'best Power': 'أعلى قوة',
-  'Collectors ranked': 'المقتنون المصنّفون',
-  'Highest Power': 'أعلى قوة مسجّلة',
-  'No card published': 'لا بطاقة منشورة',
-  'Nobody has published a binder yet': 'لم ينشر أحد مجموعته بعد',
   'Open {name}': 'فتح {name}',
-  'Open a pack, then pin your strongest card from the binder to appear here.':
-    'افتح باكيت ثم ثبّت أقوى بطاقة في مجموعتك لتظهر هنا.',
   'Open the card binder': 'افتح مجموعة البطاقات',
-  'Ranked by the highest card Power each member owns — not by how many cards their binder holds.':
-    'التصنيف حسب أعلى قوة بطاقة يملكها كل عضو — لا حسب عدد البطاقات في مجموعته.',
-  'The board': 'لوحة الصدارة',
-  'Your binder is not on the board yet — it starts the moment you open your first pack.':
-    'مجموعتك ليست في لوحة الصدارة بعد — تبدأ لحظة فتح أول باكيت لك.',
-  'Your place': 'مركزك',
 
   /* ---- واجهة بطاقات الملف الشخصي ---- */
   'Card showcase': 'واجهة البطاقات',
@@ -1393,7 +1375,6 @@ const ui = {
   'Pathfinder': 'المستكشف',
   'Powerhouse': 'قوة ضاربة',
   'Pull a card worth {n} Power': 'اسحب بطاقة بقيمة {n} في القوّة',
-  'Reach level {n}': 'بلغ المستوى {n}',
   'Rising Star': 'نجم صاعد',
   'Solvn Master': 'سيّد Solvn',
   'That title does not exist.': 'هذا اللقب غير موجود.',
@@ -1631,7 +1612,6 @@ const ui = {
 
   /* Arena and duels */
   'Arena': 'الحلبة',
-  'Ranked board': 'لوحة التصنيف',
   'Waiting': 'بانتظار',
   'Ready to fight': 'جاهز للقتال',
   'Fought': 'تبارز',
@@ -1791,8 +1771,6 @@ const ui = {
   'I did not come here to bow.': 'لم آتِ لأركع.',
   'Try to keep up.': 'حاول اللحاق.',
   'Let us see what your binder is worth.': 'لنرَ ما يستحقّه مصنّفك.',
-  'Level {n} — {levels} levels up, {packs} packs banked': 'المستوى {n} — ارتقاء {levels} مستويات وحفظ {packs} رزم',
-  'Level {n} — {packs} packs banked': 'المستوى {n} — حفظ {packs} رزم',
   '{n} packs': '{n} رزم',
 
   /* النبذة، سلّم المستويات، الفئات ولوحة المبارزين */
@@ -1842,27 +1820,10 @@ const ui = {
   'Neon horizon': 'أفق النيون',
   'Koi pond': 'بركة الكوي',
   'Crystal grid': 'شبكة البلّور',
-  'Level {n}': 'المستوى {n}',
-  'Level {n} — the top of the ladder': 'المستوى {n} — قمة السلّم',
-  'Level ladder': 'سلّم المستويات',
-  'LV': 'مستوى',
-  'Progress to level {n}': 'التقدّم إلى المستوى {n}',
-  'Top of the ladder': 'قمة السلّم',
-  '{left} XP to level {n} · {into} of {need}': '{left} نقطة خبرة للمستوى {n} · {into} من {need}',
-  '{n} XP earned on this device': '{n} نقطة خبرة مكتسبة على هذا الجهاز',
-  'What the next levels pay': 'ما تمنحه المستويات التالية',
-  'Collect {n} XP': 'اجمع {n} نقطة خبرة',
-  'Nothing to collect.': 'لا شيء للجمع.',
-  'Quests banked — {n} XP added': 'سُجّلت المهام — أُضيفت {n} نقطة خبرة',
-  'The day turns at 04:00, the same hour the packs use.': 'يتغيّر اليوم عند الرابعة فجرًا، وهي الساعة نفسها التي تستخدمها الحُزم.',
-  'You are at the top of the ladder — nothing left to climb.': 'أنت في قمة السلّم — لم يعد هناك ما يُتسلَّق.',
-  'Every level pays packs into your bank, and a badge every tenth.': 'كل مستوى يمنحك حُزمًا في خزانتك، ووسامًا كل عشرة مستويات.',
-  'XP comes from packs and quests — and every level pays out.': 'تأتي نقاط الخبرة من الحُزم والمهام — وكل مستوى له مكافأته.',
   'Open 5 packs': 'افتح 5 حُزم',
   'Watch an episode': 'شاهد حلقة',
   'Fight a duel': 'خُض مبارزة',
   'Win a duel': 'افز بمبارزة',
-  '{a} of {b}': '{a} من {b}',
   'Level 10': 'المستوى 10',
   'Level 20': 'المستوى 20',
   'Level 30': 'المستوى 30',
@@ -1889,23 +1850,9 @@ const ui = {
   'Elite': 'نخبة',
   'Champion': 'بطل',
   'Legend of the Arena': 'أسطورة الحلبة',
-  'Boards': 'اللوحات',
-  'Collectors': 'المجمّعون',
-  'Ranked': 'التنافسية',
   'RANKED': 'التصنيف التنافسي',
   'Highest card Power': 'أعلى قوة بطاقة',
   'Duel record': 'سجل المبارزات',
-  'Duelists ranked': 'مبارزون مصنّفون',
-  'Duels settled': 'مبارزات محسومة',
-  'Longest run': 'أطول سلسلة انتصارات',
-  'Nobody has settled a duel yet': 'لم تُحسم أي مبارزة بعد',
-  'Pick two cards, commit them, and the arena files the first row on this board.': 'اختر بطاقتين وأكّدهما، فتسجّل الحلبة أول سطر في هذه اللوحة.',
-  'The ranked board': 'لوحة التصنيف',
-  'Top Duelists': 'أفضل المبارزين',
-  'Division first — Bronze to Grandmaster — then the highest card Power in the binder, then the record that earned the division.': 'الدرجة أولًا — من البرونزي إلى الأستاذ الأكبر — ثم أعلى قوة بطاقة في الملف، ثم السجل الذي أوصل إلى هذه الدرجة.',
-  'best Power': 'أفضل قوة',
-  'Enter the arena': 'ادخل الحلبة',
-  'You have not settled a duel yet — the arena files a record after both line-ups are committed.': 'لم تحسم أي مبارزة بعد — تسجّل الحلبة السجل بعد تأكيد تشكيلتَي البطاقات.',
 
   /* Friends and user IDs. */
   'Accept': 'قبول',
@@ -1955,8 +1902,7 @@ const ui = {
   'Nothing has happened here yet.': 'لم يحدث شيء هنا بعد.',
 
   /* The Card Studio and the mailbox. */
-  'A bundle needs at least one pack or some XP.': 'الحزمة تحتاج إلى حزمة واحدة على الأقل أو بعض نقاط الخبرة.',
-  'A bundle needs packs or XP.': 'الحزمة تحتاج إلى حزم أو نقاط خبرة.',
+  'A bundle needs at least one pack.': 'الحزمة تحتاج إلى حزمة واحدة على الأقل.',
   'A gift card needs a name and a portrait.': 'بطاقة الهدية تحتاج إلى اسم وصورة.',
   'A gift needs a card, a bundle or both.': 'الهدية تحتاج إلى بطاقة أو حزمة أو كليهما.',
   'A note that arrives with the gift (up to 180 characters)': 'ملاحظة تصل مع الهدية (حتى 180 حرفًا)',
@@ -1987,7 +1933,6 @@ const ui = {
   'No card in this gift.': 'لا توجد بطاقة في هذه الهدية.',
   'Open the studio': 'افتح الاستوديو',
   'Overall (0–99999)': 'الإجمالي (0–99999)',
-  'Packs & XP': 'حزم وXP',
   'Packs (0–50)': 'الحزم (0–50)',
   'Pick a member to send this to. Reload the list and try again.': 'اختر عضوًا لإرسالها إليه. أعد تحميل القائمة وحاول مجددًا.',
   'Plate title': 'عنوان البطاقة',
@@ -2007,7 +1952,7 @@ const ui = {
   'Studio card': 'بطاقة الاستوديو',
   'Technique (0–999)': 'التقنية (0–999)',
   'That gift is not in your mailbox.': 'هذه الهدية ليست في صندوق بريدك.',
-  "The card joins the receiver's binder when they claim it. A bundle hands over its packs and XP the same way.": 'تنضم البطاقة إلى مجموعة المستلم عند استلامها. والحزمة تسلّم حزمها ونقاط خبرتها بالطريقة نفسها.',
+  "The card joins the receiver's binder when they claim it. A bundle hands over its packs the same way.": 'تنضم البطاقة إلى مجموعة المستلم عند استلامها. والحزمة تسلّم حزمها بالطريقة نفسها.',
   'The mailbox will not open': 'لن يُفتح صندوق البريد',
   'The server that keeps gifts is not answering.': 'الخادم الذي يحفظ الهدايا لا يستجيب.',
   Traffic: 'الزيارات',
@@ -2016,15 +1961,13 @@ const ui = {
   'Visits over the last 14 days': 'الزيارات خلال آخر 14 يومًا',
   Visits: 'الزيارات',
   'When the studio sends a card or a bundle, it lands in this box.': 'عندما يرسل الاستوديو بطاقة أو حزمة، تصل إلى هذا الصندوق.',
-  'XP (0–5000)': 'XP (0–5000)',
-  XP: 'XP',
   'online now': 'متصل الآن',
   'seen {when}': 'آخر ظهور {when}',
   'your mailbox': 'صندوق بريدك',
   '{name} is in your binder.': 'أصبحت {name} في مجموعتك.',
   '{n} new': '{n} جديد',
   '{n} visits': '{n} زيارة',
-  '{packs} packs and {xp} XP claimed.': 'تم استلام {packs} حزم و{xp} نقطة خبرة.',
+  '{packs} packs claimed.': 'تم استلام {packs} حزم.',
   'The site address has been updated to solvn.site': 'تم تحديث عنوان الموقع إلى solvn.site.',
   'Go to solvn.site now': 'الانتقال إلى solvn.site الآن',
   'Movies': 'أفلام',
@@ -2285,7 +2228,7 @@ const ui = {
   'These figures can only come from the central database. Until its tables exist — the SQL file in docs/supabase.sql — no visitor is counted anywhere but this browser, and the Traffic panel above is one device remembering itself.': 'لا يمكن أن تأتي هذه الأرقام إلا من القاعدة المركزية. ما لم تُنشَأ جداولها — ملف SQL في docs/supabase.sql — لا يُحسَب أي زائر خارج هذا المتصفح، ولوحة «الزيارات» أعلاه مجرد جهاز يتذكّر نفسه.',
   'Asking the central database…': 'نَسأل القاعدة المركزية…',
   'Real site numbers': 'أرقام الموقع الحقيقية',
-  'Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device, and the leaderboard can only list what this one holds.': 'اسمك وصورتك وقوائمك محفوظة في هذا المتصفح — وفي هذا المتصفح فقط. لم تُفعَّل القاعدة المركزية لهذا الموقع بعد، لذلك لا يستطيع حسابك مرافقتك إلى جهاز آخر، ولا يمكن لوحة المتصدّرين إلا أن تعرض ما يحفظه هذا الجهاز وحده.',
+  'Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device.': 'اسمك وصورتك وقوائمك محفوظة في هذا المتصفح — وفي هذا المتصفح فقط. لم تُفعَّل القاعدة المركزية لهذا الموقع بعد، لذلك لا يستطيع حسابك مرافقتك إلى جهاز آخر.',
   'Solvn — anime, films & series in HD': 'Solvn — أنمي وأفلام ومسلسلات بجودة عالية',
   'Opening your profile…': 'جارٍ فتح ملفك…',
   Off: 'إيقاف',

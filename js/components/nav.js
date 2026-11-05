@@ -39,7 +39,7 @@ function tabFor(path) {
   if (path.startsWith('/anime') || path.startsWith('/watch')) return null;
   if (path.startsWith('/movies') || path.startsWith('/movie') || path.startsWith('/mwatch')) return 'movies';
   const seg = path.split('/')[1];
-  if (seg === 'settings' || seg === 'updates' || seg === 'packs' || seg === 'leaderboard' || seg === 'messages' || seg === 'mailbox' || seg === 'trades' || seg === 'arena') return 'profile';
+  if (seg === 'settings' || seg === 'updates' || seg === 'packs' || seg === 'messages' || seg === 'mailbox' || seg === 'trades' || seg === 'arena') return 'profile';
   return NAV.some((n) => n.id === seg) ? seg : null;
 }
 

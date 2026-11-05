@@ -1837,3 +1837,65 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* ---- the duel record and the division -------------------------------
+   The record is the server's, so it is printed once, plainly, above everything
+   a page can change: the same line a profile wears, the arena repeats and the
+   chat shows beside a name. A run of victories is the only figure here that can
+   still be lost, so it is the one chip given the warn light. */
+.duel-record {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: var(--sp-3);
+}
+.duel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+.duel-chip svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+.duel-chip b {
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.duel-chip.is-streak {
+  border-color: color-mix(in srgb, var(--warn) 40%, transparent);
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+.duel-chip.is-streak b {
+  color: var(--warn);
+}
+/* The division a record reached, worn next to the name. */
+.div-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.div-chip svg {
+  width: 13px;
+  height: 13px;
+  color: var(--accent-text);
+}

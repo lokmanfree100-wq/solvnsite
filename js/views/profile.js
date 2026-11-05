@@ -24,7 +24,6 @@ import { PIN_MAX, displayCard, isPinned, ownedEntries, pins, publish, togglePin 
 import { FACES_PER_QUEST, faceAccess, faceQuestAt, faceQuestRows, faces, matchFaces } from '../lib/faces.js';
 import { gachaCard } from '../components/gacha.js';
 import { avatar, authSheet, divisionChip, duelRecord, signOutButton, statTile, say, titleChip } from '../components/account.js';
-import { levelBar, levelSheet } from '../components/level.js';
 import { playlistCard, newPlaylistSheet, editPlaylistSheet } from '../components/playlists.js';
 import { reportAction } from '../components/report.js';
 import { mediaCard, stillImage, emptyState, errorState, loadingGrid } from '../components/media.js';
@@ -1403,11 +1402,6 @@ export async function ProfileView(ctx) {
           handleField(user),
           idField(user),
           bioBlock(user, { canEdit: data.isMe, onChanged: repaint }),
-          /* The ladder sits under the name and above the lists: it is the one
-             figure on this page that says what a member has *done* rather than
-             what they own, and it reads from their own record when it is not
-             yours. */
-          h('div.pf-level', {}, levelBar(user, { mine: data.isMe, figures: data.isMe })),
           duelRecord(user, { hideEmpty: true }),
           data.isMe
             ? h(
@@ -1428,14 +1422,6 @@ export async function ProfileView(ctx) {
             /* A chat is an entry point, not a decoration: it appears where a
                message could actually be filed, which means a server that stores
                them. On your own profile it is the way back to your inbox. */
-            data.isMe
-              ? h(
-                  'button.btn.btn--sm',
-                  { type: 'button', onclick: () => levelSheet({ onDone: repaint }) },
-                  icon('trending'),
-                  h('span', {}, t('Level ladder')),
-                )
-              : null,
             data.isMe
               ? inboxUsable()
                 ? h('a.btn.btn--sm', { href: '#/messages' }, icon('chat'), h('span', {}, t('Messages')))
@@ -1594,7 +1580,6 @@ export async function ProfileView(ctx) {
             h('a.more-link', { href: '#/packs' }, icon('sparkles'), h('span', {}, t('Card binder'))),
             duelsUsable() ? h('a.more-link', { href: '#/arena' }, icon('bolt'), h('span', {}, t('Arena'))) : null,
             tradesUsable() ? h('a.more-link', { href: '#/trades' }, icon('swap'), h('span', {}, t('Trades'))) : null,
-            h('a.more-link', { href: '#/leaderboard' }, icon('crown'), h('span', {}, t('Leaderboard'))),
             h('a.more-link', { href: '#/updates' }, icon('calendarStar'), h('span', {}, t('Airing schedule'))),
             h('a.more-link', { href: '#/settings' }, icon('settings'), h('span', {}, t('Settings'))),
           )

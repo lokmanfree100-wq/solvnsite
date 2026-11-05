@@ -118,11 +118,11 @@ export class ApiError extends Error {
 const AUTH_ROUTE = /^account\/(signup|login|logout)$/;
 /* The account fields a verified Supabase project owns. On a static copy every
    other route is answered by `lib/device.js`, so messages and trades still
-   work even when the member signed in through the cloud. Playlists and the
-   community boards read from the cloud too, because on solvn.site the cloud
-   IS the site's database — a board that only counted this browser's accounts
-   would be a shadow of the real one. */
-const CLOUD_OWN = /^account\/(me|avatar|stats|cards)$|^favourite$|^playlists|^users\/|^members$|^community\/(collectors|leaderboard|ranked|playlists)$|^pulse$|^admin\/(analytics|core-roster)$/;
+   work even when the member signed in through the cloud. Public playlists read
+   from the cloud too, because on solvn.site the cloud IS the site's database —
+   a shelf that only listed this browser's accounts would be a shadow of the
+   real one. */
+const CLOUD_OWN = /^account\/(me|avatar|stats|cards)$|^favourite$|^playlists|^users\/|^members$|^community\/playlists$|^pulse$|^admin\/(analytics|core-roster)$/;
 
 const wrapCloud = async (path, opts) => {
   try {
@@ -466,11 +466,6 @@ export async function pushStats(force = false) {
     completed: stats.completed,
     titles: stats.titles,
     badges: stats.badges,
-    /* The ladder rides along with the watch counters because this route replaces
-       the whole stats object: a summary without them would store a level 1 over
-       somebody who had just reached twenty. */
-    xp: stats.xp,
-    level: stats.level,
   };
   const signature = JSON.stringify(body);
   if (!force && signature === lastPush) return state.user;
@@ -489,8 +484,8 @@ export async function pushStats(force = false) {
 /**
  * Put this device's card report on the account record, or take it back down.
  *
- * The binder is deliberately storage-local, so a profile page and the global
- * leaderboard can only work from the short summary the client hands over here.
+ * The binder is deliberately storage-local, so a profile page can only work
+ * from the short summary the client hands over here.
  * It arrives already built by `lib/cards.js` — this module knows nothing about
  * cards and must not start importing them: `cards.js` already imports *this*
  * file for `currentUser()` and `isStaff()`, and that loop would be a module
@@ -545,14 +540,10 @@ export function likePlaylist(id) {
 }
 
 /* ---- community ------------------------------------------------------ */
-/* A profile is still readable by id — a comment link can open one. The board
-   that ranks people now ranks one thing only: the strongest card a member chose
-   to publish. Watch hours are not on it, because hours count viewing and cards
-   count collecting. */
+/* A profile is still readable by id — a comment link can open one. There is no
+   ranking board any more: what a member publishes is their own binder summary,
+   and the pages that show it show it without placing people against each other. */
 export const publicProfile = (id) => api(`users/${id}`);
-
-/** The card board, ranked on the highest Power each member published. */
-export const collectors = (n = 20) => api(`community/collectors?n=${n}`);
 
 /** Members whose @handle, display name or user ID matches this term, best first. */
 export const searchMembers = (q) => api(`members?q=${encodeURIComponent(String(q || '').trim().slice(0, 24))}`);
@@ -721,9 +712,6 @@ export const fileDuel = (id, { winner, score }) =>
 export const cancelDuel = (id) => api(`duels/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: {} });
 /** A CPU fight, or a live match this device settled: one side's record only. */
 export const filePractice = (won) => api('duels/practice', { method: 'POST', body: { won: Boolean(won) } });
-
-/** Duel wins first, then win rate, then the strongest card. Staff sit it out. */
-export const rankedBoard = () => api('community/ranked');
 
 /* ---- watch together -------------------------------------------------------
    A room shares the two things a watch page can actually control from outside a

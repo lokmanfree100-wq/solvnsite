@@ -54,7 +54,6 @@ import {
 import { cpuLineup, makeBattle, newSeed } from '../lib/battle.js';
 import { FALLBACK_MS, onlineArenaReady, searchOnline } from '../lib/live-arena.js';
 import { openBattle } from '../components/battle.js';
-import { awardXp } from '../lib/level.js';
 import { gachaCard } from '../components/gacha.js';
 import { avatar, authSheet, divisionChip, duelRecord, say, titleChip } from '../components/account.js';
 import { emptyState } from '../components/media.js';
@@ -64,10 +63,6 @@ import { sfx } from '../lib/sounds.js';
 const NOTE_MAX = 140;
 /** The most tiles a picker paints at once — a full binder runs into the hundreds. */
 const PICK_ROWS = 80;
-
-/** What a playable fight pays, the same figures a replayed duel does. */
-const XP_WIN = 60;
-const XP_LOSS = 15;
 
 /* The pre-battle exchange. Four short lines, and the seed picks two of them, so
    two screens open on the same script. Each is a literal `t()` so the extractor
@@ -846,7 +841,6 @@ export function ArenaView({ onCleanup }) {
    */
   async function settleBattle({ won }) {
     countToday(won);
-    awardXp(won ? XP_WIN : XP_LOSS, won ? 'duel-win' : 'duel-loss');
     let streak = null;
     try {
       const res = await filePractice(won);
@@ -1118,7 +1112,6 @@ export function ArenaView({ onCleanup }) {
       h('button.btn.btn--primary', { type: 'button', onclick: () => fightOnline() }, icon('globe'), h('span', {}, t('Fight online'))),
       h('button.btn', { type: 'button', onclick: () => startCpu() }, icon('cpu'), h('span', {}, t('Quick fight (CPU)'))),
       h('button.btn.btn--ghost', { type: 'button', onclick: () => inviteSheet(paint) }, icon('users'), h('span', {}, t('Challenge a member'))),
-      h('a.btn.btn--ghost', { href: '#/leaderboard' }, icon('trophy'), h('span', {}, t('Ranked board'))),
     ),
   );
 

@@ -13,7 +13,7 @@
 -- Until this runs, `rpc/kitsune_ready` answers 404, so cloud.js sets
 -- schema.state = 'missing', `authReady()` is false, and every account call falls
 -- back to localStorage: sign-up "works", the account exists only inside that one
--- browser, and the leaderboard can only ever count it. This file is the
+-- browser, and nothing but this browser can see it. This file is the
 -- difference between a private number and a community.
 --
 -- What is deliberately NOT in this schema: no country, region, city, timezone,
@@ -77,11 +77,18 @@ create index if not exists kitsune_profiles_username_lower_idx
   on public.kitsune_profiles (lower(username) text_pattern_ops);
 
 -- ---------------------------------------------------------------------------
--- 2. the binder, the packs and the XP
+-- 2. the binder and the packs
 --
 -- A whole-record replace, last write wins on the member's own clock: toCore()
--- reads collection / packs / xp / client_at back and cloud.js compares client_at
+-- reads collection / packs / client_at back and cloud.js compares client_at
 -- before uploading, so a stale tab cannot resurrect a card just fused away.
+--
+-- `xp` is a retired column. The ladder that used to fill it is gone from the
+-- site, but kitsune_core_put() still takes four arguments and PostgREST calls an
+-- RPC with exactly its own list, so the client hands this one an empty object.
+-- Dropping the column would mean changing that function's signature and waiting
+-- for every browser tab in the wild to catch up, for the sake of a column that
+-- costs nothing to keep.
 -- ---------------------------------------------------------------------------
 
 create table if not exists public.kitsune_cores (
@@ -379,8 +386,8 @@ $$;
 -- 10. the fields a member owns
 --
 -- toUser() reads ONE object back rather than an array, which is why every writer
--- here returns jsonb. p_duel defaults to null so a bundle that predates the
--- ranked board still calls the four-argument shape it knows.
+-- here returns jsonb. p_duel defaults to null so a bundle that predates the duel
+-- record still calls the four-argument shape it knows.
 -- ---------------------------------------------------------------------------
 
 create or replace function public.kitsune_profile_update(
@@ -448,7 +455,7 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- 11. the core: binder, packs, XP — last write wins on the member's own clock
+-- 11. the core: binder and packs — last write wins on the member's own clock
 -- ---------------------------------------------------------------------------
 
 create or replace function public.kitsune_core_get()
@@ -507,214 +514,20 @@ $$;
 -- ---------------------------------------------------------------------------
 -- 12. the boards
 --
--- Both are readable by an anonymous visitor because the leaderboard is a public
--- page. What leaves these functions is a handle, a display name and a card
--- count — the same fields js/lib/device.js already prints. Staff rows are hidden
--- from the ranking exactly as the local board hides them; the totals still count
--- every member.
+-- There are none. Solvn ranked members against each other twice — once on the
+-- highest card Power a member published, once on duel wins — and both pages put
+-- a binder next to a neighbour. The binder, the profile and the arena all still
+-- exist; what a member publishes is their own summary, and nothing sets it
+-- beside anybody else. Playlists stay public shelves, because a shelf is offered
+-- rather than scored.
+--
+-- These are dropped rather than left unused: an anonymous RPC that hands back a
+-- whole roster is an open door to a page nobody links to any more.
 -- ---------------------------------------------------------------------------
-
--- js/lib/device.js:1640 orders collectors by cards.best, then topTier, then
--- unique, then the handle — and only members with at least one card appear.
-create or replace function public.kitsune_collectors(p_limit integer)
-returns jsonb
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select jsonb_build_object(
-    'users', coalesce((
-      select jsonb_agg(x.o order by x.rnk)
-        from (
-          select row_number() over (
-                   order by coalesce((p.cards ->> 'best')::int, 0) desc,
-                            coalesce((p.cards ->> 'topTier')::int, 0) desc,
-                            coalesce((p.cards ->> 'unique')::int, 0) desc,
-                            lower(p.username) asc
-                 ) as rnk,
-                 to_jsonb(p) - 'is_staff'
-                   || jsonb_build_object('place', row_number() over (
-                       order by coalesce((p.cards ->> 'best')::int, 0) desc,
-                                coalesce((p.cards ->> 'topTier')::int, 0) desc,
-                                coalesce((p.cards ->> 'unique')::int, 0) desc,
-                                lower(p.username) asc
-                     )) as o
-            from public.kitsune_profiles p
-           where p.username is not null
-             and not p.is_staff
-             and coalesce((p.cards ->> 'best')::int, 0) > 0
-        ) x
-       order by x.rnk
-       limit greatest(1, least(50, coalesce(p_limit, 20)))
-    ), '[]'::jsonb),
-    'me', (
-      select y.o
-        from (
-          select p.id,
-                 to_jsonb(p) || jsonb_build_object('place', row_number() over (
-                   order by coalesce((p.cards ->> 'best')::int, 0) desc,
-                            coalesce((p.cards ->> 'topTier')::int, 0) desc,
-                            coalesce((p.cards ->> 'unique')::int, 0) desc,
-                            lower(p.username) asc
-                 )) as o
-            from public.kitsune_profiles p
-           where p.username is not null
-             and coalesce((p.cards ->> 'best')::int, 0) > 0
-        ) y
-       where y.id = auth.uid()
-    ),
-    'totals', jsonb_build_object(
-      'members',    (select count(*) from public.kitsune_profiles),
-      'collectors', (select count(*) from public.kitsune_profiles
-                      where coalesce((cards ->> 'best')::int, 0) > 0),
-      'pulls',      (select coalesce(sum((cards ->> 'pulls')::int), 0) from public.kitsune_profiles
-                      where cards is not null and cards ? 'pulls'),
-      'highest',    (select coalesce(max((cards ->> 'best')::int), 0) from public.kitsune_profiles)
-    )
-  );
-$$;
-
--- js/lib/device.js:1672 orders the hours board by hours, then episodes.
-create or replace function public.kitsune_leaderboard(p_limit integer)
-returns jsonb
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select jsonb_build_object(
-    'users', coalesce((
-      select jsonb_agg(to_jsonb(s) order by s.place)
-        from (
-          select p.*, row_number() over (
-            order by p.hours desc, p.episodes desc, p.created_at asc
-          ) as place
-            from public.kitsune_profiles p
-           where p.username is not null
-           order by p.hours desc, p.episodes desc, p.created_at asc
-           limit greatest(1, least(50, coalesce(p_limit, 20)))
-        ) s
-    ), '[]'::jsonb),
-    'me', (
-      select to_jsonb(y) from (
-        select p.*, row_number() over (
-          order by p.hours desc, p.episodes desc, p.created_at asc
-        ) as place
-          from public.kitsune_profiles p where p.username is not null
-      ) y where y.id = auth.uid()
-    ),
-    'me_place', (
-      select y.place from (
-        select p.id, row_number() over (
-          order by p.hours desc, p.episodes desc, p.created_at asc
-        ) as place
-          from public.kitsune_profiles p where p.username is not null
-      ) y where y.id = auth.uid()
-    ),
-    'totals', jsonb_build_object(
-      'members',   (select count(*) from public.kitsune_profiles),
-      'hours',     (select coalesce(sum(hours), 0) from public.kitsune_profiles),
-      'playlists', (select count(*) from public.kitsune_playlists where visibility = 'public')
-    )
-  );
-$$;
-
--- The division ladder in js/lib/ranks.js:191, so a cloud board and a device
--- board call the same number of wins by the same name.
-create or replace function public.kitsune_division(p_wins integer)
-returns integer
-language sql
-immutable
-as $$
-  select case
-    when coalesce(p_wins, 0) >= 240 then 7
-    when coalesce(p_wins, 0) >= 160 then 6
-    when coalesce(p_wins, 0) >= 100 then 5
-    when coalesce(p_wins, 0) >= 60  then 4
-    when coalesce(p_wins, 0) >= 30  then 3
-    when coalesce(p_wins, 0) >= 15  then 2
-    when coalesce(p_wins, 0) >= 5   then 1
-    when coalesce(p_wins, 0) >= 1   then 0
-    else -1
-  end;
-$$;
-
--- js/lib/device.js:1670: division, then the best card, then wins, then win rate,
--- then the streak, then the handle. Only members who have fought appear.
-create or replace function public.kitsune_ranked(p_limit integer)
-returns jsonb
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select jsonb_build_object(
-    'users', coalesce((
-      select jsonb_agg(x.o order by x.rnk)
-        from (
-          select row_number() over (
-                   order by public.kitsune_division(coalesce((p.duel ->> 'wins')::int, 0)) desc,
-                            coalesce((p.cards ->> 'best')::int, 0) desc,
-                            coalesce((p.duel ->> 'wins')::int, 0) desc,
-                            (coalesce((p.duel ->> 'wins')::int, 0))::numeric
-                              / greatest(1, coalesce((p.duel ->> 'fought')::int, 0)) desc,
-                            coalesce((p.duel ->> 'streak')::int, 0) desc,
-                            lower(p.username)
-                 ) as rnk,
-                 to_jsonb(p) - 'is_staff' || jsonb_build_object(
-                   'place', row_number() over (
-                     order by public.kitsune_division(coalesce((p.duel ->> 'wins')::int, 0)) desc,
-                              coalesce((p.cards ->> 'best')::int, 0) desc,
-                              coalesce((p.duel ->> 'wins')::int, 0) desc,
-                              (coalesce((p.duel ->> 'wins')::int, 0))::numeric
-                                / greatest(1, coalesce((p.duel ->> 'fought')::int, 0)) desc,
-                              coalesce((p.duel ->> 'streak')::int, 0) desc,
-                              lower(p.username)
-                   ),
-                   'winRate', round(100.0 * coalesce((p.duel ->> 'wins')::int, 0)
-                                    / greatest(1, coalesce((p.duel ->> 'fought')::int, 0)), 1)
-                 ) as o
-            from public.kitsune_profiles p
-           where p.username is not null
-             and not p.is_staff
-             and coalesce((p.duel ->> 'fought')::int, 0) > 0
-        ) x
-       order by x.rnk
-       limit greatest(1, least(50, coalesce(p_limit, 20)))
-    ), '[]'::jsonb),
-    'me', (
-      select y.o
-        from (
-          select p.id,
-                 to_jsonb(p) || jsonb_build_object(
-                   'place', row_number() over (
-                     order by public.kitsune_division(coalesce((p.duel ->> 'wins')::int, 0)) desc,
-                              coalesce((p.cards ->> 'best')::int, 0) desc,
-                              coalesce((p.duel ->> 'wins')::int, 0) desc,
-                              (coalesce((p.duel ->> 'wins')::int, 0))::numeric
-                                / greatest(1, coalesce((p.duel ->> 'fought')::int, 0)) desc,
-                              coalesce((p.duel ->> 'streak')::int, 0) desc,
-                              lower(p.username)
-                   ),
-                   'winRate', round(100.0 * coalesce((p.duel ->> 'wins')::int, 0)
-                                    / greatest(1, coalesce((p.duel ->> 'fought')::int, 0)), 1)
-                 ) as o
-            from public.kitsune_profiles p
-           where p.username is not null
-             and coalesce((p.duel ->> 'fought')::int, 0) > 0
-        ) y
-       where y.id = auth.uid()
-    ),
-    'totals', jsonb_build_object(
-      'members',   (select count(*) from public.kitsune_profiles),
-      'duellists', (select count(*) from public.kitsune_profiles
-                     where coalesce((duel ->> 'fought')::int, 0) > 0),
-      'fights',    (select coalesce(sum((duel ->> 'fought')::int), 0) from public.kitsune_profiles),
-      'runs',      (select coalesce(max((duel ->> 'best')::int), 0) from public.kitsune_profiles)
-    )
-  );
-$$;
+drop function if exists public.kitsune_collectors(integer);
+drop function if exists public.kitsune_ranked(integer);
+drop function if exists public.kitsune_leaderboard(integer);
+drop function if exists public.kitsune_division(integer);
 
 -- Trending playlists. toPlaylist() reads row.kitsune_profiles.display_name, so
 -- the owner rides along inside each object under exactly that key.
@@ -985,8 +798,6 @@ as $$
                'username',    p.username,
                'displayName', coalesce(p.display_name, p.username),
                'email',       u.email,
-               'level',       coalesce((c.xp ->> 'level')::int, 1),
-               'xp',          coalesce((c.xp ->> 'xp')::int, 0),
                'cards',       coalesce((p.cards ->> 'best')::int, 0),
                'packs',       coalesce((select count(*) from jsonb_object_keys(coalesce(c.packs, '{}'::jsonb))), 0),
                'pulls',       coalesce((p.cards ->> 'pulls')::int, 0),
@@ -1075,16 +886,13 @@ create policy kitsune_likes_own
 -- 18. who may execute what
 --
 -- The publishable key ships inside a public bundle, so this grant list is the
--- second lock. The boards, the schema check and the visit beat stay open to anon
--- on purpose; every writer is authenticated only, and the two desk functions are
--- gated again inside SQL.
+-- second lock. The trending shelf, the schema check and the visit beat stay open
+-- to anon on purpose; every writer is authenticated only, and the two desk
+-- functions are gated again inside SQL.
 -- ---------------------------------------------------------------------------
 
 grant execute on function public.kitsune_ready()                to anon, authenticated;
 grant execute on function public.kitsune_visit(text, text)       to anon, authenticated;
-grant execute on function public.kitsune_collectors(integer)     to anon, authenticated;
-grant execute on function public.kitsune_leaderboard(integer)    to anon, authenticated;
-grant execute on function public.kitsune_ranked(integer)         to anon, authenticated;
 grant execute on function public.kitsune_trending()              to anon, authenticated;
 grant execute on function public.kitsune_profile(uuid)           to anon, authenticated;
 
@@ -1110,8 +918,9 @@ grant  execute on function public.kitsune_core_roster()                         
 --
 --   * Settings ▸ Cloud answers "Connected" — that is kitsune_ready() returning
 --     true, and it is what moves sign-up from localStorage to a real account.
---   * Open the leaderboard in a second browser (or a phone) and the same member
---     is on it. That is the board being real.
+--   * Sign in on a second browser (or a phone) with the same account and the
+--     binder is standing there, packs and streak included. That is the sync
+--     being real.
 --
 -- If the run stops on `auth.users`, the project was created without Auth: switch
 -- it on in the dashboard and run the file again from section 1.

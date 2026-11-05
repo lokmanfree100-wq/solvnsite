@@ -233,7 +233,7 @@ export function welcomeSheet(user) {
         avatar(user, { size: 'lg' }),
         h('h3.welcome-title', {}, t('Welcome to Solvn, {name}! Enjoy streaming.', { name })),
         h('p.faint', {}, localOnly
-          ? t('Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device, and the leaderboard can only list what this one holds.')
+          ? t('Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device.')
           : t('Your name, your picture and your lists now follow your account.')),
         h(
           'div.auth-foot',

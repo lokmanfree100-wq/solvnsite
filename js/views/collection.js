@@ -280,10 +280,7 @@ export async function CollectionView(ctx) {
             ? t('Every pull is a roll against the published table: nothing for sale, nothing handed out by an advertisement.')
             : t('Packs are a member habit — {n} a day, free, and no advertisement doubles them.', { n: String(DAILY_PACKS) }),
         ),
-        h('div.rowline.g-headline', {}, packBtn, rarityChip(stats.best || 1),
-          /* The board is the one thing a binder is for besides finishing it, and
-             on a phone the side rail is gone — so the way in lives here too. */
-          h('a.btn.btn--sm', { href: '#/leaderboard' }, icon('crown'), h('span', {}, t('Leaderboard')))),
+        h('div.rowline.g-headline', {}, packBtn, rarityChip(stats.best || 1)),
         h(
           'p.g-daily',
           {},

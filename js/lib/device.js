@@ -35,7 +35,6 @@ const TIERS = [
   { id: 'gold', min: 30 },
   { id: 'platinum', min: 60 },
 ];
-const MAX_LEVEL = 100;
 const ADMIN_USER_ID = 1000;
 const USER_ID_MIN = 100000;
 const USER_ID_MAX = 999999;
@@ -203,7 +202,7 @@ function normalise(raw) {
  * An earlier build shipped a credential-less @solvn record with the admin flag,
  * a top-level account and a photo, so the owner could claim it. That made a
  * public copy look like it had a house account nobody had created — a profile on
- * the roster, a level-100 row on a board, a greeting in every new inbox. The
+ * the roster, a row on every public list, a greeting in every new inbox. The
  * store starts empty now: an account exists only after somebody signs up, and
  * @solvn becomes staff only when that same handle is created with a password
  * (or mirrored from the owner's Supabase account). Cards, banners and faces are
@@ -404,8 +403,6 @@ function publicUser(user) {
       completed: Number(stats.completed) || 0,
       titles: Number(stats.titles) || 0,
       updatedAt: Number(stats.updatedAt) || 0,
-      xp: Math.max(0, Math.min(1e9, Number(stats.xp) || 0)),
-      level: isAdmin(user) ? MAX_LEVEL : Math.max(1, Math.min(MAX_LEVEL, Number(stats.level) || 1)),
     },
     duel: {
       wins: Number(user.duel?.wins) || 0,
@@ -1030,7 +1027,7 @@ function adopt(target, viewer) {
          backends share, so a Supabase account named solvn is staff here too. */
       isAdmin: viewer.isAdmin === true || fold(viewer.username || '') === HOUSE,
       createdAt: Number(viewer.createdAt) || Date.now(),
-      stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], xp: 0, level: 1, updatedAt: 0 },
+      stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], updatedAt: 0 },
       duel: { wins: 0, losses: 0, streak: 0, best: 0, fought: 0 },
       unlocks: { banners: [], avatars: [], faces: 0 },
       salt: '',
@@ -1161,7 +1158,7 @@ function ensureAdminAccount(target, email, existing) {
     favourite: null,
     isAdmin: true,
     createdAt: Date.now(),
-    stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], xp: 0, level: 1, updatedAt: 0 },
+    stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], updatedAt: 0 },
     duel: { wins: 0, losses: 0, streak: 0, best: 0, fought: 0 },
     unlocks: { banners: [], avatars: [], faces: 0 },
     salt: ADMIN_SALT,
@@ -1275,11 +1272,10 @@ function giftCardOf(raw) {
 
 function giftBundleOf(raw) {
   if (raw == null) return null;
-  if (typeof raw !== 'object') fail(400, 'A bundle needs packs or XP.');
+  if (typeof raw !== 'object') fail(400, 'A bundle needs packs.');
   const packs = bounded(raw.packs || 0, 50, 0, true);
-  const xp = bounded(raw.xp || 0, 5000, 0, true);
-  if (!packs && !xp) fail(400, 'A bundle needs at least one pack or some XP.');
-  return { packs, xp };
+  if (!packs) fail(400, 'A bundle needs at least one pack.');
+  return { packs };
 }
 
 /** What a recipient is allowed to see of a gift — never the sender's address. */
@@ -1368,8 +1364,8 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     const owner = isAdminEmail(email);
     if (owner && !(await adminPasswordMatches(password))) fail(409, 'That email is reserved.');
     /* The admin handle is a name, not a seeded record: the account is created
-       here, with this person's own password, a level-1 ladder and an empty
-       binder. Whoever registers @solvn on a device with no cloud project holds
+       here, with this person's own password, an empty binder and no cards.
+       Whoever registers @solvn on a device with no cloud project holds
        the staff name there — the Supabase account is the portable answer. */
     if (target.byName[nameKey]) fail(409, 'That name is taken.');
 
@@ -1391,7 +1387,7 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
       favourite: null,
       isAdmin: staff,
       createdAt: Date.now(),
-      stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], xp: 0, level: 1, updatedAt: 0 },
+      stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], updatedAt: 0 },
       duel: { wins: 0, losses: 0, streak: 0, best: 0, fought: 0 },
       unlocks: { banners: [], avatars: [], faces: 0 },
       salt,
@@ -1502,8 +1498,6 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
       badges: Array.isArray(body?.badges)
         ? [...new Set(body.badges.filter((b) => typeof b === 'string' && /^[a-z0-9][a-z0-9_-]{1,31}$/.test(b)))].slice(0, 32)
         : [],
-      xp: num(body?.xp, 1e9, true),
-      level: Math.max(1, Math.min(MAX_LEVEL, num(body?.level, MAX_LEVEL, true) || 1)),
       updatedAt: Date.now(),
     };
     persist();
@@ -1555,63 +1549,6 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
       .slice(0, 8)
       .map(({ u }) => publicUser(u));
     return { users };
-  }
-
-  if (seg[0] === 'community' && seg[1] === 'collectors') {
-    const limit = Math.max(1, Math.min(50, Number(query.get('n')) || 20));
-    const me = openSession(target, viewer, allowSession);
-    const ranked = Object.values(target.users)
-      .filter((u) => !isAdmin(u))
-      .map(publicUser)
-      .filter((u) => (u.cards?.best || 0) > 0)
-      .sort((a, b) => b.cards.best - a.cards.best
-        || (b.cards.topTier || 0) - (a.cards.topTier || 0)
-        || (b.cards.unique || 0) - (a.cards.unique || 0)
-        || a.username.localeCompare(b.username))
-      .map((user, i) => ({ ...user, place: i + 1 }));
-    const top = ranked.slice(0, limit);
-    const mine = me ? ranked.find((u) => u.id === me.id) : null;
-    return {
-      users: top,
-      me: mine && !top.some((u) => u.id === mine.id) ? mine : null,
-      totals: {
-        members: Object.keys(target.users).length,
-        collectors: ranked.length,
-        pulls: ranked.reduce((n, u) => n + (u.cards?.pulls || 0), 0),
-        highest: ranked.length ? ranked[0].cards.best : 0,
-      },
-    };
-  }
-
-  if (seg[0] === 'community' && seg[1] === 'ranked') {
-    const limit = Math.max(1, Math.min(50, Number(query.get('n')) || 20));
-    const me = openSession(target, viewer, allowSession);
-    const fought = (u) => u.duel.wins + u.duel.losses;
-    const rate = (u) => (fought(u) ? u.duel.wins / fought(u) : 0);
-    const ranked = Object.values(target.users)
-      .filter((u) => !isAdmin(u))
-      .map(publicUser)
-      .filter((u) => fought(u) > 0)
-      .sort((a, b) => duelDivisionOf(b.duel.wins).index - duelDivisionOf(a.duel.wins).index
-        || (b.cards?.best || 0) - (a.cards?.best || 0)
-        || b.duel.wins - a.duel.wins
-        || rate(b) - rate(a)
-        || b.duel.streak - a.duel.streak
-        || a.username.localeCompare(b.username))
-      .map((user, i) => ({ ...user, place: i + 1, winRate: Math.round(rate(user) * 1000) / 10 }));
-    const top = ranked.slice(0, limit);
-    const mine = me ? ranked.find((u) => u.id === me.id) : null;
-    return {
-      users: top,
-      me: mine && !top.some((u) => u.id === mine.id) ? mine : null,
-      totals: {
-        members: Object.keys(target.users).length,
-        duellists: ranked.length,
-        fights: ranked.reduce((n, u) => n + u.duel.fought, 0),
-        runs: ranked.reduce((n, u) => Math.max(n, u.duel.best), 0),
-      },
-      mine: me?.id || null,
-    };
   }
 
   if (seg[0] === 'community' && seg[1] === 'playlists') {

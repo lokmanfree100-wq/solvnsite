@@ -2,9 +2,9 @@
  * The central-cloud sync: the one database behind solvn.site.
  *
  * On the permanent domain the Supabase project is built in (see lib/cloud.js),
- * and this module is what keeps a member's whole game record — the binder, the
- * pack allowance and bank, and the XP ledger — moving between their device and
- * that database. The device copy is always the one the pages read, so cards
+ * and this module is what keeps a member's whole game record — the binder and
+ * the pack allowance, bank and streak — moving between their device and that
+ * database. The device copy is always the one the pages read, so cards
  * still open offline; the cloud copy is the one the Super Admin's desk reads,
  * and the one that follows a member onto their next device.
  *
@@ -19,7 +19,6 @@ import { storage } from './store.js';
 import { cloudActive, cloudApi, homeCloud } from './cloud.js';
 import { isSignedIn, currentUser, onAccount, patchMe, pushStats } from './account.js';
 import { collectionFor, importCollection, publish, quota } from './cards.js';
-import { levelLedger, importLedger } from './level.js';
 import { toast } from './ui.js';
 import { t } from './i18n.js';
 
@@ -38,14 +37,13 @@ const mark = () => {
 
 const setMark = (uid, at) => storage.write(MARK, { uid, at: Number(at) || 0 });
 
-/* The bundle this device can send: the live binder of the signed-in member,
-   the device's pack record and the XP ledger, stamped with this device's
-   clock. The stamp is how the two sides agree which one is newer. */
+/* The bundle this device can send: the live binder of the signed-in member and
+   the device's pack record, stamped with this device's clock. The stamp is how
+   the two sides agree which one is newer. */
 function localBundle(uid) {
   return {
     collection: collectionFor(uid || uidOf() || 'device'),
     packs: quota(),
-    xp: levelLedger(),
     client_at: Date.now(),
   };
 }
@@ -58,7 +56,7 @@ async function putBundle(uid, bundle) {
 }
 
 /* ---- the one-time move --------------------------------------------------
-   A member who ran the old site still has their account, binder and XP in this
+   A member who ran the old site still has their account and binder in this
    browser under a *device* id. The moment they sign into the central cloud the
    account id changes, and the legacy keys would otherwise go unread — so the
    Settings button captures them first, and this lands them under the cloud id
@@ -117,7 +115,6 @@ const coreHasData = (core) =>
     core &&
       (Number(core.clientAt) > 0 ||
         Object.keys(core.collection?.owned || {}).length ||
-        Number(core.xp?.xp) > 0 ||
         Number(core.packs?.bank) > 0),
   );
 
@@ -142,7 +139,6 @@ export async function syncMyData() {
   if (coreHasData(core) && (mine.uid !== uid || Number(core.clientAt) > mine.at)) {
     importCollection(uid, core.collection);
     if (core.packs && typeof core.packs === 'object') storage.write('packs', core.packs);
-    if (core.xp && typeof core.xp === 'object') importLedger(core.xp);
     setMark(uid, Number(core.clientAt) || 0);
     return { direction: 'down', at: Number(core.clientAt) || 0 };
   }
@@ -195,7 +191,6 @@ export function backupBundle() {
     uid: uidOf() || 'device',
     collection: collectionFor(uidOf() || 'device'),
     packs: quota(),
-    xp: levelLedger(),
   };
 }
 
@@ -206,7 +201,6 @@ export function restoreBundle(data) {
   const uid = uidOf() || (typeof data.uid === 'string' && data.uid ? data.uid : 'device');
   if (data.collection && typeof data.collection === 'object') importCollection(uid, data.collection);
   if (data.packs && typeof data.packs === 'object') storage.write('packs', data.packs);
-  if (data.xp && typeof data.xp === 'object') importLedger(data.xp);
   return true;
 }
 

@@ -122,7 +122,6 @@ function studioSheet(members, onSent) {
     glow: '#2f9cff',
     mediaTitle: 'Solvn Studio',
     packs: 5,
-    xp: 250,
     note: '',
     withCard: true,
     withBundle: false,
@@ -251,7 +250,6 @@ function studioSheet(members, onSent) {
     );
     bundleBox.replaceChildren(
       field(t('Packs (0–50)'), num(state.packs, (v) => { state.packs = v; }, 50)),
-      field(t('XP (0–5000)'), num(state.xp, (v) => { state.xp = v; }, 5000)),
     );
   }
 
@@ -277,14 +275,14 @@ function studioSheet(members, onSent) {
         }
         const card = state.withCard ? cardOf() : null;
         const bundle = state.withBundle
-          ? { packs: numOf(state.packs, 0, 50), xp: numOf(state.xp, 0, 5000) }
+          ? { packs: numOf(state.packs, 0, 50) }
           : null;
         if (state.withCard && !state.name.trim()) {
           toast(t('A gift card needs a name and a portrait.'), { tone: 'err', iconName: 'alert' });
           return;
         }
-        if (state.withBundle && !bundle.packs && !bundle.xp) {
-          toast(t('A bundle needs at least one pack or some XP.'), { tone: 'err', iconName: 'alert' });
+        if (state.withBundle && !bundle.packs) {
+          toast(t('A bundle needs at least one pack.'), { tone: 'err', iconName: 'alert' });
           return;
         }
         send.disabled = true;
@@ -328,7 +326,7 @@ function studioSheet(members, onSent) {
         cardBox,
         bundleBox,
         field(t('Note'), note, true),
-        h('p.st-note', {}, t('The card joins the receiver\'s binder when they claim it. A bundle hands over its packs and XP the same way.')),
+        h('p.st-note', {}, t('The card joins the receiver\'s binder when they claim it. A bundle hands over its packs the same way.')),
         preview,
         h('div.auth-foot', {}, h('button.btn.btn--ghost', { type: 'button', onclick: () => dismiss() }, t('Cancel')), send),
       );
@@ -675,8 +673,6 @@ function centralPanel() {
         { role: 'row' },
         h('span.ad-handle', { role: 'cell' }, u.username ? `@${u.username}` : u.displayName || '—'),
         h('span.ad-c-mail', { role: 'cell' }, u.email || '—'),
-        h('span.tnum', { role: 'cell' }, `Lv ${u.level}`),
-        h('span.tnum', { role: 'cell' }, String(u.xp)),
         h('span.tnum', { role: 'cell' }, String(u.cards)),
         h('span.tnum', { role: 'cell' }, String(u.packs)),
         h('span.ad-c-last.tnum', { role: 'cell' }, u.updatedAt ? intlDate(u.updatedAt) : '—'),
@@ -687,8 +683,6 @@ function centralPanel() {
       { role: 'row' },
       h('span', { role: 'columnheader' }, t('Member')),
       h('span', { role: 'columnheader' }, t('Email')),
-      h('span', { role: 'columnheader' }, t('Level')),
-      h('span', { role: 'columnheader' }, t('XP')),
       h('span', { role: 'columnheader' }, t('Cards')),
       h('span', { role: 'columnheader' }, t('Packs')),
       h('span', { role: 'columnheader' }, t('Last sync')),

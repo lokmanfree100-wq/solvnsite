@@ -541,13 +541,12 @@ function toPlaylist(row, likeIds) {
 
 const likeIdsOf = (rows) => new Set((rows || []).map((r) => String(r.playlist)));
 
-/** A core row: the binder, packs and XP the device sent up. */
+/** A core row: the binder and the pack record the device sent up. */
 function toCore(row) {
   if (!row) return null;
   return {
     collection: row.collection && typeof row.collection === 'object' ? row.collection : {},
     packs: row.packs && typeof row.packs === 'object' ? row.packs : {},
-    xp: row.xp && typeof row.xp === 'object' ? row.xp : {},
     clientAt: Number(row.client_at) || 0,
     updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : 0,
   };
@@ -561,8 +560,6 @@ function toRosterRow(row) {
     username: row.username || '',
     displayName: row.displayName || row.username || '',
     email: row.email || '',
-    level: Number(row.level) || 1,
-    xp: Number(row.xp) || 0,
     cards: Number(row.cards) || 0,
     packs: Number(row.packs) || 0,
     pulls: Number(row.pulls) || 0,
@@ -726,7 +723,7 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
     return { user: await patchRow(cfg, uid, { cards: body.cards || null }) };
   }
 
-  /* -- the central core: binder, packs and XP -- */
+  /* -- the central core: binder and pack record -- */
   if (seg[0] === 'account' && seg[1] === 'core' && method === 'GET') {
     const data = await req(cfg, '/rest/v1/rpc/kitsune_core_get');
     return { core: data?.core ? toCore(data.core) : null };
@@ -738,7 +735,10 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
       body: {
         p_collection: body.collection ?? {},
         p_packs: body.packs ?? {},
-        p_xp: body.xp ?? {},
+        /* The function takes four arguments and PostgREST will not call it with
+           three, so the retired XP column is handed an empty object rather than
+           the project being asked to change its schema for nothing. */
+        p_xp: {},
         p_client_at: Number(body.client_at) || 0,
       },
     });
@@ -847,60 +847,6 @@ export async function cloudApi(path, { method = 'GET', body } = {}) {
       `/rest/v1/kitsune_profiles?or=(username.ilike.${like}*,display_name.ilike.${like}*)&order=username.asc&limit=8&select=*`,
     );
     return { users: (rows || []).map(toUser) };
-  }
-
-  if (seg[0] === 'community' && seg[1] === 'collectors') {
-    /* The RPC returns each row with its place already printed on it, so the
-       number the board sorts by and the number it shows cannot drift apart. */
-    const data = await req(cfg, '/rest/v1/rpc/kitsune_collectors', {
-      method: 'POST',
-      body: { p_limit: Number(params.get('n')) || 20 },
-    });
-    const placed = (row) => (row ? { ...toUser(row), place: Number(row.place) || 0 } : null);
-    return {
-      users: (data?.users || []).map(placed),
-      me: placed(data?.me),
-      totals: {
-        members: Number(data?.totals?.members) || 0,
-        collectors: Number(data?.totals?.collectors) || 0,
-        pulls: Number(data?.totals?.pulls) || 0,
-        highest: Number(data?.totals?.highest) || 0,
-      },
-    };
-  }
-
-  if (seg[0] === 'community' && seg[1] === 'ranked') {
-    /* The duels board. Same shape as the collectors board — the RPC prints the
-       place onto each row so the number it sorted by and the number it shows are
-       one number. `duel` travels only as the win rate and place the page prints,
-       never as a record of who fought whom. */
-    const data = await req(cfg, '/rest/v1/rpc/kitsune_ranked', {
-      method: 'POST',
-      body: { p_limit: Number(params.get('n')) || 20 },
-    });
-    const placed = (row) => (row ? { ...toUser(row), place: Number(row.place) || 0, winRate: Number(row.winRate) || 0 } : null);
-    return {
-      users: (data?.users || []).map(placed).filter(Boolean),
-      me: placed(data?.me),
-      totals: {
-        members: Number(data?.totals?.members) || 0,
-        duellists: Number(data?.totals?.duellists) || 0,
-        fights: Number(data?.totals?.fights) || 0,
-        runs: Number(data?.totals?.runs) || 0,
-      },
-    };
-  }
-
-  if (seg[0] === 'community' && seg[1] === 'leaderboard') {
-    const data = await req(cfg, '/rest/v1/rpc/kitsune_leaderboard', {
-      method: 'POST',
-      body: { p_limit: Number(params.get('limit')) || 20 },
-    });
-    return {
-      users: (data?.users || []).map((u, i) => ({ ...toUser(u), place: i + 1 })),
-      me: data?.me ? { ...toUser(data.me), place: data.me_place } : null,
-      totals: { members: data?.totals?.members || 0, hours: data?.totals?.hours || 0, playlists: data?.totals?.playlists || 0 },
-    };
   }
 
   if (seg[0] === 'community' && seg[1] === 'playlists') {

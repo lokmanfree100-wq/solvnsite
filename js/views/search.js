@@ -154,7 +154,6 @@ export async function SearchView() {
         {},
         h('h2', {}, t('Members')),
         h('span.spacer'),
-        h('a.link-all', { href: '#/leaderboard' }, icon('trophy'), t('Leaderboard')),
       ),
       h(
         'div.member-row',

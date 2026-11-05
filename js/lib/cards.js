@@ -104,8 +104,8 @@ export const ULTIMATE_ART = LOGO_SRC;
  * The one-of-one is the only card not graded by a serial.
  *
  * Its three sub-scores are read from what the member has actually done on Solvn
- * — episodes watched and hours logged become Speed, cards collected and levels
- * earned become Technique, duels won and the best run become Aura — so the
+ * — episodes watched and hours logged become Speed, cards collected and packs
+ * opened become Technique, duels won and the best run become Aura — so the
  * master plate is a portrait of the account rather than four fixed 999s. Power
  * stays a flat 999 on the face because the card reads INFINITY wherever Power
  * is printed; `powerOf` sorts it on the 9999 sentinel instead.
@@ -121,12 +121,12 @@ export function ultimateStats(user = currentUser()) {
   const cap = (n) => Math.max(0, Math.min(999, Math.round(n)));
   const episodes = Number(stats.episodes) || 0;
   const hours = Number(stats.hours) || 0;
-  const level = Number(stats.level) || 1;
+  const pulls = Number(cards.pulls) || 0;
   const unique = Number(cards.unique) || 0;
   const wins = Number(duel.wins) || 0;
   const bestRun = Number(duel.best) || 0;
   const speed = cap(120 + Math.sqrt(episodes) * 46 + hours * 0.6);
-  const technique = cap(120 + Math.sqrt(unique) * 70 + level * 4);
+  const technique = cap(120 + Math.sqrt(unique) * 70 + Math.sqrt(pulls) * 12);
   const aura = cap(120 + Math.sqrt(wins) * 74 + bestRun * 7);
   return { power: 999, speed, technique, aura, overall: 999 + speed + technique + aura };
 }
@@ -527,8 +527,8 @@ function rescore(owned) {
   return moved;
 }
 
-/* The master's sub-scores are read from the account on every visit, so a card
-   awarded at level 8 does not stay a level-8 portrait forever. */
+/* The master's sub-scores are read from the account on every visit, so a plate
+   granted in the first week keeps being redrawn as the binder grows. */
 function refreshMaster(owned) {
   const master = owned[ULTIMATE_KEY];
   if (!master) return false;
@@ -778,10 +778,10 @@ export const bankedPacks = () => Math.max(0, Number(quota().bank) || 0);
 /**
  * Put packs in the bank without spending a day.
  *
- * A level-up reward and a streak prize both hand packs over, and neither of them
- * is a day of pulling — so they go straight to the bank, which is the only bucket
- * that does not care where a pack came from. This never touches `used`, and that
- * is the point: a reward must not quietly eat today's allowance.
+ * A gift from the Studio and a streak prize both hand packs over, and neither of
+ * them is a day of pulling — so they go straight to the bank, which is the only
+ * bucket that does not care where a pack came from. This never touches `used`,
+ * and that is the point: a reward must not quietly eat today's allowance.
  */
 export function bankPacks(n) {
   const count = Math.max(0, Math.round(Number(n) || 0));
@@ -1301,7 +1301,7 @@ export function markGranted(tradeId) {
  * session from the roster, and it is merged into whatever the real binder holds
  * at read time. Nothing writes it, nothing trades it and nothing fuses it: a
  * virtual card is a showcase, which is exactly what the admin account needs it
- * to be, and the account is excluded from the leaderboards that count collections.
+ * to be, and the account is excluded from the public lists.
  */
 const virtualSerial = (index, lv) => 500000 + lv * 1000 + index;
 let staffCache = null;
@@ -1355,7 +1355,7 @@ export function binderStats() {
 /* ---- what a profile publishes ---------------------------------------- */
 /**
  * The binder itself never leaves this device — it is one `storage` key and it
- * dies with Settings ▸ "Clear everything". A profile and a leaderboard need
+ * dies with Settings ▸ "Clear everything". A profile page needs
  * something far smaller: which number this collection peaks at, and the handful
  * of cards the member chose to show. That is what this section publishes.
  *
@@ -1469,7 +1469,7 @@ export const displayCard = (pub) => (pub ? {
 } : null);
 
 /**
- * The whole published record: the peak number the leaderboard ranks on, the
+ * The whole published record: the peak number the binder reports, the
  * strongest card behind it, and the pinned row. `best` is a Power, not a tier —
  * which is the difference the brief asked for, because the highest tier in a
  * binder is not always the highest number in it.

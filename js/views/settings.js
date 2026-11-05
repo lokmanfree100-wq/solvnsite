@@ -430,7 +430,7 @@ export async function SettingsView() {
           if (!cloudActive() || !isSignedIn()) {
             captureDeviceData();
             authSheet('login');
-            toast(t('Sign in and this device carries its binder, packs and XP into the central cloud.'), { tone: 'ok', iconName: 'globe' });
+            toast(t('Sign in and this device carries its binder and packs into the central cloud.'), { tone: 'ok', iconName: 'globe' });
             return;
           }
           sync.disabled = true;
@@ -506,7 +506,7 @@ export async function SettingsView() {
 
     if (builtin) {
       const status = live
-        ? t('Central cloud in use — every pull, pack and level syncs to solvn.site.')
+        ? t('Central cloud in use — every pull and pack syncs to solvn.site.')
         : t('solvn.site is wired to the central Solvn database automatically.');
       cloudBody.replaceChildren(
         h(
@@ -516,7 +516,7 @@ export async function SettingsView() {
           h('div.txt', {}, h('b', {}, t('Central cloud')), h('span', {}, status)),
         ),
         syncRow,
-        h('p.faint.cloud-note', {}, t('Accounts, binders, packs and XP live in the one Solvn database — the owner sees every member live. This device keeps its own copy too, so cards still open between sign-ins.')),
+        h('p.faint.cloud-note', {}, t('Accounts, binders and packs live in the one Solvn database — the owner sees every member live. This device keeps its own copy too, so cards still open between sign-ins.')),
       );
       return;
     }

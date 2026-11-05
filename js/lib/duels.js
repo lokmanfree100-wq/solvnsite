@@ -40,7 +40,6 @@ import {
   refresh,
 } from './account.js';
 import { cardDay, findCard, tradeCard } from './cards.js';
-import { awardXp } from './level.js';
 import { subscribeInbox } from './dms.js';
 import { storage } from './store.js';
 
@@ -58,10 +57,6 @@ export const ABILITIES = {
   focus: { label: 'Focus', icon: 'sparkles' },
   guard: { label: 'Guard', icon: 'star' },
 };
-
-/** XP a settled fight pays: a win is worth more than showing up. */
-const XP_WIN = 60;
-const XP_LOSS = 15;
 
 let list = [];
 let open = 0;
@@ -129,7 +124,7 @@ export function countToday(won) {
    A card is four numbers, and every one of them has a job in a fight: Power is
    how hard it hits and how much it can take, Speed decides who strikes first in a
    clash, Technique is the chance of a critical, Aura is how much of the incoming
-   hit it shrugs off. Nothing else enters — no tier bonus, no level bonus, no
+   hit it shrugs off. Nothing else enters — no tier bonus, no account bonus, no
    house edge — so the plate on the card is the whole story of the card.
    */
 function prng(seedText) {
@@ -352,7 +347,6 @@ export async function settle(duel) {
     const lost = myId != null && !won;
     tally('fought');
     if (won) tally('won');
-    awardXp(won ? XP_WIN : XP_LOSS, won ? 'duel-win' : 'duel-loss');
     /* The win, the loss and the streak are all the server's numbers, so the
        account record is pulled again before the page paints them. */
     await refresh().catch(() => null);

@@ -45,8 +45,8 @@
   min-height: 44px;
 }
 
-/* The record row is the shared `.duel-record` in level.css — the same line a
-   profile prints, so the two cannot drift apart. */
+/* The record row is the shared `.duel-record` in components.css — the same line
+   a profile prints, so the two cannot drift apart. */
 
 /* ---- status line -------------------------------------------------------- */
 .ar-status {
