@@ -450,6 +450,21 @@
     font-size: 13.5px;
   }
 
+  /* The category strip stays under the top bar for the whole page. Changing from
+     أفلام to أنمي is a thumb-reach decision, not a climb back to the first screen,
+     so it keeps its own frosted band and bleeds to the edges the way the rails do. */
+  .cat-tabs {
+    position: sticky;
+    top: calc(var(--topbar-h) + env(safe-area-inset-top));
+    z-index: 30;
+    margin: 0 calc(var(--gutter) * -1) var(--sp-4);
+    padding: var(--sp-2) var(--gutter);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(var(--blur-md)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--blur-md)) saturate(160%);
+    scroll-snap-type: none;
+  }
+
   /* Settings rows: an icon, a label and a control cannot share 360px. The
      control takes a line of its own at full width, which is also the bigger,
      easier tap target — the label never gets squeezed into broken words. */

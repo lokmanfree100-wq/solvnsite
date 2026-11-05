@@ -289,6 +289,9 @@
 
 .tab {
   position: relative;
+  /* Its own stacking context, so the active pill below paints inside the tab
+     instead of sliding behind the dock's frosted glass and vanishing. */
+  z-index: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -307,10 +310,28 @@
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
-  transition: color var(--t-med) var(--ease), background var(--t-med) var(--ease);
+  transition: color var(--t-med) var(--ease), transform var(--t-fast) var(--ease-out-back);
   -webkit-tap-highlight-color: transparent;
   -webkit-appearance: none;
   appearance: none;
+}
+/* The page you are on is the one thing a dock has to say at a glance, so the
+   pill grows in behind it rather than simply changing colour, and a press dips
+   the whole control — the answer a thumb expects the moment it lands. */
+.tab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--r-md);
+  background: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--accent-line), 0 0 24px -12px var(--accent-glow);
+  opacity: 0;
+  scale: 0.72;
+  transition: opacity var(--t-med) var(--ease), scale var(--t-med) var(--ease-out-back);
+}
+.tab:active {
+  transform: translateY(1px);
 }
 /* Six controls share one bar, so a long label shortens itself rather than
    pushing its neighbours out of the dock. */
@@ -330,8 +351,10 @@
 }
 .tab.is-active {
   color: var(--accent-text);
-  background: var(--accent-wash);
-  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+.tab.is-active::before {
+  opacity: 1;
+  scale: 1;
 }
 .tab.is-active svg {
   scale: 1.06;
