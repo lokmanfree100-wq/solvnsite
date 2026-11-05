@@ -137,9 +137,12 @@ an array of entries in this shape:
 
 A file address (.m3u8/.mp4/.webm) plays in Solvn's own player with no third-party
 page on the screen at all, so it carries no ads — that is the shape to prefer. An
-embed page is framed and sandboxed so it cannot move your visitors elsewhere, but
-whatever that page draws inside its own frame, including its advertising, belongs
-to it and Solvn cannot filter it from outside. That is why this list ships empty
+embed page is framed and the frame is set to the deal the site owner asked for: it
+MAY open an advert in a new browser tab, which is why the watch page tells every
+viewer in three seconds to step back to Solvn and keep watching, and it still
+cannot move your visitors off the page or start a download onto their device.
+Whatever it draws inside its own frame, including its advertising, belongs to it
+and Solvn cannot filter it from outside. That is why this list ships empty
 and why AniGato is blocked in code: the choice of host is the choice of what your
 visitors see, and nobody should make it for you. Entries here pass the same gate
 as a typed one — https only, placeholders checked, blocked hosts refused — and

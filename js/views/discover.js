@@ -6,6 +6,7 @@ import { go, parse } from '../lib/router.js';
 import { settings } from '../lib/store.js';
 import { SORTS, recentSeasons, seasonName, formatLabel, statusLabel, totalLabel, watched } from '../lib/util.js';
 import { mediaCard, loadingGrid, emptyState, errorState } from '../components/media.js';
+import { categoryTabs } from '../components/cats.js';
 import { sheet, toast } from '../lib/ui.js';
 import { t, genre } from '../lib/i18n.js';
 
@@ -276,6 +277,7 @@ export async function DiscoverView() {
   fetchPage(true);
 
   wrap.append(
+    categoryTabs('anime'),
     h('header.page-head', {},
       h('div.eyebrow', {}, t('DISCOVER')),
       h('h1.display', {}, t('Browse the catalogue')),

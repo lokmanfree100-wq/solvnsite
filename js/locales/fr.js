@@ -2238,7 +2238,7 @@ const ui = {
   'File': 'Fichier',
   'clean room': 'salle propre',
   'Archive.org refused the stream for this browser. Try the embed pool instead.': 'Archive.org a refusé le flux pour ce navigateur. Essayez le pool d’intégration à la place.',
-  'Embed pool: the player is a page owned by the server you picked, but it runs sandboxed — it cannot redirect this tab, open windows or download files, no matter what it asks for. We also choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.': 'Pool d’intégration : le lecteur est une page appartenant au serveur que vous avez choisi, mais il s’exécute en environnement cloisonné — il ne peut ni rediriger cet onglet, ni ouvrir de fenêtres, ni télécharger de fichiers, quoi qu’il demande. Nous plaçons d’abord les hôtes calmes et ne leur transmettons que notre référent. Le navigateur nous cache les requêtes internes de ce cadre : cette liste peut donc être incomplète, jamais exagérée.',
+  'Embed pool: the player is a page owned by the server you picked, running inside a frame. Its adverts can open a new browser tab — that is the whole inconvenience, and stepping back to this tab ends it. What the frame cannot do is move this page elsewhere or put a file on your device, so anything saying "install this", "update your codec" or "download to play" is an advert, not Solvn. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.': 'Pool d’intégration : le lecteur est une page appartenant au serveur que vous avez choisi, exécutée dans un cadre. Ses publicités peuvent ouvrir un nouvel onglet — c’est tout le désagrément, et revenir à cet onglet y met fin. Ce que le cadre ne peut pas faire, c’est déplacer cette page ailleurs ou déposer un fichier sur votre appareil : donc tout ce qui dit « installez ceci », « mettez à jour votre codec » ou « téléchargez pour lire » est une publicité, pas Solvn. Nous plaçons d’abord les hôtes calmes et ne leur transmettons que notre référent. Le navigateur nous cache les requêtes internes de ce cadre : cette liste peut donc être incomplète, jamais exagérée.',
   '{host} is blocked on Solvn — its player page serves the pop-ups and adult ads members reported.': '{host} est bloqué sur Solvn — sa page de lecteur diffuse les pop-ups et les publicités pour adultes signalés par les membres.',
   'Anime #{id}': 'Anime #{id}',
   'Hosted by {name}': 'Hébergé par {name}',
@@ -2314,8 +2314,8 @@ const ui = {
   'Sci-Fi': 'Science-fiction',
   'This player belongs to another site':
     'Ce lecteur appartient à un autre site',
-  'Its own banners and pauses come with the picture — that is normal, so step back and just watch. The frame is locked: it cannot pull you off Solvn, open a window or start a download. So a page that tells you to install an app, update a codec or fix your browser is an ad, not us. Never tap it, and never allow a download from here.':
-    'Ses bannières et ses pauses font partie de l’image — c’est normal, prenez du recul et regardez tranquillement. Le cadre est verrouillé : il ne peut ni vous arracher du site, ni ouvrir une fenêtre, ni lancer un téléchargement. Toute page qui vous demande d’installer une application, de mettre à jour un codec ou votre navigateur est une publicité, pas nous. Ne la touchez jamais et n’autorisez aucun téléchargement depuis ici.',
+  'Pressing play can open an advert in a new browser tab. Nothing is wrong: close it, or step back one tab to Solvn, and keep watching.':
+    'Le lancement peut ouvrir une publicité dans un nouvel onglet. Rien ne va mal : fermez-le, ou revenez d’un onglet vers Solvn, et continuez à regarder.',
   'Got it, play':
     'Compris, lecture',
   'The clean room has no copy of this title':
@@ -2345,6 +2345,28 @@ const ui = {
   'Real site numbers': 'Vrais chiffres du site',
   'Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device, and the leaderboard can only list what this one holds.': 'Votre nom, votre image et vos listes sont enregistrés dans ce navigateur — et dans ce navigateur seulement. La base de données centrale de ce site n’est pas encore activée : un compte ne peut donc pas vous suivre sur un autre appareil, et le classement ne peut afficher que ce que cet appareil conserve.',
   'Solvn — anime, films & series in HD': 'Solvn — animés, films et séries en HD',
+  'Opening your profile…': 'Ouverture de votre profil…',
+  Off: 'Désactivées',
+  On: 'Activés',
+  Subtitles: 'Sous-titres',
+  Subtitle: 'Sous-titre',
+  'Video quality': 'Qualité vidéo',
+  'Subtitles off': 'Sous-titres désactivés',
+  'Subtitles: {label}': 'Sous-titres : {label}',
+  'These are the caption tracks this file actually carries. Picking one turns them on right away; Off turns them back off.':
+    'Voici les pistes de sous-titres que ce fichier contient réellement. En choisir une les affiche tout de suite ; « Désactivées » les remet hors service.',
+  'These change the file Solvn is playing, not a page from another site.':
+    'Ces réglages agissent sur le fichier que Solvn est en train de lire, pas sur une page d’un autre site.',
+  Categories: 'Catégories',
+  Anime: 'Animés',
+  Cartoons: 'Dessins animés',
+  'Kids Movies': 'Films pour enfants',
+  Filter: 'Filtrer',
+  'Any year': 'Toutes les années',
+  'All genres': 'Tous les genres',
+  'The films people are watching this week.': 'Les films que les gens regardent cette semaine.',
+  'What is on the air, and what to binge next.': 'Ce qui est diffusé, et quoi enchaîner ensuite.',
+  'Family films, animation and something for younger viewers.': 'Films familiaux, animation et choix pour les plus jeunes.',
 };
 
 export default ui;

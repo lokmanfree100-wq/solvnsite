@@ -100,6 +100,8 @@ const cardOf = (r) => ({
 
 const byRating = (a, b) => b.vote_count * b.vote_average - a.vote_count * a.vote_average;
 
+const relOf = (r) => r.release_date || r.first_air_date || '';
+
 const ofType = (type) => (cat ? cat.titles.filter((r) => r.media_type === type) : []);
 
 const findRow = (type, id) => (cat ? cat.titles.find((r) => r.id === Number(id) && r.media_type === type) : null);
@@ -185,14 +187,29 @@ function answerDiscover(path, params) {
     .split(',')
     .map((g) => Number(g))
     .filter(Boolean);
+  /* The hub's year filter sends one of these two names depending on which half
+     of the database it is asking, and the snapshot stores a date either way. */
+  const year = String(params.primary_release_year || params.first_air_date_year || '').slice(0, 4);
   const page = Number(params.page) || 1;
+  const sorts = {
+    'vote_average.desc': (a, b) => byRating(a, b),
+    'vote_count.desc': (a, b) => b.vote_count - a.vote_count,
+    'primary_release_date.desc': (a, b) => relOf(b).localeCompare(relOf(a)),
+    'release_date.desc': (a, b) => relOf(b).localeCompare(relOf(a)),
+    'primary_release_date.asc': (a, b) => relOf(a).localeCompare(relOf(b)),
+  };
+  /* The file carries no popularity score, so "popular" is honestly what it is:
+     the best-supported titles first. Sorting by a number the snapshot never
+     stored would be a guess dressed up as data. */
+  const cmp = sorts[String(params.sort_by || '')] || ((a, b) => byRating(a, b));
   const all = ofType(type)
     .filter((r) => r.media_type === type)
     .filter((r) => !wanted.length || r.genres.some((g) => wanted.includes(g.id)))
+    .filter((r) => !year || relOf(r).slice(0, 4) === year)
     .sort((a, b) => {
       const sa = a.genres.filter((g) => wanted.includes(g.id)).length;
       const sb = b.genres.filter((g) => wanted.includes(g.id)).length;
-      return sb - sa || byRating(a, b);
+      return sb - sa || cmp(a, b);
     });
   return { page, total_pages: 1, total_results: all.length, results: page === 1 ? all.map(cardOf) : [] };
 }

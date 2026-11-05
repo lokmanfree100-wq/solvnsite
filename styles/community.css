@@ -878,6 +878,13 @@ a.chat-name:hover { color: var(--accent-text); }
 }
 .q-chip svg { width: 15px; height: 15px; }
 
+/* `.hide` lives in components.css, earlier in the cascade than this file, so a
+   lone `.hide` would lose to the `display` above. Both classes together are the
+   one way a chip can take itself out when the source has nothing to show. */
+.q-chip.hide {
+  display: none;
+}
+
 .q-grid { display: grid; gap: 8px; }
 .q-grid .check {
   height: 46px;

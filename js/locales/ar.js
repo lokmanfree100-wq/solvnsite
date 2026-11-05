@@ -2198,7 +2198,8 @@ const ui = {
   'File': 'الملف',
   'clean room': 'الغرفة النظيفة',
   'Archive.org refused the stream for this browser. Try the embed pool instead.': 'رفض Archive.org البث لهذا المتصفح. جرّب مجموعة التضمين بدلًا منه.',
-  'Embed pool: the player is a page owned by the server you picked, but it runs sandboxed — it cannot redirect this tab, open windows or download files, no matter what it asks for. We also choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.': 'مجموعة التضمين: المشغّل صفحة يملكها الخادم الذي اخترته، لكنها تعمل داخل صندوق عزل — لا تستطيع إعادة توجيه هذا التبويب ولا فتح نوافذ ولا تنزيل ملفات مهما طلبت. نقدّم المضيفين الأهدأ أولًا ولا نرسل لهم سوى مرجعنا. المتصفح يخفي عنّا طلبات ذلك الإطار الداخلية، لذا هذه القائمة قد تنقص — لكنها لا تزيد أبدًا.',
+  'Embed pool: the player is a page owned by the server you picked, running inside a frame. Its adverts can open a new browser tab — that is the whole inconvenience, and stepping back to this tab ends it. What the frame cannot do is move this page elsewhere or put a file on your device, so anything saying "install this", "update your codec" or "download to play" is an advert, not Solvn. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.':
+    'مجموعة التضمين: المشغّل صفحة يملكها الخادم الذي اخترته، تعمل داخل إطار. يمكن لإعلاناته أن تفتح تبويبًا جديدًا — هذا هو الإزعاج كله، والعودة إلى هذا التبويب تُنهيَه. ما لا يستطيع الإطار فعله هو نقل هذه الصفحة إلى مكان آخر أو وضع ملف على جهازك، فكل ما يقول «ثبّت هذا» أو «حدّث مكوّن فكّ الترميز» أو «نزّل لتتمكن من المشاهدة» هو إعلانٌ لا Solvn. نقدّم المضيفين الأهدأ أولًا ولا نرسل لهم سوى مرجعنا. المتصفح يخفي عنّا طلبات ذلك الإطار الداخلية، لذا هذه القائمة قد تنقص — لكنها لا تزيد أبدًا.',
   '{host} is blocked on Solvn — its player page serves the pop-ups and adult ads members reported.': 'حُظر {host} على Solvn — صفحة مشغّله تعرض النوافذج المنبثقة وإعلانات الكبار التي أبلغ عنها الأعضاء.',
   'Anime #{id}': 'أنمي #{id}',
   'Hosted by {name}': 'يستضيفه {name}',
@@ -2274,8 +2275,8 @@ const ui = {
   'Sci-Fi': 'خيال علمي',
   'This player belongs to another site':
     'هذا المشغّل يخصّ موقعًا آخر',
-  'Its own banners and pauses come with the picture — that is normal, so step back and just watch. The frame is locked: it cannot pull you off Solvn, open a window or start a download. So a page that tells you to install an app, update a codec or fix your browser is an ad, not us. Never tap it, and never allow a download from here.':
-    'شعاراته وإعلاناته جزء من الصورة — هذا طبيعي، فتراجَع وشاهد بهدوء. الإطار مقفل: لا يستطيع إبعادك عن Solvn ولا فتح نافذة ولا بدء تنزيل. فأي صفحة تطلب منك تثبيت تطبيق أو ترقية مكوّن فكّ الترميز أو متصفحك هي إعلانٌ لا نحن. لا تضغطها أبدًا، ولا تسمح بأي تنزيل من هنا.',
+  'Pressing play can open an advert in a new browser tab. Nothing is wrong: close it, or step back one tab to Solvn, and keep watching.':
+    'قد يفتح الضغط على التشغيل إعلانًا في تبويب جديد في المتصفح. لا شيء خاطئ: أغلقه، أو ارجع تبويبًا واحدًا إلى Solvn وواصل المشاهدة.',
   'Got it, play':
     'فهمت، شغّل',
   'The clean room has no copy of this title':
@@ -2305,6 +2306,28 @@ const ui = {
   'Real site numbers': 'أرقام الموقع الحقيقية',
   'Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device, and the leaderboard can only list what this one holds.': 'اسمك وصورتك وقوائمك محفوظة في هذا المتصفح — وفي هذا المتصفح فقط. لم تُفعَّل القاعدة المركزية لهذا الموقع بعد، لذلك لا يستطيع حسابك مرافقتك إلى جهاز آخر، ولا يمكن لوحة المتصدّرين إلا أن تعرض ما يحفظه هذا الجهاز وحده.',
   'Solvn — anime, films & series in HD': 'Solvn — أنمي وأفلام ومسلسلات بجودة عالية',
+  'Opening your profile…': 'جارٍ فتح ملفك…',
+  Off: 'إيقاف',
+  On: 'تشغيل',
+  Subtitles: 'الترجمة',
+  Subtitle: 'ترجمة',
+  'Video quality': 'جودة الفيديو',
+  'Subtitles off': 'الترجمة موقوفة',
+  'Subtitles: {label}': 'الترجمة: {label}',
+  'These are the caption tracks this file actually carries. Picking one turns them on right away; Off turns them back off.':
+    'هذه هي مسارات الترجمة التي يحملها هذا الملف فعلًا. اختيارُ واحدة يُظهرها فورًا، و«إيقاف» يعيدها مطفأة.',
+  'These change the file Solvn is playing, not a page from another site.':
+    'هذه الخيارات تغيّر الملف الذي تشغّله Solvn، لا صفحةً من موقع آخر.',
+  Categories: 'التصنيفات',
+  Anime: 'أنمي',
+  Cartoons: 'كرتونز',
+  'Kids Movies': 'أفلام الأطفال',
+  Filter: 'تصفية',
+  'Any year': 'أي سنة',
+  'All genres': 'كل الأنواع',
+  'The films people are watching this week.': 'الأفلام التي يشاهدها الناس هذا الأسبوع.',
+  'What is on the air, and what to binge next.': 'ما يُعرض الآن، وما تشاهده بعد ذلك.',
+  'Family films, animation and something for younger viewers.': 'أفلام عائلية ورسوم متحركة وصغار المشاهدين.',
 };
 
 export default ui;

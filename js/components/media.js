@@ -11,13 +11,24 @@ import { t } from '../lib/i18n.js';
 /**
  * AniList is frequently missing or wrong about one particular image size, and a
  * per-episode still only exists at all for licensed titles, so every frame in
- * the app is fed a ladder: each source is tried in order and the element only
- * removes itself once the ladder runs out, leaving the caller's placeholder.
+ * the app is fed a ladder: each source is tried in order.
+ *
+ * When the ladder runs out the element does not simply vanish. A poster frame
+ * left holding nothing is a black tile — which is exactly what a viewer reads as
+ * "the site is broken" — so it is replaced by a placeholder that says the same
+ * thing in the language of the page: there is art missing here, not a fault in
+ * front of you. Pass `fallback: () => null` for a slot that should go empty.
  */
-export function stillImage(sources, { alt = '', eager = false } = {}) {
+export function stillImage(sources, { alt = '', eager = false, fallback } = {}) {
   const list = [...new Set((sources || []).filter(Boolean))];
   if (!list.length) return null;
+  const placeholder = () => (fallback === undefined ? h('span.card-ph', {}, icon('film')) : fallback());
   let i = 0;
+  const retire = () => {
+    const ph = placeholder();
+    if (ph && img.parentNode) img.replaceWith(ph);
+    else img.remove();
+  };
   const img = h('img', {
     alt,
     loading: eager ? 'eager' : 'lazy',
@@ -27,10 +38,15 @@ export function stillImage(sources, { alt = '', eager = false } = {}) {
     onerror: () => {
       i += 1;
       if (i < list.length) img.src = list[i];
-      else img.remove();
+      else retire();
     },
   });
   img.src = list[0];
+  /* An artwork already in the browser's cache can be complete before this
+     function has even returned, and then `load` never fires again: the fade-in
+     class would never arrive and the card would sit at opacity 0 over a picture
+     that is genuinely there. Ask the element instead of waiting to be told. */
+  if (img.complete && img.naturalWidth) img.classList.add('is-loaded');
   return img;
 }
 
@@ -52,10 +68,16 @@ export function posterImage(media, { eager = false, size = 'large' } = {}) {
 /**
  * Art for one episode row: the curated still when AniList has one, then the
  * show's own banner and cover, so a row can never render as an empty frame.
+ *
+ * The callers already mount an `.art-ph` under the image, so an exhausted ladder
+ * leaves that one showing rather than stacking a second placeholder on it.
  */
 export function episodeArt(media, ep, { eager = false } = {}) {
   const c = media?.coverImage;
-  return stillImage([ep?.thumb, media?.bannerImage, c?.large, c?.extraLarge], { eager });
+  return stillImage([ep?.thumb, media?.bannerImage, c?.large, c?.extraLarge], {
+    eager,
+    fallback: () => null,
+  });
 }
 
 /** The little contextual pill on a poster, mirroring the reference's tag. */

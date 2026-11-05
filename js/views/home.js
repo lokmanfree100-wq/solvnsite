@@ -2,49 +2,17 @@
 
 import { h, icon } from '../lib/dom.js';
 import { browse, hiddenGems, genres, spotlight } from '../lib/anilist.js';
+import { api as tmdb } from '../lib/tmdb.js';
 import { continueWatching, settings } from '../lib/store.js';
 import { watched } from '../lib/util.js';
+import { makeDeduper } from '../lib/dedupe.js';
 import { lazyRow, lazyFeature, lazySplit } from '../components/media.js';
+import { categoryTabs } from '../components/cats.js';
+import { mRail } from './movies.js';
 import { continueRail } from '../components/continue-watching.js';
 import { discussionStrip } from '../components/discussion.js';
 import { hero, heroSkeleton } from '../components/hero.js';
 import { t, genre } from '../lib/i18n.js';
-
-/**
- * One title, once per page. Rails answer in whatever order the network replies,
- * so each claim queues behind the section above it: the order a viewer reads the
- * page is the order titles get taken, and an id taken by one rail can never
- * surface in another, however many queries ask for it.
- */
-function makeDeduper() {
-  const taken = new Set();
-  let turn = Promise.resolve();
-
-  const take = (items) => {
-    const fresh = [];
-    for (const m of items || []) {
-      if (!m?.id || taken.has(m.id)) continue;
-      taken.add(m.id);
-      fresh.push(m);
-    }
-    return fresh;
-  };
-
-  return {
-    claim(items, { after } = {}) {
-      const mine = turn
-        .then(() => (after ? after.catch(() => {}) : undefined))
-        .then(() => take(items));
-      turn = mine.then(
-        () => {},
-        () => {},
-      );
-      return mine;
-    },
-    /** For rows painted straight from local data, before anything resolves. */
-    claimSync: take,
-  };
-}
 
 /** Interleave ranked lists so one query cannot fill a whole rail by itself. */
 function blend(lists) {
@@ -154,7 +122,31 @@ export async function HomeView(ctx) {
   const banner = welcomeBanner();
   if (banner) wrap.append(banner);
   const heroSlot = h('div.home-hero-slot', {}, heroSkeleton());
-  wrap.append(heroSlot);
+  wrap.append(heroSlot, categoryTabs());
+
+  /* The film shelves sit directly under the spotlight, in the same order as the
+     tabs above them, so the top of the page previews the whole site and not only
+     the anime half. They queue on their own de-dupe, keyed by type + id: TMDB and
+     AniList number their titles separately, and film ids are a sequence of their
+     own too, so a rail stamps the form it is showing and the key keeps the two
+     apart. */
+  const filmDedupe = makeDeduper((m) => `${m.media_type}:${m.id}`);
+  const filmLoad = (type, list) => async () => {
+    const r = await list();
+    const items = (r?.results || [])
+      .filter((m) => !m.media_type || m.media_type === type)
+      .map((m) => ({ ...m, media_type: type }));
+    return (await filmDedupe.claim(items)).slice(0, 18);
+  };
+  const filmRail = (heading, sub, viewAll, load) =>
+    mRail({ heading: t(heading), sub: t(sub), viewAll, fetcher: load });
+  const kidsShelf = () =>
+    tmdb.discover('movie', { with_genres: '10751', sort_by: 'popularity.desc', 'vote_count.gte': 20 });
+  const filmRails = [
+    filmRail('Movies', t('The films people are watching this week.'), '#/movies?type=movie', filmLoad('movie', () => tmdb.popularMovies())),
+    filmRail('Series', t('What is on the air, and what to binge next.'), '#/movies?type=tv', filmLoad('tv', () => tmdb.popularTv())),
+    filmRail('Kids Movies', t('Family films, animation and something for younger viewers.'), '#/movies?list=kids', filmLoad('movie', kidsShelf)),
+  ];
 
   /* Rails hold off until the spotlight has taken its picks — that slate is the
      one thing on the page chosen on purpose — but only briefly, so a slow API
@@ -184,11 +176,13 @@ export async function HomeView(ctx) {
 
   const genreSection = h('div.home-genre-slot');
 
-  /* Five sections, and no two adjacent ones cut the same shape: the local shelf
-     is a rail, the ranked shelf is the feature block, the year is a rail, the
-     mood shelf is the magazine split, then the genre pills break the run before
-     the last rail. The page reads as an edit, not as a repeating tile. */
+  /* Films first — three rows straight under the spotlight, in tab order — then
+     the anime edit. No two adjacent anime sections cut the same shape: the local
+     shelf is a rail, the ranked shelf is the feature block, the year is a rail,
+     the mood shelf is the magazine split, then the genre pills break the run
+     before the last rail. The page reads as an edit, not a repeating tile. */
   const sections = [
+    ...filmRails,
     continueRow(dedupe),
     feature(
       t('Top Rated Masterpieces'),

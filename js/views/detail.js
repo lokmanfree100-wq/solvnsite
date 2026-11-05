@@ -55,7 +55,18 @@ export async function DetailView({ params, onCleanup }) {
 
   /* ---------- backdrop ---------- */
   if (media.bannerImage && !settings.get('reduceBackdrop')) {
-    wrap.append(h('div.detail-backdrop', {}, h('img', { src: media.bannerImage, alt: '', 'aria-hidden': 'true' })));
+    /* A banner this decorative is not worth an empty band across the top of the
+       page, so if AniList's wide crop fails the cover stands in for it. */
+    wrap.append(
+      h(
+        'div.detail-backdrop',
+        {},
+        stillImage([media.bannerImage, media.coverImage?.extraLarge], {
+          eager: true,
+          fallback: () => null,
+        }),
+      ),
+    );
   }
 
   /* ---------- header ---------- */

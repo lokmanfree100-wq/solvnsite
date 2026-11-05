@@ -11,8 +11,8 @@
  *    in our own <video>. Nothing outside this site executes here either.
  *  - Embed pool: somebody else's player page (VidLink → Vidsrc SU → Vidsrc CC →
  *    MultiEmbed), health-checked through /health first, with automatic failover.
- *    The frame is sandboxed (scripts and its own storage only), so the embed
- *    cannot redirect the tab, open windows or start downloads. It is the last
+ *    The frame is sandboxed with lib/sources.js FRAME_SANDBOX, so its adverts may
+ *    open a tab but it cannot move this page or download anything. It is the last
  *    resort, for a title no provider in the ladder has a file for.
  *
  * The safety chip lists every outside host mounted on the page, live — and reads
@@ -21,14 +21,15 @@
 
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
-import { toast } from '../lib/ui.js';
-import { settings } from '../lib/store.js';
+import { toast, sheet } from '../lib/ui.js';
 import { errorState } from '../components/media.js';
+import { showPlayAdvisory } from '../components/advisory.js';
+import { createCaptionControl } from '../components/captions.js';
 import { api, nameOf, setMovieProgress, proxyNotice } from '../lib/tmdb.js';
 import { findCleanSource, loadReport } from '../lib/cleanroom.js';
-import { createStage } from '../lib/playback.js';
+import { createStage, captionControls } from '../lib/playback.js';
 import { proxyUrl } from '../lib/proxy.js';
-import { extraServers as allServers, serverKind, serverUrl, serverName } from '../lib/sources.js';
+import { extraServers as allServers, serverKind, serverUrl, serverName, FRAME_SANDBOX } from '../lib/sources.js';
 
 /* A whole https address that names a stream file: the only shape a video
    element may be pointed at, whether the address came from the operator's own
@@ -37,9 +38,9 @@ const FILE_URL = /^https:\/\/\S+\.(?:m3u8|mp4)(?:[?#]|$)/i;
 
 /* The embed pool, ordered calm-hosts-first. Solvn cannot filter what these pages
    draw inside their own frame — a cross-origin document is unread from out here —
-   so the guards are the order, the referrer policy, the sandbox (no top
-   navigation, no pop-ups, no downloads: the viewer stays on Solvn whatever the
-   player tries) and the choice to put them last, behind two engines that play a
+   so the guards are the order, the referrer policy, the sandbox (adverts open in a
+   tab the viewer walks back from; no top navigation, no downloads — the visitor
+   keeps this page) and the choice to put them last, behind two engines that play a
    file in our own player. A viewer who wants none of it presses Clean room. */
 const SERVERS = {
   vidlink: {
@@ -211,41 +212,95 @@ export async function MovieWatchView(ctx) {
   const loading = player.querySelector('.m-player-loading');
   const loadLabel = () => loadingText;
 
+  /* ---------- the controls only a file can answer -------------------------
+     Resolution and captions are properties of the media itself: an adaptive
+     manifest names its renditions and a file carries its own text tracks. A
+     framed page keeps both inside its own document, where nothing on this side
+     can read or change them, so this row stays empty while the pool is up, and
+     each of its two chips only appears when the file playing really has that
+     answer. A control that opens an empty menu teaches a viewer to distrust the
+     controls that do work. */
+  const tools = h('div.m-player-tools.is-empty');
+  const toolsNote = h('span.m-tools-note', {}, t('These change the file Solvn is playing, not a page from another site.'));
+  shell.append(tools);
+
+  const cleanSubs = captionControls(video, { track: t('Subtitle') });
+  const captions = createCaptionControl({
+    getOwner: () => (mode === 'direct' ? stage : mode === 'clean' ? cleanSubs : null),
+    getSub: () => title,
+  });
+  const qChip = h('button.btn.btn--sm.btn--glass.q-chip.hide', {
+    type: 'button',
+    'aria-label': t('Video quality'),
+    onclick: openQualitySheet,
+  }, icon('sliders'), h('span', {}, t('Auto')));
+
+  /* The renditions of whatever file is up — which is only ever the direct
+     stream's, since a single progressive download has one and says so. */
+  const levelOwner = () => (mode === 'direct' ? stage : null);
+
+  function paintTools() {
+    const st = levelOwner();
+    const levels = st ? st.levels() : [];
+    const now = st ? st.level() : 'auto';
+    qChip.classList.toggle('hide', !levels.length);
+    qChip.replaceChildren(icon('sliders'), h('span', {},
+      levels.length && now !== 'auto' ? levels.find((l) => l.id === now)?.label || t('Auto') : t('Auto')));
+    captions.paint();
+    const shown = !qChip.classList.contains('hide') || !captions.node.classList.contains('hide');
+    tools.replaceChildren(qChip, captions.node, ...(shown ? [toolsNote] : []));
+    tools.classList.toggle('is-empty', !shown);
+  }
+
+  function openQualitySheet() {
+    const st = levelOwner();
+    if (!st) return;
+    const rows = [{ id: 'auto', label: t('Auto') }, ...st.levels()];
+    const grid = h('div.q-grid');
+    const draw = () => {
+      const cur = st.level();
+      grid.replaceChildren(
+        ...rows.map((r) =>
+          h(`button.check${r.id === cur ? '.is-on' : ''}`, {
+            type: 'button',
+            'aria-pressed': String(r.id === cur),
+            onclick: () => {
+              st.setLevel(r.id);
+              draw();
+              paintTools();
+              toast(t('Switched to {label}', { label: r.label }), { tone: 'ok', iconName: 'check' });
+            },
+          }, r.id === cur ? icon('check') : null, h('span', {}, r.label)),
+        ),
+      );
+    };
+    draw();
+    sheet({
+      heading: t('Video quality'),
+      sub: title,
+      width: 430,
+      render: () => h('div.stack', {},
+        h('p', { style: { fontSize: '13.5px', color: 'var(--text-dim)', lineHeight: '1.6' } },
+          t('These are the resolutions this stream actually carries. Picking one changes it right away; Auto lets the player choose for your connection.')),
+        grid,
+      ),
+    });
+  }
+
+
   const metaRow = h('div.m-clean-meta');
   shell.append(metaRow);
   const safetyPanel = h('div.m-safety-panel');
   shell.append(safetyPanel);
 
   /* ---- what to expect --------------------------------------------------
-     Saying this once, in the viewer's own language, is the difference between
-     an ad that reads as a warning and an ad that reads as an ad. The frame is
-     locked from the outside, so the honest promise is small and specific — and
-     the honest warning is the one about downloads, which is where a stranger's
-     page actually tries to reach a person. Shown the first time that engine
-     plays; one press retires it for good on this device. */
-  let advisory = null;
-  function showAdvisory() {
-    if (advisory || settings.get('poolAdvisorySeen')) return;
-    const dismiss = () => {
-      settings.set('poolAdvisorySeen', true);
-      advisory.classList.add('is-gone');
-      setTimeout(() => advisory.remove(), 320);
-    };
-    advisory = h(
-      'div.m-advisory',
-      { role: 'note' },
-      icon('info'),
-      h(
-        'div.m-advisory-copy',
-        {},
-        h('p.m-advisory-title', {}, t('This player belongs to another site')),
-        h('p.m-advisory-body', {}, t('Its own banners and pauses come with the picture — that is normal, so step back and just watch. The frame is locked: it cannot pull you off Solvn, open a window or start a download. So a page that tells you to install an app, update a codec or fix your browser is an ad, not us. Never tap it, and never allow a download from here.')),
-      ),
-      h('button.btn.btn--glass.btn--sm', { type: 'button', onclick: dismiss }, t('Got it, play')),
-    );
-    shell.insertBefore(advisory, player);
-    ctx.onCleanup(() => { advisory = null; });
-  }
+     One short note on the way to the picture, in the viewer's own language: this
+     player is somebody else's page, and pressing play can open an advert in a new
+     tab. It fades by itself after three seconds, because a warning that stays on
+     screen becomes the thing in the way, and it returns for the next title, which
+     may be a different host. The long version — what the frame can and cannot do —
+     lives in the safety panel under the player, where it can be read at leisure. */
+  const showAdvisory = () => showPlayAdvisory(shell, player);
 
   /* ---------- safety readout ---------- */
   function paintSafety() {
@@ -268,7 +323,7 @@ export async function MovieWatchView(ctx) {
       ? t('Direct stream: this site read the file address from a provider list it controls, and the video bytes go straight into our own <video>. None of their page loads — no document, no script, no frame — so there is no third-party player here to put an ad, a pop-up or a download in front of you. When the ladder names no file for a title, the page says which provider failed and why, and hands you the other two engines.')
       : mode === 'clean'
         ? t('Clean room: only Archive items carrying an explicit public-domain or Creative-Commons statement are eligible, obvious screen recordings are refused, the title and runtime must match, and the file plays in our own <video> element. No third-party document, script or frame loads — the only outside bytes are the media file and its artwork, and every control you can click belongs to us.')
-        : t('Embed pool: the player is a page owned by the server you picked, but it runs sandboxed — it cannot redirect this tab, open windows or download files, no matter what it asks for. We also choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.');
+        : t('Embed pool: the player is a page owned by the server you picked, running inside a frame. Its adverts can open a new browser tab — that is the whole inconvenience, and stepping back to this tab ends it. What the frame cannot do is move this page elsewhere or put a file on your device, so anything saying "install this", "update your codec" or "download to play" is an advert, not Solvn. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.');
     safetyPanel.replaceChildren(
       h('p.m-safety-about', {}, about),
       h('div.m-safety-list', {}, ...list),
@@ -323,6 +378,7 @@ export async function MovieWatchView(ctx) {
       stage = null;
     }
     brand.hidden = true;
+    paintTools();
   }
 
   function paintDirectMeta() {
@@ -374,6 +430,7 @@ export async function MovieWatchView(ctx) {
     loading.classList.add('hide');
     clearFailBox();
     paintDirectMeta();
+    paintTools();
     const secs = Math.round(stage?.node?.duration || 0);
     setMovieProgress({
       type, id, title, posterPath: d.poster_path, season, episode,
@@ -474,11 +531,15 @@ export async function MovieWatchView(ctx) {
     stage = createStage({
       kind: 'media',
       title,
-      labels: { auto: t('Auto') },
+      labels: { auto: t('Auto'), track: t('Subtitle') },
       onReady: () => directReady(seq),
       onDead: () => nextDirect(seq),
     });
     player.appendChild(stage.node);
+    /* A manifest names its renditions and its caption tracks only once it has
+       been read, which is after this row was first drawn — so the row listens to
+       the engine instead of sampling a list that was still empty. */
+    stage.onChange(paintTools);
     playDirect(seq, 0);
   }
 
@@ -659,10 +720,10 @@ export async function MovieWatchView(ctx) {
   function ensureFrame() {
     if (frame) return frame;
     frame = h('iframe', {
-      /* The sandbox is the real ad/pop-up guard: the embed cannot navigate this
-         tab, open windows or download files, no matter what its page asks for.
-         Scripts and its own-origin storage still work, so the player runs. */
-      sandbox: 'allow-scripts allow-same-origin allow-forms allow-presentation',
+      /* One list for both watch pages, so the film frame and the anime frame can
+         never drift apart. Its adverts open as a new tab; this page stays here
+         and no file reaches the device without the viewer asking for one. */
+      sandbox: FRAME_SANDBOX,
       allow: 'fullscreen; autoplay; encrypted-media; picture-in-picture',
       referrerpolicy: 'origin',
       title: `${title} player`,
@@ -827,10 +888,14 @@ export async function MovieWatchView(ctx) {
     brand.hidden = false;
     loadLabel().textContent = t('Buffering from archive.org…');
     paintCleanMeta();
+    paintTools();
   }
 
   video.addEventListener('loadedmetadata', () => {
     if (mode !== 'clean') return;
+    /* A file's text tracks are known with its metadata, which is the first moment
+       the caption chip has anything true to say. */
+    paintTools();
     loading.classList.add('hide');
     clearFailBox();
     const secs = Math.round(video.duration || 0);
@@ -875,6 +940,9 @@ export async function MovieWatchView(ctx) {
       b.setAttribute('aria-pressed', String(on));
     });
     paintSafety();
+    /* The row describes the engine that is about to play, not the one that just
+       stopped, so it repaints here rather than waiting for the next file. */
+    paintTools();
     if (next === 'pool') boot();
     else if (next === 'clean') loadClean();
     else loadDirect(false);

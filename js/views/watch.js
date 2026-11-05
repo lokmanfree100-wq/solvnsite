@@ -28,6 +28,8 @@ import { asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isMediaUrl,
 import { createStage } from '../lib/playback.js';
 import { accentValue } from '../lib/accent.js';
 import { mediaRow, emptyState, episodeArt } from '../components/media.js';
+import { showPlayAdvisory } from '../components/advisory.js';
+import { createCaptionControl } from '../components/captions.js';
 import { reportSheet } from '../components/report-issue.js';
 import { commentPanel } from '../components/comments.js';
 import { partyPanel, parseCode } from '../components/party.js';
@@ -202,9 +204,9 @@ export function WatchView({ params, route, onCleanup }) {
 
   /* The stage is whatever holds the picture, and `lib/playback.js` builds it: a
      `<video>` Solvn owns when the source is a file it can play, a sandboxed frame
-     when the source is somebody else's player page. A frame gets no top-
-     navigation, popups or modals — it may do what it likes inside its own box and
-     cannot move the tab, open a window or hand the viewer to another site. */
+     when the source is somebody else's player page. The frame may advertise — a
+     pop-up lands in a new tab the viewer walks back from — but it gets no top
+     navigation and no downloads, so it cannot move this page or touch the device. */
   const stageTitle = () => `${title(media)} — ${t('Episode {n}', { n: ep })} (${trackName(audio)})`;
   let stage = null;
   /* Solvn's mark is drawn here, on the player box, rather than asked of whatever
@@ -213,12 +215,20 @@ export function WatchView({ params, route, onCleanup }) {
      the shell it lives in is what goes there. */
   const frameBox = h('div.player-frame', {}, boot, h('div.player-brand', { 'aria-hidden': 'true' }, 'solvn.site'));
 
+  /* Set once the page is assembled: the note about a foreign player mounts just
+     above the picture, and nothing may reach it before the page exists. */
+  let advisoryMount = null;
+
   /** Take the picture out of the box, and stop it talking. */
   function dropStage() {
     if (!stage) return;
     stage.destroy();
     frameBox.removeChild(stage.node);
     stage = null;
+    /* The menus described the stage that just went away. Until the next one says
+       what it carries, they have nothing to say. */
+    paintQuality();
+    paintSubs();
   }
 
   /* A stage quieter than this is treated as a dead server. The number comes from
@@ -389,6 +399,7 @@ export function WatchView({ params, route, onCleanup }) {
        after this chip was first drawn — so the list is refreshed here rather than
        left showing the preference nobody is using any more. */
     paintQuality();
+    paintSubs();
   }
 
   /**
@@ -416,9 +427,21 @@ export function WatchView({ params, route, onCleanup }) {
            not allowed to send. Either way this server is treated as silent and the
            ladder moves on — no waiting out the clock on a known dead source. */
         onDead: () => advance(false),
-        labels: { auto: t('Auto') },
+        labels: { auto: t('Auto'), track: t('Subtitle') },
       });
       frameBox.insertBefore(stage.node, boot);
+      /* A manifest is parsed, and a file's tracks are read, after this stage was
+         built — so both menus subscribe rather than sample once. The old stage's
+         listeners go with it when it is dropped. */
+      stage.onChange(() => {
+        paintQuality();
+        paintSubs();
+      });
+      /* The ladder can land on somebody else's player page, and the one thing
+         about it that surprises a person is an advert in a new tab. Say it here,
+         once, and get out of the way — the note fades after three seconds. A
+         direct stream file plays in our own element and earns no warning. */
+      if (kind === 'embed' && advisoryMount) showPlayAdvisory(advisoryMount, playerShell);
     }
     stage.src(url);
     stage.node.title = stageTitle();
@@ -799,6 +822,17 @@ export function WatchView({ params, route, onCleanup }) {
     });
   }
 
+  /* ---------------- subtitles ---------------- */
+  /* The switch is one component for both watch pages: what a file can answer
+     about its captions has nothing to do with which shelf it came from. It hides
+     itself whenever the thing playing has no tracks to name. */
+  const captions = createCaptionControl({
+    getOwner: () => (stage && stage.kind === 'media' ? stage : null),
+    getSub: () => title(media),
+  });
+  const ccChip = captions.node;
+  const paintSubs = () => captions.paint();
+
   const bar = qs('.player-bar', playerShell);
   function paintBar() {
     bar.replaceChildren(
@@ -815,6 +849,7 @@ export function WatchView({ params, route, onCleanup }) {
           serverChip,
           hopBtn,
           qChip,
+          ccChip,
           h('span.faint.only-desktop', { style: { fontSize: '12px' } }, t('Auto-next')),
           autoNextSwitch,
           fsSupported ? fsBtn : null,
@@ -1027,6 +1062,7 @@ export function WatchView({ params, route, onCleanup }) {
     ),
     recsHost,
   );
+  advisoryMount = wrap;
 
   paintInfo();
   paintSeasonNote();

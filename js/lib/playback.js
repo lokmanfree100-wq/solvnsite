@@ -2,15 +2,16 @@
  * The two ways Solvn can put a picture on screen.
  *
  * A **media** source is a file address — `…/ep-04.m3u8` or `…/ep-04.mp4` — and
- * Solvn plays it itself in a `<video>` element it owns: our controls, our
- * quality menu, our brand, and no third party's player UI anywhere on the
- * screen. This is the path a source you host or license should be put on.
+ * Solvn plays it itself in a `<video>` element it owns: our controls, our quality
+ * menu, our caption switch, our brand, and no third party's player UI anywhere on
+ * the screen. This is the path a source you host or license should be put on.
  *
  * An **embed** source is somebody else's player *page*, framed. Solvn cannot
  * restyle, re-skin or silence what is drawn inside a cross-origin frame, which
  * is why an embed always carries its own corner mark and its own quality guess.
- * The frame stays sandboxed without top-navigation or popups, so it can move
- * nothing but its own picture.
+ * The frame keeps `allow-popups`, so its adverts open in a tab the viewer walks
+ * back from, and omits top-navigation and downloads, so it can neither move this
+ * page nor put a file on the device.
  *
  * HLS is the awkward one: Safari plays an `.m3u8` natively and every other
  * browser needs MSE, so `hls.js` is vendored in `public/vendor/` and loaded only
@@ -24,6 +25,10 @@ import { FRAME_ALLOW, FRAME_SANDBOX, isHlsUrl, isMediaUrl } from './sources.js';
    must be answered once, or a template and a stage can disagree about the same
    address. */
 export { isMediaUrl };
+
+/* The one subtitle id a caller may pass without having read it from the stage:
+   captions on, then captions off again. */
+export const TRACK_OFF = 'off';
 
 /** Does this browser speak HLS without help? (Safari, and most TVs.) */
 export function nativeHls() {
@@ -46,11 +51,46 @@ function hlsEngine() {
 }
 
 /**
+ * The caption switch for a plain `<video>`: what tracks it can see, which one is
+ * showing, and how to change that. A stage's own element uses this for its
+ * single-file branch, and a watch page that plays a file outside a stage — the
+ * clean room's own `<video>` — gets exactly the same answers from exactly the
+ * same browser rules, so the two can never disagree about what a track is.
+ *
+ * `labels.track` names a track that arrived without a name of its own.
+ */
+export function captionControls(node, labels = {}) {
+  const list = () => Array.from((node && node.textTracks) || []);
+  return {
+    subTracks: () => list().map((tr, i) => ({
+      id: `n${i}`,
+      label: tr.label || tr.language || `${labels.track || 'Track'} ${i + 1}`,
+    })),
+    setSubtitle: (id) => {
+      const tracks = list();
+      if (!tracks.length) return false;
+      const wanted = id === TRACK_OFF ? -1 : Number(String(id).replace(/^n/, ''));
+      tracks.forEach((tr, i) => {
+        /* `hidden` keeps a track loaded but unwatched, which is what switching
+           away from it means; `disabled` would tear it down and cost a refetch. */
+        tr.mode = i === wanted ? 'showing' : 'hidden';
+      });
+      return true;
+    },
+    subtitle: () => {
+      const shown = list().findIndex((tr) => tr.mode === 'showing');
+      return shown < 0 ? TRACK_OFF : `n${shown}`;
+    },
+  };
+}
+
+/**
  * A stage is whatever holds the picture: an iframe or a video.
  *
- * Both answer the same four questions, which is all the watch page needs to
- * know: point yourself at this address, tell me when something arrived, tell me
- * when nothing will, and give the levels back when you chose them yourself.
+ * Both answer the same questions, which is all the watch page needs to know:
+ * point yourself at this address, tell me when something arrived, tell me when
+ * nothing will, give the levels and the caption tracks back when asked, and say
+ * when either of those lists turns out to have changed.
  */
 export function createStage({ kind = 'embed', title = '', onReady = () => {}, onDead = () => {}, labels = {} } = {}) {
   const media = kind === 'media';
@@ -79,6 +119,29 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
     if (!gone) onDead();
   };
 
+  /* The menus a watch page paints are built from lists this stage does not know
+     yet — a manifest is parsed a second later, a file's tracks arrive with its
+     metadata. So whoever shows a quality or subtitle menu subscribes here and
+     repaints when the answer turns up, instead of reading once and freezing. */
+  const listeners = [];
+  const emit = () => {
+    if (gone) return;
+    listeners.forEach((fn) => {
+      try {
+        fn();
+      } catch {
+        /* a repaint must never break playback */
+      }
+    });
+  };
+  function onChange(fn) {
+    listeners.push(fn);
+    return () => {
+      const i = listeners.indexOf(fn);
+      if (i >= 0) listeners.splice(i, 1);
+    };
+  }
+
   if (media) {
     node.addEventListener('loadeddata', () => onReady());
     node.addEventListener('playing', () => onReady());
@@ -86,6 +149,12 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
        iframe never gets to send: use it instead of waiting out the failover
        clock on a source that is already known dead. */
     node.addEventListener('error', dead);
+    /* The menus are painted from lists the file has not announced yet, so every
+       moment one can change is a reason to repaint: the metadata arriving, and a
+       track being added to or taken out of the video's own list. */
+    node.addEventListener('loadedmetadata', emit);
+    node.textTracks?.addEventListener('addtrack', emit);
+    node.textTracks?.addEventListener('removetrack', emit);
   } else {
     node.addEventListener('load', () => onReady());
   }
@@ -112,6 +181,52 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
 
   const level = () => (hls ? (hls.currentLevel < 0 ? 'auto' : String(hls.currentLevel)) : null);
 
+  /* ---- subtitles ------------------------------------------------------
+     Two things can carry the words and both are reachable from here: a manifest
+     declares subtitle renditions, which hls.js lists on `subtitleTracks` and
+     paints into the video's own track list, and a single file (`.mp4`, `.webm`)
+     can hold text tracks the browser exposes directly. A framed player page keeps
+     its captions inside its own document, which a cross-origin frame never shows
+     to us, so an embed answers nothing at all here and the watch page hides the
+     control rather than opening an empty menu. That is the honest ceiling, not a
+     missing feature.
+
+     The ids are opaque to whoever draws the menu: they came out of `subTracks()`
+     a moment ago, and `off` is the only one they may invent. */
+  const nativeSubs = captionControls(node, labels);
+
+  function subTracks() {
+    if (!media) return [];
+    if (hls && (hls.subtitleTracks || []).length) {
+      return hls.subtitleTracks.map((tr, i) => ({
+        id: String(i),
+        label: tr.name || tr.lang || `${labels.track || 'Track'} ${i + 1}`,
+      }));
+    }
+    return nativeSubs.subTracks();
+  }
+
+  /** `off` mutes the captions; anything else is one of the ids above. */
+  function setSubtitle(id) {
+    if (!media) return false;
+    if (hls && (hls.subtitleTracks || []).length) {
+      hls.subtitleTrack = id === TRACK_OFF ? -1 : Number(id);
+      hls.subtitleDisplay = id !== TRACK_OFF;
+      return true;
+    }
+    return nativeSubs.setSubtitle(id);
+  }
+
+  const subtitle = () => {
+    if (!media) return null;
+    if (hls && (hls.subtitleTracks || []).length) {
+      return hls.subtitleTrack === undefined || hls.subtitleTrack < 0 ? TRACK_OFF : String(hls.subtitleTrack);
+    }
+    return nativeSubs.subtitle();
+  };
+
+  /* The lists a menu is drawn from are not known at the moment the stage is
+     built, so `onChange` above is how a watch page learns they have arrived. */
   async function src(url) {
     current = url;
     if (!media) {
@@ -154,6 +269,11 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
         else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
         else dead();
       });
+      /* Levels and subtitle renditions are named by the manifest, which is only
+         read once the engine has it: both menus have to be repainted when the
+         answer arrives, not left showing the empty state they were built with. */
+      [Hls.Events.MANIFEST_PARSED, Hls.Events.LEVELS_UPDATED, Hls.Events.SUBTRACKS_LOADED]
+        .forEach((ev) => hls.on(ev, emit));
     }
     hls.loadSource(url);
   }
@@ -162,6 +282,7 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
 
   function destroy() {
     gone = true;
+    listeners.length = 0;
     if (hls) hls.destroy();
     hls = null;
     try {
@@ -173,5 +294,18 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
     if (typeof node.load === 'function') node.load();
   }
 
-  return { node, kind: media ? 'media' : 'embed', src, heldSrc, levels, setLevel, level, destroy };
+  return {
+    node,
+    kind: media ? 'media' : 'embed',
+    src,
+    heldSrc,
+    levels,
+    setLevel,
+    level,
+    subTracks,
+    setSubtitle,
+    subtitle,
+    onChange,
+    destroy,
+  };
 }

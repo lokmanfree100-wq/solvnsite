@@ -17,10 +17,11 @@
  *    page says so and points at Settings; whoever runs the site either names one
  *    there, or names the sources every visitor should get once, in
  *    `lib/defaults.js`. Both go through the same gate below.
- * 2. The frame never gets to move the *site* somewhere else. `FRAME_SANDBOX`
- *    omits `allow-top-navigation` and `allow-popups`, so a player cannot
- *    redirect the tab, open a window, or leave the site behind — whatever it
- *    does internally, the viewer stays on Solvn.
+ * 2. The frame can advertise, but it cannot move the visitor. `FRAME_SANDBOX`
+ *    grants `allow-popups`, so an ad a player opens lands in a new browser tab
+ *    and the viewer steps back to Solvn; it omits `allow-top-navigation` and
+ *    `allow-downloads`, so the same player cannot pull this page away to its own
+ *    site and cannot put a file on the device without being asked.
  * 3. When one server is silent, the watch page moves to the next one by itself.
  *    Every enabled server gets a turn on the current audio track, then a turn on
  *    the other one, and only after all of them does the player say there is
@@ -49,7 +50,13 @@ import { t } from './i18n.js';
    enough that a provider which recovers is used again by itself. */
 const COOLDOWN_MS = 30 * 60 * 1000;
 
-export const FRAME_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-presentation';
+/* One list, both watch pages. `allow-popups` plus `allow-popups-to-escape-sandbox`
+   is the deliberate concession: a player's advert opens as an ordinary browser
+   tab, which the viewer closes or steps back from. What stays refused is the two
+   things that actually cost a person something — moving *this* tab somewhere else
+   (`allow-top-navigation`) and writing a file to the device (`allow-downloads`). */
+export const FRAME_SANDBOX =
+  'allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-presentation allow-popups allow-popups-to-escape-sandbox';
 export const FRAME_ALLOW = 'autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope';
 
 /* ---- audio tracks ------------------------------------------------------

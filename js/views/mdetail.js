@@ -10,7 +10,7 @@
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { toast } from '../lib/ui.js';
-import { errorState } from '../components/media.js';
+import { errorState, stillImage } from '../components/media.js';
 import { mCard, mRail, openTrailer } from './movies.js';
 import {
   api, poster, backdrop, img, nameOf, yearOf, rating, runtimeText, seasonsLabel, fmtDate,
@@ -22,6 +22,11 @@ const watchHref = (type, id, s = 1, e = 1) =>
 
 const money = (v) =>
   v >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${Math.round(v / 1e6)}M`;
+
+/* The frame a slot shows when TMDB has no art for it — or the CDN refused every
+   size we asked for. Each of these has its own background and border, so an
+   empty one reads as a broken tile rather than a missing picture. */
+const slotPh = () => h('span.art-ph', {}, icon('film'));
 
 function factsPanel(d, type) {
   const facts = [];
@@ -86,11 +91,23 @@ export async function MovieDetailView(ctx) {
   const wrap = h('div.page-mdetail');
 
   /* ---------- hero ---------- */
-  const bg = backdrop(d.backdrop_path, 'w1280') || (d.poster_path ? img(d.poster_path, 'w780') : null);
+  /* w780 is not a size TMDB serves for posters, only for backdrops, so the old
+     one-shot URL 404'd for every title that has no backdrop. Ask for the crops
+     that exist, in order, and let the frame keep its own surface colour if none
+     of them arrives — a hero with no art still reads as a hero. */
+  const bg =
+    backdrop(d.backdrop_path, 'w1280') ||
+    backdrop(d.backdrop_path, 'w780') ||
+    poster(d.poster_path, 'w500') ||
+    poster(d.poster_path, 'original');
   const hero = h(
     'div.m-detail-hero',
     {},
-    h('div.m-detail-bg', {}, bg ? h('img', { src: bg, alt: '' }) : null),
+    h(
+      'div.m-detail-bg',
+      {},
+      stillImage(bg ? [bg] : [], { eager: true, fallback: () => null }),
+    ),
     h('div.m-detail-scrim'),
     h(
       'div.m-detail-inner',
@@ -98,7 +115,11 @@ export async function MovieDetailView(ctx) {
       h(
         'div.m-detail-poster',
         {},
-        d.poster_path ? h('img', { src: poster(d.poster_path, 'w342'), alt: `${title} poster`, loading: 'eager' }) : null,
+        stillImage([poster(d.poster_path, 'w500'), poster(d.poster_path, 'w342')], {
+          eager: true,
+          alt: `${title} poster`,
+          fallback: () => h('span.art-ph', {}, icon('film')),
+        }),
       ),
       h(
         'div.m-detail-head',
@@ -196,7 +217,9 @@ export async function MovieDetailView(ctx) {
             h(
               'span.m-ep-thumb',
               {},
-              ep.still_path ? h('img', { src: img(ep.still_path, 'w300'), alt: '', loading: 'lazy' }) : null,
+              stillImage([img(ep.still_path, 'w300'), img(ep.still_path, 'w780')], {
+                fallback: slotPh,
+              }) || slotPh(),
               h('span.m-ep-play', {}, h('span', {}, icon('play'))),
             ),
             h(
@@ -243,7 +266,10 @@ export async function MovieDetailView(ctx) {
             h(
               'div.m-cast-item',
               {},
-              c.profile_path ? h('img', { src: img(c.profile_path, 'w185'), alt: c.name, loading: 'lazy' }) : h('span.m-cast-ph'),
+              stillImage([img(c.profile_path, 'w185'), img(c.profile_path, 'w45')], {
+                alt: c.name,
+                fallback: () => h('span.m-cast-ph'),
+              }) || h('span.m-cast-ph'),
               h('div.m-c-name', {}, c.name),
               h('div.m-c-char', {}, c.character || ''),
             ),

@@ -24,6 +24,7 @@ import { h, icon } from '../lib/dom.js';
 import { byIds, classic } from '../lib/anilist.js';
 import { go, parse } from '../lib/router.js';
 import { lazyRow } from '../components/media.js';
+import { categoryTabs } from '../components/cats.js';
 import { t } from '../lib/i18n.js';
 
 /* ---- the ledger ------------------------------------------------------
@@ -279,6 +280,7 @@ export function ToonsView() {
   buildShelves();
 
   wrap.append(
+    categoryTabs('toons'),
     h(
       'header.page-head',
       {},

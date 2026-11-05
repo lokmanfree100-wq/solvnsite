@@ -83,73 +83,6 @@
   color: var(--text-dim);
 }
 
-/* ---- the "this player is not ours" note ----------------------------------
-   Sits above the player box and never over the picture: a viewer who is mid
-   scene must not have to dismiss anything to keep watching. */
-
-.m-advisory {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-3);
-  margin: 0 var(--gutter) var(--sp-3);
-  padding: var(--sp-4) var(--sp-5);
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-lg);
-  background: var(--glass);
-  transition: opacity var(--t-med), transform var(--t-med), max-height var(--t-med);
-  max-height: 320px;
-}
-.m-advisory > svg {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
-  color: var(--accent);
-}
-.m-advisory-copy {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  flex: 1;
-}
-.m-advisory-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-.m-advisory-body {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.65;
-  color: var(--text-dim);
-  max-width: 78ch;
-}
-.m-advisory .btn {
-  flex: none;
-  align-self: center;
-}
-.m-advisory.is-gone {
-  opacity: 0;
-  transform: translateY(-6px);
-  max-height: 0;
-  padding-block: 0;
-  margin-block: 0;
-  border-color: transparent;
-  overflow: hidden;
-}
-@media (max-width: 700px) {
-  .m-advisory {
-    flex-wrap: wrap;
-  }
-  .m-advisory .btn {
-    align-self: flex-start;
-    width: 100%;
-    justify-content: center;
-  }
-}
-
 .m-searchbar {
   position: relative;
   display: flex;
@@ -307,6 +240,7 @@
   margin-inline: auto;
 }
 .m-detail-poster {
+  position: relative;
   flex: none;
   width: 190px;
   aspect-ratio: 2 / 3;
@@ -664,6 +598,32 @@
 .m-player-loading.hide {
   opacity: 0;
   pointer-events: none;
+}
+
+/* ---- the file's own switches ----------------------------------------------
+   Resolution and captions can only be chosen on a file this site plays itself,
+   so the row holds nothing at all while a framed page is up — and an empty row
+   takes no space rather than showing two buttons with no answers behind them. */
+
+.m-player-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+.m-player-tools.is-empty {
+  display: none;
+}
+.m-tools-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+/* The player bar's chips go icon-only on a phone; these two are new to the film
+   page and their words are the whole point — which track, which resolution. */
+.m-player-tools .q-chip span {
+  display: inline;
 }
 .m-spinner {
   width: 34px;
