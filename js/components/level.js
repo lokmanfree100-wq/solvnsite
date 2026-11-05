@@ -9,20 +9,19 @@
  * readings cannot disagree about what 1.400 XP means.
  *
  * The sheet is a ledger, not a promise: every row on it is a row that already
- * happened somewhere else in the app — packs counted by the binder, a spin
- * counted by the wheel, a fight counted by the arena — and the collect button
- * pays what those figures earned rather than what a timer decided.
+ * happened somewhere else in the app — packs counted by the binder, a fight
+ * counted by the arena — and the collect button pays what those figures earned
+ * rather than what a timer decided.
  */
 
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
-import { duelsUsable, fortuneUsable } from '../lib/account.js';
+import { duelsUsable } from '../lib/account.js';
 import { MAX_LEVEL, collectQuests, levelFromXp, levelReward, levelState, questRows, xpAtLevel } from '../lib/level.js';
 import { badgeById } from '../lib/ranks.js';
 import { nextResetAt, quota } from '../lib/cards.js';
 import { todayTally } from '../lib/duels.js';
-import { spinsToday } from '../lib/fortune.js';
 import { viewLog } from '../lib/store.js';
 
 const DAY_MS = 86400000;
@@ -31,12 +30,12 @@ const DAY_MS = 86400000;
 const dayStart = () => nextResetAt() - DAY_MS;
 
 /**
- * The five figures a quest reads, each taken from the page that owns it.
+ * The four figures a quest reads, each taken from the page that owns it.
  *
  * Nothing is counted twice: the binder knows how many packs this day opened, the
- * wheel knows whether today's spin is gone, the arena keeps a day tally, and the
- * view log has the hour every episode was started. A quest that kept its own
- * counter would be a second number free to fall out of step with the first.
+ * arena keeps a day tally, and the view log has the hour every episode was
+ * started. A quest that kept its own counter would be a second number free to
+ * fall out of step with the first.
  */
 export function questFigures() {
   const from = dayStart();
@@ -44,7 +43,6 @@ export function questFigures() {
   return {
     packs: Number(quota().used) || 0,
     watch: viewLog().filter((e) => Number(e.at) >= from).length,
-    spin: spinsToday() > 0 ? 1 : 0,
     duel: tally.fought,
     win: tally.won,
   };
@@ -161,12 +159,11 @@ function payLadder(level) {
    the second you look at it, and a reward that pays itself in the background is
    one nobody saw. */
 
-/* A quest can only read a page this copy actually has. The wheel and the arena
-   are settled by the Node server, so on a static deploy their rows would sit at
-   0 of 1 forever; they are left off the list rather than shown as an unreachable
-   promise. The ledger is untouched — a row that comes back has its old day. */
-const questHere = (r) =>
-  r.stat === 'spin' ? fortuneUsable() : r.stat === 'duel' || r.stat === 'win' ? duelsUsable() : true;
+/* A quest can only read a page this copy actually has. The arena is settled by
+   the Node server, so where there is none its rows would sit at 0 of 1 forever;
+   they are left off the list rather than shown as an unreachable promise. The
+   ledger is untouched — a row that comes back has its old day. */
+const questHere = (r) => (r.stat === 'duel' || r.stat === 'win' ? duelsUsable() : true);
 
 function questRow(r) {
   return h(
@@ -228,9 +225,7 @@ export function levelSheet({ onDone = null } = {}) {
       h('div.lv-quests', {}, ...rows.map(questRow)),
       h('div.lv-questfoot', {},
         collect,
-        h('p.lv-note', {}, duelsUsable()
-          ? t('The day turns at 04:00, the same hour the packs and the wheel use.')
-          : t('The day turns at 04:00, the same hour the packs use.')),
+        h('p.lv-note', {}, t('The day turns at 04:00, the same hour the packs use.')),
       ),
 
       h('h3.lv-h2', {}, icon('trending'), t('What the next levels pay')),
@@ -241,9 +236,7 @@ export function levelSheet({ onDone = null } = {}) {
   paint();
   return sheet({
     heading: t('Level ladder'),
-    sub: duelsUsable()
-      ? t('XP comes from packs, quests, the wheel and duels — and every level pays out.')
-      : t('XP comes from packs and quests — and every level pays out.'),
+    sub: t('XP comes from packs and quests — and every level pays out.'),
     width: 540,
     render: () => body,
   });

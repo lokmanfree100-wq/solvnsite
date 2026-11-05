@@ -665,11 +665,11 @@ export const removeComment = (id) => api(`comments/${id}`, { method: 'DELETE' })
 /**
  * Every social page has somewhere to write, whichever host it lands on.
  *
- * A served copy keeps deals, fights, the wheel, rooms and the bell in the
- * server's file. A static copy answers the same routes from `lib/device.js`,
- * which stores them in this browser — the same place messages and friends
- * already live there. The two backends return the same shapes, so a page does
- * not need to know which one answered, and nothing is hidden from the export.
+ * A served copy keeps deals, fights, rooms and the bell in the server's file.
+ * A static copy answers the same routes from `lib/device.js`, which stores them
+ * in this browser — the same place messages and friends already live there. The
+ * two backends return the same shapes, so a page does not need to know which
+ * one answered, and nothing is hidden from the export.
  *
  * The honest limit is reach, not presence: a deal or a duel on a plain host is
  * between accounts that signed in on the same browser, and a notice compares
@@ -682,8 +682,8 @@ export const socialUsable = () => true;
    On a served copy a chat lives in the server's file; on a static copy it lives
    in this browser (see `lib/device.js`). Either way there is a real place to put
    a line, so the page and its links are offered. What is *not* offered is the
-   server-only half of the community — deals, duels, the wheel, rooms and the
-   bell — which all answer through the same switch below. */
+   server-only half of the community — deals, duels, rooms and the bell — which
+   all answer through the same switch below. */
 export const messagesUsable = () => true;
 export const inboxThreads = () => api('dms');
 export const messageThread = (withId) => api(`dms/thread?with=${encodeURIComponent(withId)}`);
@@ -721,14 +721,6 @@ export const fileDuel = (id, { winner, score }) =>
 export const cancelDuel = (id) => api(`duels/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: {} });
 /** A CPU fight, or a live match this device settled: one side's record only. */
 export const filePractice = (won) => api('duels/practice', { method: 'POST', body: { won: Boolean(won) } });
-
-/* ---- the daily wheel ----------------------------------------------------
-   The roll happens on the server, so the answer cannot be re-spun until the page
-   likes it, and the odds printed on the wheel are the weights that ran. */
-export const fortuneUsable = () => socialUsable();
-export const fortuneRead = () => api('fortune');
-export const fortuneSpin = () => api('fortune/spin', { method: 'POST', body: {} });
-export const fortuneFace = (face) => api('fortune/pick', { method: 'POST', body: { face } });
 
 /** Duel wins first, then win rate, then the strongest card. Staff sit it out. */
 export const rankedBoard = () => api('community/ranked');

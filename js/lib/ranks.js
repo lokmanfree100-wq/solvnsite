@@ -766,7 +766,7 @@ export function bannerRows() {
   return BANNER_THEMES.map(([key, label], index) => ({ key, label, index, open: true }));
 }
 
-/** The name a wheel result or a profile prints for one theme key. */
+/** The name a profile prints for one theme key. */
 export const bannerLabel = (key) => BANNER_THEMES.find(([k]) => k === key)?.[1] || '';
 
 /* ---- titles ---------------------------------------------------------- */

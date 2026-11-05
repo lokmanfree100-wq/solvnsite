@@ -775,7 +775,7 @@ export const bankedPacks = () => Math.max(0, Number(quota().bank) || 0);
 /**
  * Put packs in the bank without spending a day.
  *
- * A level-up reward and a wheel prize both hand packs over, and neither of them
+ * A level-up reward and a streak prize both hand packs over, and neither of them
  * is a day of pulling — so they go straight to the bank, which is the only bucket
  * that does not care where a pack came from. This never touches `used`, and that
  * is the point: a reward must not quietly eat today's allowance.
@@ -983,9 +983,9 @@ export function refillDaily() {
 /**
  * Hand a single card of a chosen tier straight to the binder.
  *
- * The daily wheel promises a card at a tier, not a pack, so the prize has to be
+ * The daily streak promises a card at a tier, not a pack, so the prize has to be
  * drawable without rolling — but it is drawn through the same `build`, which
- * means the same deterministic `statsFor`, so a wheel card and a rolled card at
+ * means the same deterministic `statsFor`, so a streak card and a rolled card at
  * the same tier and serial are the same card. Two things deliberately do not
  * move: the pull count, because this was not pulled, and the master, because a
  * card a button can hand over is not an exclusive.

@@ -81,9 +81,8 @@ export function matchFaces(list, term) {
    earned rather than handed over on the first visit. The figures a task reads
    are the ones the account already publishes, which means the lock is the
    same on every device and a visitor could work it out from the profile.
-   A face won on the wheel is open on its own, and the portrait already worn
-   stays open for good: locking a member out of their own picture would be a
-   bug dressed as a rule. */
+   The portrait already worn stays open for good: locking a member out of their
+   own picture would be a bug dressed as a rule. */
 export const FACES_PER_QUEST = 3;
 
 const stat = (user) => (user && user.stats) || {};
@@ -184,14 +183,6 @@ export const faceQuestsDone = (user) =>
 /** The faces a member has earned: three for every finished task. */
 export const faceSlots = (user) => faceQuestsDone(user) * FACES_PER_QUEST;
 
-/** Faces the wheel handed over, kept by character id. */
-const wonFaces = (user) =>
-  new Set(
-    (Array.isArray(user?.unlocks?.avatars) ? user.unlocks.avatars : [])
-      .map((id) => Number(id))
-      .filter((id) => id > 0),
-  );
-
 /** Every task with its progress, ready for the gallery's ladder. */
 export function faceQuestRows(user) {
   return FACE_QUESTS.map((quest) => {
@@ -233,7 +224,6 @@ export function faceAccess(user, list = [], { all = false } = {}) {
   const openIds = new Set();
   if (all) ranked.forEach((face) => openIds.add(Number(face.id)));
   else ranked.slice(0, slots).forEach((face) => openIds.add(Number(face.id)));
-  for (const id of wonFaces(user)) openIds.add(id);
   /* Wearing is ownership: the portrait a member already chose stays open. */
   const worn = String(user?.avatar?.face || '');
   for (const face of ranked) if (worn && face.image === worn) openIds.add(Number(face.id));

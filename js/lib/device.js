@@ -5,8 +5,8 @@
  * otherwise: `data-api="off"` is still on `<html>`, so nothing knocks on a route
  * that cannot exist. What changes is that every page that used to vanish with
  * the server — accounts, profiles, playlists, comments, friends, messages, card
- * trades, duels and the ranked board, the daily wheel, watch rooms and the
- * notice bell — now has a backend made of this browser's `localStorage`.
+ * trades, duels and the ranked board, watch rooms and the notice bell — now has
+ * a backend made of this browser's `localStorage`.
  *
  * It speaks the same route names and returns the same shapes as
  * `account-api.js`, which is why `lib/account.js` can hand it a path without
@@ -26,8 +26,6 @@
  * so it falls back to a salted string hash. That is a lock on a drawer, not a
  * vault: anything running on this page can read the same storage.
  */
-
-import { BANNER_THEMES } from './ranks.js';
 
 const KEY = 'kitsune:device';
 const GLYPHS = ['fox', 'moon', 'star', 'flame', 'ghost', 'bolt'];
@@ -100,25 +98,6 @@ const DUEL_DIVISIONS = [
   { id: 'grandmaster', wins: 240 },
 ];
 
-/* The wheel: weights are shares of exactly 100,000, the same table the served
-   copy runs, so the odds printed beside the wheel are the odds that rolled. */
-const SPIN_WEIGHTS = 100000;
-const SPIN_PRIZES = [
-  { id: 'xp-15', kind: 'xp', amount: 15, weight: 39000 },
-  { id: 'xp-40', kind: 'xp', amount: 40, weight: 20000 },
-  { id: 'pack-1', kind: 'pack', amount: 1, weight: 14000 },
-  { id: 'card-4', kind: 'card', amount: 4, weight: 10000 },
-  { id: 'pack-3', kind: 'pack', amount: 3, weight: 7000 },
-  { id: 'card-9', kind: 'card', amount: 9, weight: 4200 },
-  { id: 'avatar', kind: 'avatar', amount: 1, weight: 3800 },
-  { id: 'xp-120', kind: 'xp', amount: 120, weight: 1000 },
-  { id: 'card-11', kind: 'card', amount: 11, weight: 700 },
-  { id: 'card-13', kind: 'card', amount: 13, weight: 250 },
-  { id: 'card-15', kind: 'card', amount: 15, weight: 50 },
-];
-const SPIN_LIMIT = 2;
-const SPIN_FACE_BANK = 5;
-
 /* Watch Together: a room moves the episode and the track, never a playhead. */
 const ROOM_TITLE_MAX = 60;
 const ROOM_MSG_MAX = 240;
@@ -141,8 +120,6 @@ const NOTE_TITLE_MAX = 120;
 const NOTE_SYNC_MS = 30 * 1000;
 const NOTE_CACHE_KEEP = 4000;
 const ANILIST = 'https://graphql.anilist.co';
-
-const BANNER_KEYS = BANNER_THEMES.map(([key]) => key);
 
 const fail = (status, message, code) => {
   throw Object.assign(new Error(message), { status, code: code || `http-${status}` });
@@ -441,12 +418,6 @@ function publicUser(user) {
       banners: Array.isArray(user.unlocks?.banners) ? user.unlocks.banners : [],
       avatars: Array.isArray(user.unlocks?.avatars) ? user.unlocks.avatars : [],
       faces: Number(user.unlocks?.faces) || 0,
-    },
-    fortune: {
-      day: user.fortune?.day || null,
-      at: Number(user.fortune?.at) || 0,
-      prize: user.fortune?.prize || null,
-      spins: Number(user.fortune?.spins) || 0,
     },
     nameNextAt: user.nameAt ? user.nameAt + NAME_COOLDOWN_MS : null,
     rank: {
@@ -759,50 +730,6 @@ function duelDivisionOf(wins) {
   return { index, id: index >= 0 ? DUEL_DIVISIONS[index].id : null };
 }
 
-/* ---- the daily wheel --------------------------------------------------- */
-function spinDay(at = Date.now()) {
-  const d = new Date(at);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function nextSpinAt(at = Date.now()) {
-  const d = new Date(at);
-  d.setHours(24, 0, 0, 0);
-  return d.getTime();
-}
-
-function rollPrize() {
-  const point = randomInt(SPIN_WEIGHTS);
-  let acc = 0;
-  for (let i = 0; i < SPIN_PRIZES.length; i += 1) {
-    acc += SPIN_PRIZES[i].weight;
-    if (point < acc) return { prize: SPIN_PRIZES[i], at: i };
-  }
-  return { prize: SPIN_PRIZES[SPIN_PRIZES.length - 1], at: SPIN_PRIZES.length - 1 };
-}
-
-/* Every band is free, so the whole shelf is held. */
-function bannerHeldBy() {
-  return new Set(BANNER_KEYS);
-}
-
-function faceBank(user) {
-  return Math.max(0, Math.min(SPIN_FACE_BANK, Number(user?.fortune?.faces) || 0));
-}
-
-function prizeTable() {
-  return SPIN_PRIZES.map((p, index) => ({
-    id: p.id,
-    index,
-    kind: p.kind,
-    amount: p.amount,
-    weight: p.weight,
-    pct: (p.weight / SPIN_WEIGHTS) * 100,
-    oneIn: Math.max(1, Math.round(SPIN_WEIGHTS / p.weight)),
-  }));
-}
-
 /* ---- watch-together rooms ---------------------------------------------- */
 const ROOM_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
@@ -1106,7 +1033,6 @@ function adopt(target, viewer) {
       stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], xp: 0, level: 1, updatedAt: 0 },
       duel: { wins: 0, losses: 0, streak: 0, best: 0, fought: 0 },
       unlocks: { banners: [], avatars: [], faces: 0 },
-      fortune: { day: null, at: 0, prize: null, spins: 0, faces: 0 },
       salt: '',
       hash: '',
       mirror: true,
@@ -1122,7 +1048,6 @@ function adopt(target, viewer) {
   if (viewer.stats) user.stats = { ...user.stats, ...viewer.stats };
   if (viewer.duel) user.duel = { ...user.duel, ...viewer.duel };
   if (viewer.unlocks) user.unlocks = { ...user.unlocks, ...viewer.unlocks };
-  if (viewer.fortune) user.fortune = { ...user.fortune, ...viewer.fortune };
   if (!user.userId) user.userId = Number(viewer.userId) || stableUserId(user.id);
   const nameKey = fold(user.username);
   if (nameKey) target.byName[nameKey] = id;
@@ -1239,7 +1164,6 @@ function ensureAdminAccount(target, email, existing) {
     stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], xp: 0, level: 1, updatedAt: 0 },
     duel: { wins: 0, losses: 0, streak: 0, best: 0, fought: 0 },
     unlocks: { banners: [], avatars: [], faces: 0 },
-    fortune: { day: null, at: 0, prize: null, spins: 0, faces: 0 },
     salt: ADMIN_SALT,
     hash: ADMIN_HASH_STRONG,
   };
@@ -1470,7 +1394,6 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
       stats: { hours: 0, episodes: 0, completed: 0, titles: 0, badges: [], xp: 0, level: 1, updatedAt: 0 },
       duel: { wins: 0, losses: 0, streak: 0, best: 0, fought: 0 },
       unlocks: { banners: [], avatars: [], faces: 0 },
-      fortune: { day: null, at: 0, prize: null, spins: 0, faces: 0 },
       salt,
       hash: await digest(password, salt),
     };
@@ -2327,75 +2250,6 @@ export async function deviceApi(path, { method = 'GET', body } = {}, viewer = nu
     duelQueue.delete(d.to);
     persist();
     return { duel: publicDuel(target, d, user) };
-  }
-
-  /* -- the daily wheel --------------------------------------------------- */
-  if (seg[0] === 'fortune' && !seg[1] && method === 'GET') {
-    const user = need(target, viewer, allowSession);
-    const day = spinDay();
-    const today = user.fortune?.day === day ? Math.min(SPIN_LIMIT, Number(user.fortune?.spinsToday) || 0) : 0;
-    return {
-      prizes: prizeTable(),
-      held: [...bannerHeldBy()],
-      level: publicUser(user).stats.level,
-      day,
-      nextAt: nextSpinAt(),
-      spinsToday: today,
-      daily: SPIN_LIMIT,
-      prize: user.fortune?.prize || null,
-      faces: faceBank(user),
-      spins: Number(user.fortune?.spins) || 0,
-      at: Number(user.fortune?.at) || 0,
-    };
-  }
-
-  if (seg[0] === 'fortune' && seg[1] === 'spin' && method === 'POST') {
-    const user = need(target, viewer, allowSession);
-    if (user.muted) fail(403, 'This account cannot spin right now.');
-    const day = spinDay();
-    const used = user.fortune?.day === day ? Number(user.fortune.spinsToday) || 0 : 0;
-    if (used >= SPIN_LIMIT) fail(409, `All ${SPIN_LIMIT} spins are used. Come back tomorrow.`);
-    const drawn = rollPrize();
-    const won = { ...drawn.prize, index: drawn.at };
-
-    const record = user.fortune || { day: null, at: 0, prize: null, faces: 0, spins: 0, spinsToday: 0 };
-    const unlocks = user.unlocks || {};
-    const banners = Array.isArray(unlocks.banners) ? unlocks.banners : [];
-    const avatars = Array.isArray(unlocks.avatars) ? unlocks.avatars : [];
-    user.unlocks = { banners, avatars };
-    record.spinsToday = (record.day === day ? Number(record.spinsToday) || 0 : 0) + 1;
-    record.day = day;
-    record.at = Date.now();
-    record.prize = won;
-    record.spins = (Number(record.spins) || 0) + 1;
-    record.faces = won.kind === 'avatar' ? faceBank(user) + 1 : faceBank(user);
-    user.fortune = record;
-    persist();
-    return {
-      prize: won,
-      index: won.index,
-      day,
-      nextAt: nextSpinAt(),
-      spinsToday: record.spinsToday,
-      daily: SPIN_LIMIT,
-      faces: faceBank(user),
-      unlocks: publicUser(user).unlocks,
-    };
-  }
-
-  if (seg[0] === 'fortune' && seg[1] === 'pick' && method === 'POST') {
-    const user = need(target, viewer, allowSession);
-    if (!faceBank(user)) fail(403, 'You have no face to spend. Win one on the wheel first.');
-    const face = int(body?.face, 1, 2 ** 31 - 1);
-    if (!face) fail(400, 'That is not a character id.');
-    const unlocks = user.unlocks || {};
-    const banners = Array.isArray(unlocks.banners) ? unlocks.banners : [];
-    const avatars = Array.isArray(unlocks.avatars) ? unlocks.avatars : [];
-    if (!avatars.includes(face)) avatars.push(face);
-    user.unlocks = { banners, avatars: avatars.slice(-400) };
-    user.fortune = { ...(user.fortune || {}), faces: faceBank(user) - 1 };
-    persist();
-    return { user: publicUser(user), faces: faceBank(user) };
   }
 
   /* -- watch together ---------------------------------------------------- */

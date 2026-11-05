@@ -2,8 +2,8 @@
  * Levels: the ladder under the badges.
  *
  * XP is the app's own arithmetic, not the server's. Every point here comes from a
- * thing this device can see for itself — a pack opened, a duel settled, a wheel
- * spun, a quest done — and the account record stores whatever this module pushes,
+ * thing this device can see for itself — a pack opened, a duel settled, a quest
+ * done — and the account record stores whatever this module pushes,
  * the same way it stores an estimate of hours watched. That is a deliberate
  * choice, not a gap: on a home network the ladder is a shared scoreboard, and the
  * one figure nobody can talk themselves into is a duel win, which is settled by
@@ -193,16 +193,15 @@ export function xpLedger() {
 
 /* ---- the daily quests --------------------------------------------------
    A quest reads a figure that already exists somewhere else — packs spent
-   today, a title opened, a duel settled, a wheel spun — rather than keeping its
+   today, a title opened, a duel settled — rather than keeping its
    own counter. That is what makes the progress bar on the page the truth: there
    is no second number to fall out of step with.
    `count` is filled in by the view that owns the figure, because `lib/duels.js`
-   and `lib/fortune.js` import this file for `awardXp` and a cycle would be the
-   price of a convenience. */
+   imports this file for `awardXp` and a cycle would be the price of a
+   convenience. */
 export const QUESTS = [
   { id: 'packs', label: 'Open 5 packs', icon: 'grid', need: 5, xp: 30, stat: 'packs' },
   { id: 'watch', label: 'Watch an episode', icon: 'play', need: 1, xp: 25, stat: 'watch' },
-  { id: 'spin', label: 'Spin the fortune wheel', icon: 'star', need: 1, xp: 20, stat: 'spin' },
   { id: 'duel', label: 'Fight a duel', icon: 'bolt', need: 1, xp: 35, stat: 'duel' },
   { id: 'win', label: 'Win a duel', icon: 'trophy', need: 1, xp: 40, stat: 'win' },
 ];
@@ -217,8 +216,8 @@ function paidToday(st, day) {
 }
 
 /**
- * The five rows, with progress, XP and whether they are already banked today.
- * `figures` is the counts this view can read: `{ packs, watch, spin, duel, win }`.
+ * The four rows, with progress, XP and whether they are already banked today.
+ * `figures` is the counts this view can read: `{ packs, watch, duel, win }`.
  */
 export function questRows(figures = {}) {
   const st = read();

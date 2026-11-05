@@ -12,17 +12,22 @@ import { accountChip } from './account.js';
 import { inboxState, inboxUsable, subscribeInbox } from '../lib/dms.js';
 import { tradeUsable } from '../lib/trades.js';
 import { partyUsable } from '../lib/rooms.js';
-import { fortuneUsable, isStaff } from '../lib/account.js';
+import { isStaff } from '../lib/account.js';
 import { mountLiveSearch, disposeLiveSearch } from './searchlive.js';
 import { noticeBell, disposeBell } from './notices.js';
 
 /* God mode has no entry point in the interface: /admin is reached by URL, by
    the one account the server recognises, and its gate is server-side. */
 
+/* Five places a phone viewer returns to, then More. Toons is not one of them:
+   every category — أفلام, مسلسلات, أنمي, كرتونز, أفلام الأطفال — already sits in
+   the strip pinned under the top bar on the pages that have shelves, so the dock
+   keeps its fifth slot for the films, series and lists this member actually goes
+   back to. */
 export const NAV = [
   { id: 'home', label: 'Home', path: '/', icon: 'home' },
+  { id: 'movies', label: 'Movies', path: '/movies', icon: 'film' },
   { id: 'discover', label: 'Discover', path: '/discover', icon: 'compass' },
-  { id: 'toons', label: 'Toons', path: '/toons', icon: 'tv' },
   { id: 'library', label: 'Library', path: '/library', icon: 'library' },
   { id: 'profile', label: 'Profile', path: '/profile', icon: 'user' },
 ];
@@ -32,9 +37,9 @@ function tabFor(path) {
   if (path === '/') return 'home';
   if (path.startsWith('/search') || path.startsWith('/top')) return 'discover';
   if (path.startsWith('/anime') || path.startsWith('/watch')) return null;
-  if (path.startsWith('/movies') || path.startsWith('/movie') || path.startsWith('/mwatch')) return null;
+  if (path.startsWith('/movies') || path.startsWith('/movie') || path.startsWith('/mwatch')) return 'movies';
   const seg = path.split('/')[1];
-  if (seg === 'settings' || seg === 'updates' || seg === 'packs' || seg === 'leaderboard' || seg === 'messages' || seg === 'mailbox' || seg === 'trades' || seg === 'arena' || seg === 'spin') return 'profile';
+  if (seg === 'settings' || seg === 'updates' || seg === 'packs' || seg === 'leaderboard' || seg === 'messages' || seg === 'mailbox' || seg === 'trades' || seg === 'arena') return 'profile';
   return NAV.some((n) => n.id === seg) ? seg : null;
 }
 
@@ -231,9 +236,6 @@ function moreSheet() {
         ]),
         group(t('Play'), [
           row(api, { href: '/packs', iconName: 'sparkles', label: t('Card binder'), on: onPath('/packs') }),
-          fortuneUsable()
-            ? row(api, { href: '/spin', iconName: 'star', label: t('Fortune wheel'), on: onPath('/spin') })
-            : null,
           partyUsable()
             ? row(api, { href: '/rooms', iconName: 'users', label: t('Rooms'), on: onPath('/rooms') })
             : null,
@@ -396,9 +398,6 @@ export function renderNav() {
     /* A deal is written on the server that runs this site, for the same reason a
        message is — so the link appears and disappears with the same capability. */
     tradeUsable() ? sideLink({ label: t('Trades'), path: '/trades', iconName: 'swap', active: path === '/trades' }) : null,
-    /* A spin is settled by the server, so the link appears and disappears with
-       the same capability a trade does. */
-    fortuneUsable() ? sideLink({ label: t('Fortune wheel'), path: '/spin', iconName: 'star', active: path === '/spin' }) : null,
     /* The rail's unread number rides on Profile now, because that is where the
        inbox it counts lives — private lines and gifted cards alike. */
     profileLink,

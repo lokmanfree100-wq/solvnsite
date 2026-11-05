@@ -16,7 +16,7 @@
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet, toast } from '../lib/ui.js';
-import { account, answerFriend, askFriend, authUsable, duelsUsable, fortuneUsable, isSignedIn, isStaff, publicProfile, patchMe, setAvatar, setBanner, setFavourite, setTitle, shownName, tradesUsable } from '../lib/account.js';
+import { account, answerFriend, askFriend, authUsable, duelsUsable, isSignedIn, isStaff, publicProfile, patchMe, setAvatar, setBanner, setFavourite, setTitle, shownName, tradesUsable } from '../lib/account.js';
 import { intlDate } from '../lib/util.js';
 import { BANNER_KEYS, BANNER_UPLOAD, TITLES, bannerFromImageFile, bannerMotion, bannerRows, bannerTint, titleUnlocked } from '../lib/ranks.js';
 import { search } from '../lib/anilist.js';
@@ -331,9 +331,9 @@ function bioBlock(user, { canEdit = false, onChanged = null } = {}) {
 
 /* ---- picture --------------------------------------------------------
    One shelf, and every face on it is earned. A finished task opens the next
-   three portraits (`lib/faces.js` owns that ladder), the wheel can hand one
-   over early, and the portrait already worn stays open for good. A locked tile
-   is not a button: it keeps its art behind glass and says which task opens it.
+   three portraits (`lib/faces.js` owns that ladder), and the portrait already
+   worn stays open for good. A locked tile is not a button: it keeps its art
+   behind glass and says which task opens it.
    A library pick applies on the tap — trying one costs nothing, and the record
    that travels is the address. */
 function avatarSheet(user, onDone) {
@@ -446,7 +446,7 @@ function avatarSheet(user, onDone) {
     const worn = String(user?.avatar?.face || '') === f.image;
     if (!access.openIds.has(id)) {
       const quest = faceQuestAt(access.rank.get(id));
-      const hint = quest ? t('Opens with: {quest}', { quest: questLabel(quest) }) : t('From the fortune wheel');
+      const hint = quest ? t('Opens with: {quest}', { quest: questLabel(quest) }) : t('Nothing opens this one yet');
       return h(
         'div.av-tile.is-locked',
         { title: `${f.name} — ${hint}` },
@@ -1586,13 +1586,12 @@ export async function ProfileView(ctx) {
         ? h(
             /* The rail only exists from 1000px up, and the tab bar is capped at
                five stops, so everything the rail carries past those five lives
-               here too: a phone reaches the arena, the wheel and a trade by
-               tapping Profile, the same page that already says who you are.
+               here too: a phone reaches the arena and a trade by tapping
+               Profile, the same page that already says who you are.
                Each link appears only where its own feature is written down. */
             'nav.more-links',
             {},
             h('a.more-link', { href: '#/packs' }, icon('sparkles'), h('span', {}, t('Card binder'))),
-            fortuneUsable() ? h('a.more-link', { href: '#/spin' }, icon('star'), h('span', {}, t('Fortune wheel'))) : null,
             duelsUsable() ? h('a.more-link', { href: '#/arena' }, icon('bolt'), h('span', {}, t('Arena'))) : null,
             tradesUsable() ? h('a.more-link', { href: '#/trades' }, icon('swap'), h('span', {}, t('Trades'))) : null,
             h('a.more-link', { href: '#/leaderboard' }, icon('crown'), h('span', {}, t('Leaderboard'))),

@@ -1247,10 +1247,6 @@
   filter: drop-shadow(0 0 12px var(--bk-hi));
   animation: bk-bolt 7.2s steps(1, end) infinite;
 }
-/* On a 44px wheel chip the bolt would be a speck with a shadow; skip it. */
-.fw-band .bk-bolt {
-  display: none;
-}
 
 /* ---- palettes ---------------------------------------------------------- */
 .bk[data-theme='aurora'] {

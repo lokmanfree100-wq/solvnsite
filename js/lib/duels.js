@@ -102,8 +102,8 @@ export async function loadDuels() {
 /* ---- the today tally ---------------------------------------------------
    The daily quests ask how many fights this device took part in and how many it
    won *today*, which the account record does not keep — it stores the lifetime
-   figures. So the day is counted here, in the same 04:00 shape the packs and the
-   wheel use, and it is written only when a result is actually filed. */
+   figures. So the day is counted here, in the same 04:00 shape the packs use,
+   and it is written only when a result is actually filed. */
 export function todayTally() {
   const day = cardDay().key;
   const raw = storage.read('duels:day', null);

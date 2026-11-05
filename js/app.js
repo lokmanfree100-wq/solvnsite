@@ -29,7 +29,6 @@ import { MessagesView } from './views/messages.js';
 import { RoomsView } from './views/rooms.js';
 import { TradesView } from './views/trades.js';
 import { ArenaView } from './views/arena.js';
-import { SpinView } from './views/spin.js';
 import { TopView } from './views/top.js';
 import { AdminView } from './views/admin.js';
 import { MoviesView } from './views/movies.js';
@@ -68,7 +67,6 @@ const ROUTES = [
   { match: /^\/mailbox$/, view: openProfileMail, nav: true },
   { match: /^\/trades$/, view: TradesView, nav: true },
   { match: /^\/arena$/, view: ArenaView, nav: true },
-  { match: /^\/spin$/, view: SpinView, nav: true },
   { match: /^\/settings$/, view: SettingsView, nav: true },
   { match: /^\/admin$/, view: AdminView, nav: true },
   { match: /^\/anime\/(\d+)/, view: DetailView, nav: true },
@@ -222,7 +220,6 @@ const PAGE_TITLES = {
   mailbox: 'Mailbox — Solvn',
   trades: 'Trades — Solvn',
   arena: 'Arena — Solvn',
-  spin: 'Fortune Wheel — Solvn',
   settings: 'Settings — Solvn',
   admin: 'Admin — Solvn',
   anime: 'Details — Solvn',
