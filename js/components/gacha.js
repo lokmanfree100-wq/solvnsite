@@ -410,15 +410,30 @@ function shell(panel, onEscape) {
  * is the reveal, and it never rolls anything of its own. A tester's preview hands
  * are not banked, so the stage says so instead of promising a card that is not
  * in the collection.
+ *
+ * `daily` is the same stage telling the truth about a different object: the card
+ * the day guarantees is not a pack, and a sealed booster would say otherwise.
  */
-export function openPackFlow(cards, { onDone, preview = false } = {}) {
+export function openPackFlow(cards, { onDone, preview = false, daily = false } = {}) {
   let index = -1;
   let torn = false;
   const best = cards.reduce((lv, c) => Math.max(lv, c.lv), 0);
+  const one = cards.length === 1;
+  const L = {
+    head: daily ? t('Today’s card') : t('New pack'),
+    dialog: daily ? t('Daily card') : t('Pack opening'),
+    sealed: daily ? t('The card is waiting') : t('Your pack is sealed'),
+    tap: daily ? t('Tap to turn it over.') : t('Tap the pack to tear it open.'),
+    open: daily ? t('Take the card') : t('Open the pack'),
+    crest: daily ? t('Solvn card') : t('Solvn booster'),
+    count: one ? t('One card') : t('{n} cards', { n: String(cards.length) }),
+    keep: one ? t('Keep it') : t('Keep them'),
+    whole: daily ? t('That is your card.') : t('That is the whole pack.'),
+  };
 
   const tray = h('div.g-tray');
   const counter = h('span.g-flow-count.tnum', {}, `0 / ${cards.length}`);
-  const hint = h('p.g-flow-hint', {}, t('Tap the pack to tear it open.'));
+  const hint = h('p.g-flow-hint', {}, L.tap);
 
   const revealAll = h(
     'button.btn.btn--ghost',
@@ -449,7 +464,7 @@ export function openPackFlow(cards, { onDone, preview = false } = {}) {
         onDone?.(cards);
       },
     },
-    preview ? t('Close') : t('Keep them'),
+    preview ? t('Close') : L.keep,
   );
   doneBtn.hidden = true;
 
@@ -470,8 +485,8 @@ export function openPackFlow(cards, { onDone, preview = false } = {}) {
         'div.g-booster-crest',
         {},
         icon('sparkles', { cls: 'g-booster-glyph' }),
-        h('b', {}, t('Solvn booster')),
-        h('span', {}, t('{n} cards', { n: String(cards.length) })),
+        h('b', {}, L.crest),
+        h('span', {}, L.count),
       ),
     ),
   );
@@ -495,7 +510,7 @@ export function openPackFlow(cards, { onDone, preview = false } = {}) {
     {
       role: 'button',
       tabindex: '0',
-      'aria-label': t('Open the pack'),
+      'aria-label': L.open,
       onclick: (e) => {
         if (e.target.closest('button')) return;
         next();
@@ -511,7 +526,7 @@ export function openPackFlow(cards, { onDone, preview = false } = {}) {
       'div.g-node.is-booster',
       {},
       booster,
-      h('h3', {}, t('Your pack is sealed')),
+      h('h3', {}, L.sealed),
       hint,
     ),
     tray,
@@ -519,8 +534,8 @@ export function openPackFlow(cards, { onDone, preview = false } = {}) {
 
   const panel = h(
     'div.g-flow',
-    { role: 'dialog', 'aria-modal': 'true', 'aria-label': t('Pack opening') },
-    h('div.g-flow-head', {}, h('h2', {}, t('New pack')), counter, h('div.grow'), revealAll, doneBtn),
+    { role: 'dialog', 'aria-modal': 'true', 'aria-label': L.dialog },
+    h('div.g-flow-head', {}, h('h2', {}, L.head), counter, h('div.grow'), revealAll, doneBtn),
     stage,
   );
 
@@ -565,7 +580,7 @@ export function openPackFlow(cards, { onDone, preview = false } = {}) {
     counter.textContent = `${index + 1} / ${cards.length}`;
     stage.classList.add('is-open');
     stage.setAttribute('aria-label', t('Tap to draw the next card.'));
-    hint.textContent = index === cards.length - 1 ? t('That is the whole pack.') : t('Tap to draw the next card.');
+    hint.textContent = index === cards.length - 1 ? L.whole : t('Tap to draw the next card.');
     if (r.holo) toast(t('{rarity}! {name}', { rarity: t(r.label), name: card.name }), { iconName: 'sparkles', timeout: 3600 });
     if (index === cards.length - 1) finish();
   }

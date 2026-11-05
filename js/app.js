@@ -35,6 +35,7 @@ import { MoviesView } from './views/movies.js';
 import { MovieDetailView } from './views/mdetail.js';
 import { MovieWatchView } from './views/mwatch.js';
 import { restore, pushStats, staticHost, takeRecovery, account } from './lib/account.js';
+import { noteSeen } from './lib/cards.js';
 import { verifyCloudSchema } from './lib/cloud.js';
 import { beat, markAway } from './lib/presence.js';
 import { askAboutAccount, resetSheet } from './components/account.js';
@@ -312,6 +313,10 @@ document.addEventListener('kitsune:theme', applyTheme);
 document.addEventListener('kitsune:account', () => {
   renderNav();
   pulse(parse().path);
+  /* A session arriving or leaving is a day of showing up, counted here rather
+     than on the binder alone: the card a signed-in day guarantees should not
+     depend on which page a member happened to open. */
+  noteSeen();
 });
 
 /* A new language rewrites every label, so the live view is rebuilt rather than
@@ -329,7 +334,11 @@ document.addEventListener('kitsune:api', () => mount(parse()));
 /* Coming back to the tab is the moment a viewer expects fresh rows, so drop the
    outage backoff instead of serving the same snapshot for another five minutes. */
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden || !apiDown()) return;
+  if (document.hidden) return;
+  /* A tab left open across 04:00 is still a member who came back the next day,
+     and the run should read that way rather than wait for a reload. */
+  noteSeen();
+  if (!apiDown()) return;
   retryNow();
   mount(parse());
 });
@@ -355,6 +364,9 @@ if (!leaving) {
        so a throw here would look exactly like a Sign in button that does nothing. */
     .catch(() => {})
     .then(() => {
+      /* The session is known now, so today can be counted. Idempotent inside a
+         card day, silent for a guest, and it never blocks the first paint. */
+      noteSeen();
       const { path } = parse();
       if (staticHost() || path === '/profile' || path.startsWith('/profile/')) mount(parse());
       /* An email link that came here to reset a password carries a session that

@@ -5,8 +5,9 @@
  * opened against a published drop table, a binder is a shelf of cards this
  * account owns, and a duplicate is not a wasted pull but the raw material for an
  * evolution. There is nothing to buy and no advertisement to watch, so the only
- * ways to pull are the packs the day hands you and — for the one account with a
- * tester's hand — the tools at the bottom of the page.
+ * ways to pull are the packs the day hands you, the one card a signed-in day
+ * guarantees, and — for the one account with a tester's hand — the tools at the
+ * bottom of the page.
  *
  * Two views share this route. `?shelf=` is the binder: what you own. `?view=set`
  * is the compendium: the whole roster at one tier, unowned tiles locked behind a
@@ -33,6 +34,7 @@ import {
   refillDaily, loadPool, poolSize, showcaseSet, isTester, serialText, luck, setLuck,
   resetText, streakNow, streakFloor, nextStreakStep, allowanceLeft, bankedPacks,
   compendium, tierProgress, ultimateState, awardUltimate, ultimateCard, publishSoon,
+  DAILY_LADDER, dailyState, nextDailyStep, noteSeen, claimDaily,
 } from '../lib/cards.js';
 import {
   gachaCard, rarityChip, dropTable, openPackFlow, evolveFlow, showcase,
@@ -83,6 +85,11 @@ export async function CollectionView(ctx) {
      at their own binder. Debounced, and silent if it fails: the binder works the
      same either way. */
   if (isSignedIn()) publishSoon();
+
+  /* Looking at the binder is a day of showing up. The count is written here as
+     well as on the way into the app, so a member who deep-links straight to
+     /packs gets the same rung as one who wandered in from the home page. */
+  noteSeen();
 
   /* A sample of each tier, so the stage and the preview row have something to
      hold up before a binder exists. Samples are marked: they are not owned, they
@@ -136,6 +143,7 @@ export async function CollectionView(ctx) {
     const day = quota().day;
     if (day === seenDay) return;
     seenDay = day;
+    noteSeen();
     repaintAll();
   }, 1000);
   ctx?.onCleanup?.(() => clearInterval(timer));
@@ -157,6 +165,88 @@ export async function CollectionView(ctx) {
       left: String(step.days - run),
       floor: String(step.floor),
     })}${bonus}`;
+  }
+
+  /* ---- the daily card --------------------------------------------------
+   * Showing up is the other half of the habit, and it pays in one card whose
+   * tier the ladder decides — not a roll. It is printed with the packs rather
+   * than buried on a second page, because a reward you have to hunt for is a
+   * reward you will assume is not there.
+   */
+  function dailyText(d) {
+    const run = Math.max(1, d.run);
+    const step = nextDailyStep(run);
+    const head = d.taken
+      ? t('Day {n} is taken: your Lv {lv} card is in your binder.', { n: String(run), lv: String(d.lv) })
+      : t('Day {n} of showing up. Today hands over a Lv {lv} card, guaranteed.', { n: String(run), lv: String(d.lv) });
+    const tail = step
+      ? step.days - run === 1
+        ? t('One more day for a Lv {lv} card.', { lv: String(step.lv) })
+        : t('{left} more days for a Lv {lv} card.', { left: String(step.days - run), lv: String(step.lv) })
+      : t('That is the top of the daily ladder — a Lv {lv} card every day from here.', { lv: String(d.lv) });
+    return `${head} ${tail}`;
+  }
+
+  function dailyBand() {
+    const d = dailyState();
+    const btn = d.taken
+      ? null
+      : h(
+          'button.btn.btn--sm.btn--claim',
+          { type: 'button', onclick: () => claimDay(btn) },
+          icon('gift'),
+          h('span', {}, t('Take today’s card')),
+        );
+    return h(
+      'div.g-checkband',
+      {},
+      h('p.g-checkline', {}, icon('star'), dailyText(d)),
+      btn || h('span.badge', {}, icon('check'), t('Claimed today')),
+    );
+  }
+
+  function claimDay(btn) {
+    if (!isSignedIn()) {
+      toast(t('A card a day, once you have an account.'), { iconName: 'user' });
+      authSheet('login');
+      return;
+    }
+    if (!poolSize()) {
+      toast(notAnswering(), { tone: 'err', iconName: 'offline' });
+      return;
+    }
+    btn.disabled = true;
+    btn.classList.add('is-busy');
+    claimDaily()
+      .then((res) => {
+        if (res.blocked === 'taken') {
+          repaintHead();
+          toast(t('Today’s card is already yours. A new one lands at {hour}:00.', { hour: String(PACK_HOUR) }), {
+            tone: 'info',
+            iconName: 'check',
+          });
+          return;
+        }
+        if (res.blocked === 'nopool') {
+          /* Nothing was written down, so the day is still claimable — the same
+             promise the pack button makes when the roster is quiet. */
+          toast(notAnswering(), { tone: 'err', iconName: 'offline' });
+          return;
+        }
+        if (!res.card) return;
+        openPackFlow([res.card], {
+          daily: true,
+          onDone: () => {
+            repaintAll();
+            select(res.card);
+          },
+        });
+      })
+      .catch(() => toast(notAnswering(), { tone: 'err', iconName: 'offline' }))
+      .finally(() => {
+        btn.disabled = false;
+        btn.classList.remove('is-busy');
+      });
   }
 
   function repaintHead() {
@@ -216,6 +306,7 @@ export async function CollectionView(ctx) {
         signed && left !== Infinity
           ? h('p.g-streakline', {}, icon('flame'), streakText(run, streakFloor(run), nextStreakStep(run)))
           : null,
+        signed ? dailyBand() : null,
         h(
           'div.g-facts',
           {},
@@ -734,6 +825,7 @@ export async function CollectionView(ctx) {
    */
   function rulesBlock() {
     const run = streakNow();
+    const day = Math.max(1, dailyState().run);
     return h(
       'div.g-rules',
       {},
@@ -746,6 +838,27 @@ export async function CollectionView(ctx) {
         rule(t('The day turns at'), t('{hour}:00, your time', { hour: String(PACK_HOUR) })),
         rule(t('Packs you leave'), t('They wait in your bank. Nothing expires.')),
         rule(t('A streak is'), t('a day you open at least one pack')),
+        rule(t('A card is yours'), t('every day you sign in')),
+      ),
+      h('h4.g-rules-sub', {}, t('The daily card ladder')),
+      h(
+        'p.faint',
+        {},
+        t('Days signed in one after another raise the tier of the card the day hands over. It is not a roll: two members on the same rung get the same tier, and only the character is a surprise. The ladder stops under the four rarest tiers — those stay a pull or a fuse.'),
+      ),
+      h(
+        'ul.g-steps.g-daily-steps',
+        {},
+        ...DAILY_LADDER.map((s) =>
+          h(
+            `li.g-step${day >= s.days ? '.is-on' : ''}`,
+            {},
+            h('b.tnum.g-step-days', {}, s.days === 1 ? t('One day') : t('{n} days', { n: String(s.days) })),
+            h('span.g-step-floor', {}, t('Lv {lv} card', { lv: String(s.lv) })),
+            rarityChip(s.lv),
+            day >= s.days ? h('span.g-step-now', {}, icon('check'), t('Reached')) : null,
+          ),
+        ),
       ),
       h('h4.g-rules-sub', {}, t('The streak ladder')),
       h(

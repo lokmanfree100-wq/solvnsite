@@ -749,6 +749,9 @@ export function quota() {
     limit: DAILY_PACKS,
     bank: (stale ? Number(stale.bank) || 0 : 0) + leftover,
     streak: stale && stale.streak && typeof stale.streak === 'object' ? stale.streak : { last: 0, run: 0 },
+    checkin: stale && stale.checkin && typeof stale.checkin === 'object'
+      ? stale.checkin
+      : { last: 0, run: 0, taken: 0 },
   };
   storage.write('packs', next);
   return next;
@@ -816,6 +819,108 @@ function spendPack() {
   if (bonus) q.bank = (Number(q.bank) || 0) + bonus;
   storage.write('packs', q);
   return { run: nextRun, bonus, floor: streakFloor(nextRun) };
+}
+
+/* ---- the daily card --------------------------------------------------
+   The other half of showing up. The pack streak only moves while somebody
+   pulls, which leaves a day spent watching rather than opening with nothing to
+   show for it — so the visit itself is counted here and paid in one card a day,
+   at a rung the run has already reached.
+
+   The ladder is printed on the page, the same argument that keeps the drop table
+   honest: a reward nobody can read is not a reward, it is a rig. It climbs
+   slowly and stops under the four tiers no login has a business handing over —
+   Prismatic, Celestial, Rainbow Holo and the one-of-one stay a roll or a fuse.
+   A missed day takes the run back to one, and the record rides in the pack file
+   the cloud already syncs, so the card follows the member to their next device
+   instead of the browser they claimed it on. */
+export const DAILY_LADDER = [
+  { days: 1, lv: 5 },
+  { days: 2, lv: 6 },
+  { days: 4, lv: 7 },
+  { days: 7, lv: 8 },
+  { days: 10, lv: 9 },
+  { days: 14, lv: 10 },
+  { days: 21, lv: 11 },
+  { days: 30, lv: 12 },
+];
+
+/** The rung today's visit has earned: the last one at or under the run. */
+export function dailyTier(run = 1) {
+  const n = Math.max(1, Number(run) || 1);
+  let lv = DAILY_LADDER[0].lv;
+  for (const step of DAILY_LADDER) if (n >= step.days) lv = step.lv;
+  return lv;
+}
+
+/** The rung still to come, or null once Lv 12 is reached and held. */
+export function nextDailyStep(run = 1) {
+  const n = Math.max(1, Number(run) || 1);
+  return DAILY_LADDER.find((s) => s.days > n) || null;
+}
+
+/** The check-in run as it reads right now: a day missed is a run broken. */
+export function checkinNow(q = quota()) {
+  const run = Number(q.checkin?.run) || 0;
+  const last = Number(q.checkin?.last) || 0;
+  if (!run || !last) return 0;
+  const ord = cardDay().ord;
+  return last === ord || last === ord - 1 ? run : 0;
+}
+
+/**
+ * Count today, once — for turning up, not for pulling.
+ *
+ * Called when a member is seen: on the way into the app and whenever the binder
+ * paints. It is idempotent inside a card day, so a page that repaints a dozen
+ * times cannot buy itself a dozen rungs.
+ */
+export function noteSeen() {
+  if (!isSignedIn()) return 0;
+  const q = quota();
+  const ord = cardDay().ord;
+  const last = Number(q.checkin?.last) || 0;
+  if (last === ord) return Number(q.checkin?.run) || 0;
+  const run = last === ord - 1 ? Math.max(1, checkinNow(q) + 1) : 1;
+  q.checkin = { last: ord, run, taken: Number(q.checkin?.taken) || 0 };
+  storage.write('packs', q);
+  return run;
+}
+
+/** What the page prints: today's rung, whether it is gone, and when it returns. */
+export function dailyState() {
+  const q = quota();
+  const run = checkinNow(q);
+  return {
+    run,
+    lv: dailyTier(Math.max(1, run)),
+    taken: Number(q.checkin?.taken) === cardDay().ord,
+    nextAt: nextResetAt(),
+  };
+}
+
+/**
+ * Take the day's card.
+ *
+ * One per card day, and the tier is decided by the ladder rather than drawn, so
+ * two members on the same rung get the same card and only the character is a
+ * surprise. The rung is written down only once the card is in the binder: a
+ * roster that is not answering costs nothing and can be tried again a minute
+ * later, which is the same promise the pack button makes.
+ */
+export async function claimDaily() {
+  if (!isSignedIn()) return { blocked: 'signedout' };
+  noteSeen();
+  const q = quota();
+  const ord = cardDay().ord;
+  if (Number(q.checkin?.taken) === ord) return { blocked: 'taken' };
+  const run = Math.max(1, checkinNow(q));
+  const lv = dailyTier(run);
+  const card = await grantTier(lv);
+  if (!card) return { blocked: 'nopool' };
+  q.checkin = { ...(q.checkin || {}), last: ord, run, taken: ord };
+  storage.write('packs', q);
+  return { card, run, lv };
 }
 
 /* ---- pulls ------------------------------------------------------------ */

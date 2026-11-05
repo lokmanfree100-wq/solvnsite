@@ -1801,6 +1801,46 @@
   color: var(--warn);
 }
 
+/* The daily card is something you can do right now, so it is not another line of
+   the header — it is a control: bordered, lit from the accent side, with the
+   button at its end and a quiet stamp once the day is spent. */
+.g-checkband {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin: var(--sp-3) 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(115deg, var(--accent-wash), transparent 68%);
+}
+
+.g-checkline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 260px;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.g-checkline svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--warn);
+}
+
+.btn--claim svg {
+  width: 15px;
+  height: 15px;
+}
+
 /* Tabular figures, because a countdown that changes width as it ticks moves the
    whole header with it. */
 .g-clock {
@@ -2661,6 +2701,21 @@ body.g-shake .modal-backdrop.is-gacha {
   .g-streakline {
     flex-wrap: wrap;
     gap: 6px;
+  }
+
+  /* Stacked, with the button across the whole band: a daily claim reached with a
+     thumb should not be a 30px target sitting next to a paragraph. */
+  .g-checkband {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-2);
+  }
+
+  .g-checkband .btn--claim,
+  .g-checkband .badge {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 }
 
