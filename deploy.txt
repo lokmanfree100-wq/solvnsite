@@ -84,9 +84,10 @@ data/catalogue.json, a dated snapshot of the nine film and series shelves
 for both movies and TV), with posters, synopses, cast, trailers and the first
 two seasons of every series in it. The pages read that file when no proxy
 answers, so browsing, search, detail pages, watchlists, continue-watching and
-trailer playback all work on the live site with no server and no key. The film
-hub says "Offline catalogue · 138 titles · dated <day>" on top so nobody mistakes
-a snapshot for the whole database.
+trailer playback all work on the live site with no server and no key. The pages
+say nothing about which source answered — a viewer sees shelves, not
+infrastructure — so the tell is the content itself: the shelves stop at the
+~140 titles in the file.
 
 Two things a snapshot cannot do, and what to do about them:
 

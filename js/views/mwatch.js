@@ -25,7 +25,7 @@ import { toast, sheet } from '../lib/ui.js';
 import { errorState } from '../components/media.js';
 import { showPlayAdvisory } from '../components/advisory.js';
 import { createCaptionControl } from '../components/captions.js';
-import { api, nameOf, setMovieProgress, proxyNotice } from '../lib/tmdb.js';
+import { api, nameOf, setMovieProgress } from '../lib/tmdb.js';
 import { findCleanSource, loadReport } from '../lib/cleanroom.js';
 import { createStage, captionControls } from '../lib/playback.js';
 import { proxyUrl } from '../lib/proxy.js';
@@ -136,9 +136,8 @@ export async function MovieWatchView(ctx) {
   let d;
   try {
     d = await api.details(type, id);
-  } catch (err) {
-    const notice = proxyNotice(err);
-    return errorState(t('That title'), notice ? null : () => ctx.go(ctx.route.raw), notice || {});
+  } catch {
+    return errorState(t('That title'), () => ctx.go(ctx.route.raw));
   }
   d.media_type = type;
   const title = nameOf(d);

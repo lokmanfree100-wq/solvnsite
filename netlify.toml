@@ -2,10 +2,10 @@
 #
 # solvn.site is served by GitHub Pages today (see CNAME), and Pages runs no
 # server code at all: /tmdb, /ia, /health and /stream answer 404 there, which is
-# why the film pages show "No catalogue proxy on this host". This file plus
-# netlify/functions/proxy.mjs is the other half: Netlify serves the static bundle
-# AND the four routes, with the TMDB key kept as a secret it holds, never a file
-# in this repo.
+# why the film pages read the snapshot in data/catalogue.json instead. This file
+# plus netlify/functions/proxy.mjs is the other half: Netlify serves the static
+# bundle AND the four routes, with the TMDB key kept as a secret it holds, never
+# a file in this repo.
 #
 # Two things to do in the Netlify dashboard — the code cannot do them:
 #   1. Add site → import lokmanfree100-wq/solvnsite. Build command: none.

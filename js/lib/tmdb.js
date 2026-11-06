@@ -14,10 +14,10 @@
  */
 
 import { proxyUrl } from './proxy.js';
-import { answer as catalogueAnswer, hasCatalogue, loadCatalogue, onOffline, servingOffline } from './catalogue.js';
+import { answer as catalogueAnswer, hasCatalogue, loadCatalogue, servingOffline } from './catalogue.js';
 import { t } from './i18n.js';
 
-export { onOffline, servingOffline };
+export { servingOffline };
 
 const BASE = '/tmdb';
 const memCache = new Map();
@@ -64,22 +64,6 @@ export async function tmdb(path, params = {}) {
   memCache.set(url, data);
   return data;
 }
-
-/* The state block the views show instead of an empty rail. Translated keys, so
-   it reads the same in every language and never asks for a retry that cannot
-   succeed: retrying does not install the endpoint. */
-export const PROXY_NOTICE = {
-  heading: 'No catalogue proxy on this host',
-  body: 'Movies & Series read TMDB through a /tmdb endpoint that runs beside the site, and this address does not answer it. This repo carries data/catalogue.json and netlify/functions/proxy.mjs: the first fills these pages on a static host with no server at all, the second makes the shelves live if you deploy it and set TMDB_API_KEY there. Until one of them answers, the anime side is unaffected.',
-};
-
-export const CATALOGUE_MISS = {
-  heading: 'Not in the offline catalogue',
-  body: 'This host runs no catalogue server, so these pages read the snapshot in data/catalogue.json — about a hundred and forty of the most-watched films and series. This title is not in it. build-catalogue.mjs regenerates the file, and deploying netlify/functions/proxy.mjs with TMDB_API_KEY replaces the snapshot with the whole database.',
-};
-
-export const proxyNotice = (err) =>
-  (err instanceof ProxyMissing ? PROXY_NOTICE : err instanceof NotInCatalogue ? CATALOGUE_MISS : null);
 
 /* ---- artwork --------------------------------------------------------- */
 export const img = (p, size) => (p ? `https://image.tmdb.org/t/p/${size}${p}` : null);

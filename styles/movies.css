@@ -57,32 +57,6 @@
   }
 }
 
-/* The snapshot stamp. `hidden` needs the explicit rule because `display: flex`
-   would otherwise win, and this line must actually be gone when the host does run
-   a proxy — claiming an offline catalogue that is not in use is a lie about data. */
-.m-offline-tag {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin: -6px var(--gutter) var(--sp-4);
-  color: var(--text-faint);
-  font-size: 12px;
-  line-height: 1.5;
-}
-.m-offline-tag[hidden] {
-  display: none;
-}
-.m-offline-tag svg {
-  width: 14px;
-  height: 14px;
-  color: var(--accent);
-  flex: none;
-}
-.m-offline-how {
-  color: var(--text-dim);
-}
-
 .m-searchbar {
   position: relative;
   display: flex;

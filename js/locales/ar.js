@@ -2053,20 +2053,6 @@ const ui = {
   'No direct file for this title — using the embed pool': 'لا يوجد ملف مباشر لهذا العنوان — تم استخدام مجموعة المواقع الخارجية',
   'Direct stream: this site read the file address from a provider list it controls, and the video bytes go straight into our own <video>. None of their page loads — no document, no script, no frame — so there is no third-party player here to put an ad, a pop-up or a download in front of you. When the ladder names no file for a title, the page says which provider failed and why, and hands you the other two engines.':
     'البث المباشر: قرأ هذا الموقع عنوان الملف من قائمة مزوّدين يتحكّم بها، وتذهب بيانات الفيديو مباشرة إلى عنصر <video> الخاص بنا. لا تُحمَّل أي صفحة من صفحاتهم — لا مستند ولا سكربت ولا إطار — فلا وجود لمشغّل خارجي هنا يضع إعلانًا أو نافذة منبثقة أو تنزيلًا أمامك. وعندما لا تجد القائمة ملفًا لعنوان معيّن، توضح الصفحة أيّ مزوّد فشل ولماذا، وتترك لك المحرّكين الآخرين.',
-  'No catalogue proxy on this host':
-    'لا يوجد وسيط لقاعدة البيانات على هذا الاستضافة',
-
-
-  'Movies & Series read TMDB through a /tmdb endpoint that runs beside the site, and this address does not answer it. This repo carries data/catalogue.json and netlify/functions/proxy.mjs: the first fills these pages on a static host with no server at all, the second makes the shelves live if you deploy it and set TMDB_API_KEY there. Until one of them answers, the anime side is unaffected.':
-    'يقرأ قسم «الأفلام والمسلسلات» بيانات TMDB عبر نقطة ‎/tmdb‎ تعمل بجانب الموقع، وهذا العنوان لا يردّ عليها. يحتوي هذا المستودع على data/catalogue.json و netlify/functions/proxy.mjs: الأول يملأ هذه الصفحات على استضافة ثابتة بلا أي خادم، والثاني يجعل القوائم حيّة إذا نشرته وضبطت TMDB_API_KEY هناك. وحتى يردّ أحد منهما، لا يتأثر قسم الأنمي.',
-  'Not in the offline catalogue':
-    'ليس في قائمة الأفلام المرافقة للموقع',
-  'This host runs no catalogue server, so these pages read the snapshot in data/catalogue.json — the most-watched films and series, about a hundred and forty of them. This title is not in it. Re-run build-catalogue.mjs to regenerate the file, or deploy netlify/functions/proxy.mjs with TMDB_API_KEY to put the whole database behind these pages.':
-    'لا تشغّل هذه الاستضافة خادم فهرس، لذلك تقرأ هذه الصفحات النسخة المرفقة في data/catalogue.json — أكثر الأفلام والمسلسلات مشاهدة، نحو مئة وأربعين عنوانًا. هذا العنوان ليس فيها. أعد تشغيل build-catalogue.mjs لتحديث الملف، أو انشر netlify/functions/proxy.mjs مع TMDB_API_KEY لتحصل على القاعدة كاملة.',
-  'Offline catalogue · {n} titles · dated {date} · data by {via}':
-    'فهرس غير متصل · {n} عنوان · بتاريخ {date} · البيانات من {via}',
-  'Deploy the /tmdb proxy beside the site for the full database.':
-    'انشر وسيط ‎/tmdb‎ بجانب الموقع لتحصل على القاعدة كاملة.',
   'Site default':
     'افتراضي للموقع',
   'The player has nothing to play until an address is added below, or in js/lib/defaults.js for every visitor.':
@@ -2194,8 +2180,6 @@ const ui = {
   'The best-scoring series, in order.': 'أعلى المسلسلات تقييمًا، مرتبة.',
   'Episodes dropping today.': 'حلقات تُعرض اليوم.',
   'Seasons running right now.': 'مواسم تُعرض الآن.',
-  'Nothing in the offline catalogue matches this. Deploy the /tmdb proxy beside the site for the full database.':
-    'لا شيء في الفهرس غير المتصل يطابق هذا. انشر وسيط /tmdb بجانب الموقع لتحصل على القاعدة كاملة.',
   'Sci-Fi': 'خيال علمي',
   'This player belongs to another site':
     'هذا المشغّل يخصّ موقعًا آخر',

@@ -14,7 +14,7 @@ import { errorState, stillImage } from '../components/media.js';
 import { mCard, mRail, openTrailer } from './movies.js';
 import {
   api, poster, backdrop, img, nameOf, yearOf, rating, runtimeText, seasonsLabel, fmtDate,
-  firstTrailer, toggleMovieWatchlist, inMovieWatchlist, proxyNotice,
+  firstTrailer, toggleMovieWatchlist, inMovieWatchlist,
 } from '../lib/tmdb.js';
 
 const watchHref = (type, id, s = 1, e = 1) =>
@@ -80,9 +80,8 @@ export async function MovieDetailView(ctx) {
   let d;
   try {
     d = await api.details(type, id);
-  } catch (err) {
-    const notice = proxyNotice(err);
-    return errorState(t('That title'), notice ? null : () => ctx.go(ctx.route.raw), notice || {});
+  } catch {
+    return errorState(t('That title'), () => ctx.go(ctx.route.raw));
   }
   d.media_type = type;
   const title = nameOf(d);

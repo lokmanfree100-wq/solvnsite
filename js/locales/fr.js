@@ -2093,20 +2093,6 @@ const ui = {
   'No direct file for this title — using the embed pool': 'Aucun fichier direct pour ce titre — utilisation du pool d\'integrateurs',
   'Direct stream: this site read the file address from a provider list it controls, and the video bytes go straight into our own <video>. None of their page loads — no document, no script, no frame — so there is no third-party player here to put an ad, a pop-up or a download in front of you. When the ladder names no file for a title, the page says which provider failed and why, and hands you the other two engines.':
     'Flux direct : ce site a lu l\'adresse du fichier dans une liste de fournisseurs qu\'il contrôle, et les octets vidéo vont directement dans notre propre élément <video>. Aucune de leurs pages ne se charge — ni document, ni script, ni cadre — donc aucun lecteur externe ici pour placer une publicité, une fenêtre surgissante ou un téléchargement devant vous. Quand l\'échelle ne désigne aucun fichier pour un titre, la page dit quel fournisseur a échoué et pourquoi, et vous rend les deux autres moteurs.',
-  'No catalogue proxy on this host':
-    'Aucun proxy de catalogue sur cet hébergeur',
-
-
-  'Movies & Series read TMDB through a /tmdb endpoint that runs beside the site, and this address does not answer it. This repo carries data/catalogue.json and netlify/functions/proxy.mjs: the first fills these pages on a static host with no server at all, the second makes the shelves live if you deploy it and set TMDB_API_KEY there. Until one of them answers, the anime side is unaffected.':
-    'Films et Séries lisent TMDB par un point /tmdb qui tourne à côté du site, et cette adresse ne lui répond pas. Ce dépôt contient data/catalogue.json et netlify/functions/proxy.mjs : le premier remplit ces pages sur un hébergeur statique sans aucun serveur, le second rend les listes vivantes si vous le déployez et mettez TMDB_API_KEY chez lui. En attendant qu’un des deux réponde, l’anime n’est pas concerné.',
-  'Not in the offline catalogue':
-    'Pas dans le catalogue livré avec le site',
-  'This host runs no catalogue server, so these pages read the snapshot in data/catalogue.json — the most-watched films and series, about a hundred and forty of them. This title is not in it. Re-run build-catalogue.mjs to regenerate the file, or deploy netlify/functions/proxy.mjs with TMDB_API_KEY to put the whole database behind these pages.':
-    'Cet hébergeur ne lance pas de serveur de catalogue, alors ces pages lisent la copie dans data/catalogue.json — les films et séries les plus vus, environ cent quarante titres. Ce titre n’y est pas. Relancez build-catalogue.mjs pour refaire le fichier, ou déployez netlify/functions/proxy.mjs avec TMDB_API_KEY pour avoir toute la base.',
-  'Offline catalogue · {n} titles · dated {date} · data by {via}':
-    'Catalogue local · {n} titres · du {date} · données par {via}',
-  'Deploy the /tmdb proxy beside the site for the full database.':
-    'Déployez le proxy /tmdb à côté du site pour avoir toute la base.',
   'Site default':
     'Réglage du site',
   'The player has nothing to play until an address is added below, or in js/lib/defaults.js for every visitor.':
@@ -2233,8 +2219,6 @@ const ui = {
   'The best-scoring series, in order.': 'Les séries les mieux notées, dans l’ordre.',
   'Episodes dropping today.': 'Des épisodes publiés aujourd’hui.',
   'Seasons running right now.': 'Des saisons en cours de diffusion.',
-  'Nothing in the offline catalogue matches this. Deploy the /tmdb proxy beside the site for the full database.':
-    'Rien dans le catalogue hors ligne ne correspond. Déployez le proxy /tmdb à côté du site pour obtenir la base complète.',
   'Sci-Fi': 'Science-fiction',
   'This player belongs to another site':
     'Ce lecteur appartient à un autre site',

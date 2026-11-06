@@ -14,29 +14,21 @@ import { h, icon, scrollMax, scrollPos, scrollInlineBy } from '../lib/dom.js';
 import { go } from '../lib/router.js';
 import { t } from '../lib/i18n.js';
 import { sheet } from '../lib/ui.js';
-import { errorState, stillImage } from '../components/media.js';
+import { stillImage } from '../components/media.js';
 import { categoryTabs } from '../components/cats.js';
 import { makeDeduper } from '../lib/dedupe.js';
 import {
   api, poster, backdrop, nameOf, yearOf, rating, runtimeText, seasonsLabel, genreMap,
-  firstTrailer, movieContinueWatching, movieWatchlist, movieProgress, proxyNotice, onOffline, servingOffline,
+  firstTrailer, movieContinueWatching, movieWatchlist, movieProgress, servingOffline,
 } from '../lib/tmdb.js';
 
-/* ---- one honest notice per page ---------------------------------------
-   Every rail fails the same way when the host has no /tmdb endpoint, so the
-   first one says it plainly and the rest disappear rather than stacking five
-   copies of the same paragraph. */
+/* ---- one honest shelf per page ----------------------------------------
+   A rail that cannot answer is a rail taken off the page, not a paragraph
+   about infrastructure: the shelves beside it still fill, and the viewer is
+   left with the ones that work. */
 
-let proxyWarned = false;
-
-function failRail(root, err) {
-  const notice = proxyNotice(err);
-  if (!notice || proxyWarned) {
-    root.remove();
-    return;
-  }
-  proxyWarned = true;
-  root.replaceChildren(errorState(t('Movies'), null, notice));
+function failRail(root) {
+  root.remove();
 }
 
 /* ---- links ------------------------------------------------------------ */
@@ -176,7 +168,7 @@ export function mRail({ heading, sub, viewAll, fetcher }) {
 
   fetcher()
     .then(fill)
-    .catch((err) => failRail(root, err));
+    .catch(() => failRail(root));
   return root;
 }
 
@@ -203,12 +195,7 @@ function mGrid({ title, sub, type, fetcher }) {
       box.append(wrap);
     });
     if (atPage === 1 && !items.length) {
-      /* A shelf of twenty that ends is a full page; a search that returns nothing
-         on this host is a title the snapshot never carried. Say which. */
-      const line = servingOffline()
-        ? t('Nothing in the offline catalogue matches this. Deploy the /tmdb proxy beside the site for the full database.')
-        : t('Nothing to show here right now.');
-      box.replaceChildren(h('p.muted', { style: { padding: '24px 0' } }, line));
+      box.replaceChildren(h('p.muted', { style: { padding: '24px 0' } }, t('Nothing to show here right now.')));
       more.hidden = true;
     }
   };
@@ -229,13 +216,12 @@ function mGrid({ title, sub, type, fetcher }) {
       if (items.length < 20 || (pages && page >= pages)) done = true;
       page += 1;
       append(items, page - 1);
-    } catch (err) {
+    } catch {
+      /* The list is over either way; the only difference is whether anything
+         reached the wall. Page one with nothing is an empty shelf, a later page
+         is a button that asks to be pressed again. */
       done = true;
-      const notice = proxyNotice(err);
-      if (notice && !proxyWarned) {
-        proxyWarned = true;
-        box.replaceChildren(errorState(t('Movies'), null, notice));
-      } else if (notice) {
+      if (page === 1) {
         box.replaceChildren(h('p.muted', { style: { padding: '24px 0' } }, t('Nothing to show here right now.')));
       } else {
         more.replaceChildren(t('Could not load more — try again?'));
@@ -657,7 +643,6 @@ export async function MoviesView(ctx) {
   const { query } = ctx.route;
   const type = query.type === 'tv' ? 'tv' : 'movie';
   const wrap = h('div.page-movies');
-  proxyWarned = false;
 
   /* A grid is a shelf of the same catalogue, so it keeps the same tabs and the
      same three controls above it: picking a year inside "Horror" should not
@@ -707,21 +692,6 @@ export async function MoviesView(ctx) {
      row of tabs, and the page you are on is the tab that is lit. */
   wrap.append(categoryTabs(type));
   wrap.append(filterBar(type, query));
-
-  /* Which half of the site answered. A live proxy needs no label; a snapshot does:
-     a viewer who opens "Upcoming" and finds last year's releases is entitled to
-     know these shelves are a dated copy of the database rather than the database.
-     The line appears only when a rail really was served from the file. */
-  const offlineTag = h('p.m-offline-tag', { hidden: true });
-  wrap.append(offlineTag);
-  onOffline(({ titles, updated, via }) => {
-    offlineTag.replaceChildren(
-      icon('info'),
-      h('span', {}, t('Offline catalogue · {n} titles · dated {date} · data by {via}', { n: titles, date: updated, via })),
-      h('span.m-offline-how', {}, t('Deploy the /tmdb proxy beside the site for the full database.')),
-    );
-    offlineTag.hidden = false;
-  });
 
   /* its own search box — the header field searches anime, this one the TMDB side */
   const searchInput = h('input.m-search', {
