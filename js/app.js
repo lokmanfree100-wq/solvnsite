@@ -29,6 +29,7 @@ import { RoomsView } from './views/rooms.js';
 import { TradesView } from './views/trades.js';
 import { ArenaView } from './views/arena.js';
 import { TopView } from './views/top.js';
+import { AdvertiseView } from './views/advertise.js';
 import { AdminView } from './views/admin.js';
 import { MoviesView } from './views/movies.js';
 import { MovieDetailView } from './views/mdetail.js';
@@ -56,6 +57,9 @@ const ROUTES = [
   { match: /^\/library$/, view: LibraryView, nav: true },
   { match: /^\/updates$/, view: UpdatesView, nav: true },
   { match: /^\/top$/, view: TopView, nav: true },
+  /* The pitch page the footer link points at. Public, and it reads the same
+     data/sponsor.json the banner itself is drawn from. */
+  { match: /^\/advertise$/, view: AdvertiseView, nav: true },
   { match: /^\/profile$/, view: ProfileView, nav: true },
   { match: /^\/profile\/[\w-]+$/, view: ProfileView, nav: true },
   { match: /^\/packs$/, view: CollectionView, nav: true },

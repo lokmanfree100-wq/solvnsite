@@ -1,0 +1,19 @@
+{
+  "updated": "",
+  "slot": {
+    "advertiser": "",
+    "image": "",
+    "url": "",
+    "alt": "",
+    "from": "",
+    "until": ""
+  },
+  "pitch": {
+    "visitorsPerDay": 0,
+    "pagesPerVisit": 0,
+    "topCountries": [],
+    "ratePerMonth": "",
+    "currency": "USD",
+    "contactEmail": ""
+  }
+}

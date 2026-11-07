@@ -104,6 +104,12 @@ const DEFAULT_SETTINGS = {
      site any more, so this is only the address a rights holder writes to — and
      the DMCA paragraph stays worded without a mailto until it is filled in. */
   contactEmail: '',
+  /* The sponsor banner being composed in the admin desk, and whether this
+     browser is showing it. These two are deliberately *not* the advert: they are
+     per-device, so they can only ever be a preview. The published advert lives
+     in data/sponsor.json, which every visitor downloads. */
+  sponsorDraft: null,
+  sponsorPreview: false,
 };
 
 /* ---- settings ------------------------------------------------------ */

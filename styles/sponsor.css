@@ -1,0 +1,252 @@
+/**
+ * The paid banner and the page that sells it.
+ *
+ * Two rules the whole file is built around. An empty mount is not a placeholder:
+ * no border, no gap, no "advert goes here" when nobody bought the slot. And the
+ * word "Advertisement" is never smaller or fainter than the banner under it — a
+ * label you have to look for is a label that is not there.
+ */
+
+/* ---- the mount ---------------------------------------------------------- */
+.ad-mount {
+  margin: 0 var(--gutter) var(--sp-5);
+}
+/* Nothing published, nothing drawn — the footer sits where it always sat. */
+.ad-mount:empty {
+  display: none;
+  margin: 0;
+}
+
+.ad-slot {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: center;
+}
+
+.ad-card {
+  display: block;
+  width: min(100%, 970px);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface);
+  transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+@media (hover: hover) {
+  .ad-card:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-1px);
+  }
+}
+.ad-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+/* The band keeps the slot's shape before the picture arrives. A lazy image with
+   height:auto has no height at all until it loads, so it never intersects the
+   viewport and never loads — a banner that stays blank forever. The aspect ratio
+   is the 970 × 160 the pitch page asks for; anything else letterboxes into it. */
+.ad-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 970 / 160;
+  max-height: 160px;
+  object-fit: contain;
+  background: var(--void);
+}
+
+/* The caption is the disclosure, so it is written as one line of plain text
+   beside a pill that cannot be missed. */
+.ad-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-faint);
+  text-align: center;
+}
+.ad-caption-tag {
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  color: var(--text-dim);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ad-caption-who {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+/* A draft is never shown as though it were live. */
+.ad-preview-flag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px dashed var(--warn);
+  border-radius: var(--r-pill);
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 600;
+}
+.ad-preview-flag svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* ---- the pitch page ----------------------------------------------------- */
+.page-advertise {
+  display: grid;
+  gap: var(--sp-5);
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: var(--sp-5) var(--gutter) var(--sp-7);
+}
+.ad-lead h1 {
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-display);
+  font-size: clamp(24px, 4.4vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.ad-lead p {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--text-dim);
+  line-height: 1.65;
+}
+
+.ad-panels {
+  display: grid;
+  gap: var(--sp-4);
+}
+.ad-panel {
+  padding: var(--sp-4) var(--sp-5) var(--sp-5);
+}
+
+.ad-line {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) minmax(0, 1fr);
+  gap: var(--sp-3);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.ad-line:last-of-type {
+  border-bottom: 0;
+}
+.ad-line-k {
+  color: var(--text-faint);
+}
+.ad-line-v {
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.ad-running {
+  margin-top: var(--sp-4);
+}
+
+.ad-rules {
+  display: grid;
+  gap: 10px;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ad-rules li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.ad-rules svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--success);
+}
+
+.ad-rate {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 var(--sp-4);
+}
+.ad-rate-n {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+}
+.ad-contact-plain {
+  font-size: 13px;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+/* ---- the desk ----------------------------------------------------------- */
+.ad-sponsor .ad-problems {
+  display: grid;
+  gap: 8px;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ad-sponsor .ad-problems li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--warn);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ad-sponsor .ad-problems svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin-top: 2px;
+}
+.ad-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.ad-json {
+  margin: var(--sp-3) 0 0;
+  padding: var(--sp-3) var(--sp-4);
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--void);
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+  tab-size: 2;
+}
+
+@media (max-width: 620px) {
+  .ad-line {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .ad-img {
+    max-height: 110px;
+  }
+}

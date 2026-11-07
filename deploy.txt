@@ -126,6 +126,33 @@ changes the live site until they are. The alternative, if you would rather keep
 Pages: run serve-solvn.mjs on any small server you own, at the same address the
 site is served from — that answers all four routes without step 4.
 
+THE SPONSOR BANNER — one slot, sold by hand, published as a file.
+
+data/sponsor.json is the advert every visitor downloads, and it ships empty, so
+the site shows no banner at all today. It works on Pages for the same reason the
+catalogue does: a committed file needs no server. The admin desk (#/admin ▸
+Sponsor banner) composes it, checks it, previews it on your own device and prints
+the exact text — it cannot publish it, because settings live in the browser they
+are typed in and there is no storage bucket to upload a picture to. Publishing is
+therefore three clicks you take yourself: open the repository on GitHub, edit
+data/sponsor.json, paste what the desk printed, commit.
+
+  - The picture is hosted by the advertiser, not by this repo: 970 × 160, https
+    only, and the desk refuses anything else. Both a picture and a click address
+    are required — half an advert is not put on a page.
+  - "from" and "until" are YYYY-MM-DD. An advert whose last day has passed stops
+    by itself; nobody has to remember to take it down. Leave both empty to run
+    until you replace the file.
+  - The banner sits above the footer on browsing pages, never on the watch page,
+    never on #/admin or #/settings. It opens a new tab, carries rel="sponsored
+    nofollow noopener", sends no referrer, and is captioned as paid in all three
+    languages. If the picture fails to load the whole slot comes off the page.
+  - #/advertise is the public pitch: audience, slot spec, the formats this site
+    refuses, price and contact. Every figure on it comes from the "pitch" half of
+    the same file, and anything left empty is reported as not published rather
+    than guessed at. The traffic numbers are yours to fill in — the site's own
+    counter only answers once docs/supabase.sql has been run in Supabase.
+
 ANIME PLAYS ONLY WHAT YOU CHOOSE — and right now you have chosen nothing, so the
 player says "No video source is configured yet."
 

@@ -18,6 +18,7 @@ import { emptyState, errorState } from '../components/media.js';
 import { intlDate, relativeTime } from '../lib/util.js';
 import { presence, activity } from '../lib/presence.js';
 import { gachaCard } from '../components/gacha.js';
+import { draft, setDraft, clearDraft, previewOn, setPreview, draftProblems, publishText, publishedSlot, loadSponsor } from '../lib/sponsor.js';
 
 const badgeNode = (b) =>
   h('span.badge', { title: `${t(b.label)} — ${t(b.hint)}` }, icon(b.icon), h('span.badge-name', {}, t(b.label)));
@@ -719,6 +720,179 @@ function centralPanel() {
   return box;
 }
 
+/* ---- the sponsor banner -------------------------------------------------
+   Sold by hand, published as a file. This desk cannot write the advert onto the
+   site — settings live in the browser they are typed in, so a banner "saved" here
+   would be a private page — and there is no storage bucket to upload a picture
+   to. What it does instead is compose data/sponsor.json, check it, let the owner
+   preview it on their own device, and print the exact text to paste over the file
+   on GitHub. The publish step stays a human step on purpose: one person decides
+   what their visitors are shown. */
+
+const PROBLEM = {
+  empty: () => t('Nothing is filled in yet, so every visitor sees no banner.'),
+  'image-https': () => t('The image address has to start with https://'),
+  'url-https': () => t('The click address has to start with https://'),
+  'no-image': () => t('An advert needs a picture of its own.'),
+  'no-url': () => t('An advert needs somewhere to go when it is clicked.'),
+  window: () => t('The last day comes before the first day.'),
+  'no-advertiser': () => t('Say whose advert it is — the caption under the banner names them.'),
+};
+
+function adPanel() {
+  const box = h('section.ad-sponsor.glass');
+
+  function paint() {
+    const d = draft();
+    const pub = publishedSlot();
+    const valueAt = (key) => String(key.split('.').reduce((o, k) => (o == null ? '' : o[k]), d) ?? '');
+    const txt = (key, label, ph) =>
+      h(
+        'label.ad-field',
+        {},
+        h('span', {}, label),
+        h('input.input', {
+          type: 'text',
+          value: valueAt(key),
+          placeholder: ph || '',
+          spellcheck: 'false',
+          autocomplete: 'off',
+          dataset: { path: key },
+        }),
+      );
+    const num = (key, label) =>
+      h(
+        'label.ad-field',
+        {},
+        h('span', {}, label),
+        h('input.input.tnum', { type: 'number', min: '0', step: '1', value: valueAt(key), dataset: { path: key } }),
+      );
+    const day = (key, label) =>
+      h(
+        'label.ad-field',
+        {},
+        h('span', {}, label),
+        h('input.input', { type: 'date', value: valueAt(key), dataset: { path: key } }),
+      );
+
+    const fields = [
+      txt('slot.advertiser', t('Who is advertising'), t('Business name')),
+      txt('slot.image', t('Banner image address'), 'https://…/banner.jpg'),
+      txt('slot.url', t('Where the click goes'), 'https://…'),
+      txt('slot.alt', t('Text for the picture'), t('Describe the banner for a screen reader')),
+      day('slot.from', t('First day')),
+      day('slot.until', t('Last day')),
+      num('pitch.visitorsPerDay', t('Visitors a day to publish')),
+      num('pitch.pagesPerVisit', t('Pages per visit')),
+      txt('pitch.topCountries', t('Top countries, comma separated'), t('Morocco, Algeria, France')),
+      txt('pitch.ratePerMonth', t('Price per month'), t('40')),
+      txt('pitch.currency', t('Currency'), t('USD')),
+      txt('pitch.contactEmail', t('Contact address shown to advertisers'), 'you@example.com'),
+    ];
+
+    const readBack = () => {
+      const out = { slot: {}, pitch: {} };
+      for (const el of box.querySelectorAll('[data-path]')) {
+        const [group, key] = el.dataset.path.split('.');
+        out[group][key] = el.value;
+      }
+      out.pitch.topCountries = String(out.pitch.topCountries || '')
+        .split(',')
+        .map((c) => c.trim())
+        .filter(Boolean);
+      return out;
+    };
+
+    const save = h(
+      'button.btn.btn--sm.btn--primary',
+      {
+        onclick: () => {
+          const obj = readBack();
+          const bad = draftProblems(obj);
+          setDraft(obj);
+          toast(bad.length ? (PROBLEM[bad[0]] || PROBLEM.empty)() : t('Draft saved on this device.'), {
+            tone: bad.length ? 'err' : 'ok',
+            iconName: bad.length ? 'alert' : 'check',
+          });
+          paint();
+        },
+      },
+      icon('check'),
+      t('Save'),
+    );
+
+    const preview = h('label.ad-check', {},
+      h('input', { type: 'checkbox', checked: previewOn(), onchange: (e) => { setPreview(e.target.checked); paint(); } }),
+      h('span', {}, t('Show the draft at the bottom of my own pages')),
+    );
+
+    /* Checked and printed from the fields as they stand once they are on screen,
+       so an address pasted in but not yet saved is reported on rather than
+       quietly normalised away by the next paint. */
+    const src = box.querySelector('[data-path]') ? readBack() : d;
+    const problems = draftProblems(src);
+    const problemList = h(
+      'ul.ad-problems',
+      {},
+      ...problems.map((code) => h('li', {}, icon('alert'), (PROBLEM[code] || PROBLEM.empty)())),
+    );
+
+    const json = publishText(src);
+    const code = h('pre.ad-json.tnum', { tabindex: '0' }, json);
+    const copyJson = h(
+      'button.btn.btn--sm',
+      {
+        onclick: async () => {
+          try {
+            await navigator.clipboard.writeText(json);
+            toast(t('Copied — paste it over data/sponsor.json'), { tone: 'ok', iconName: 'check' });
+          } catch {
+            toast(t('Select the text and copy it by hand.'), { tone: 'err', iconName: 'alert' });
+          }
+        },
+      },
+      icon('edit'),
+      t('Copy the file'),
+    );
+
+    const clear = h(
+      'button.btn.btn--sm',
+      {
+        onclick: () => {
+          clearDraft();
+          toast(t('Draft cleared'), { tone: 'ok', iconName: 'check' });
+          paint();
+        },
+      },
+      icon('trash'),
+      t('Clear draft'),
+    );
+
+    box.replaceChildren(
+      h('h2.panel-title', {}, icon('sparkles'), t('Sponsor banner')),
+      h(
+        'p.muted',
+        {},
+        pub && pub.slot.image && pub.slot.url
+          ? t('Published right now: {who}, until {day}.', { who: pub.slot.advertiser || t('unnamed'), day: pub.slot.until || t('no end date') })
+          : t('Nothing is published, so visitors see no banner at all.'),
+      ),
+      h('div.cloud-fields', {}, ...fields),
+      h('div.rowline.wrap', { style: { gap: '8px', padding: '12px 0' } }, save, preview, clear),
+      problemList,
+      h('p.faint', {}, t('Publishing is three clicks and cannot be undone by the site itself: open the repository on GitHub, edit data/sponsor.json, paste what is below, commit.')),
+      h('div.rowline.wrap', { style: { gap: '8px' } }, copyJson),
+      code,
+    );
+  }
+
+  paint();
+  /* The published half of the picture arrives with the file, so the desk can
+     answer "what is live right now" instead of only "what have I typed". */
+  loadSponsor().then(paint);
+  return box;
+}
+
 /* ---- the page ------------------------------------------------------------ */
 export async function AdminView({ onCleanup } = {}) {
   const wrap = h('div.page-admin');
@@ -1049,7 +1223,7 @@ export async function AdminView({ onCleanup } = {}) {
     paintCentral();
   }
 
-  wrap.append(head, totals, analyticsBox, centralBox, studio, pulseBox, hold, central, roster, reportBox, commentBox);
+  wrap.append(head, totals, analyticsBox, centralBox, studio, pulseBox, hold, central, roster, adPanel(), reportBox, commentBox);
   paintHold();
   await fill();
   const pulseTimer = setInterval(paintPulse, 15_000);

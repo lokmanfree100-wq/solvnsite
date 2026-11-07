@@ -4,11 +4,16 @@
  * it when the language changes; it hides itself on the watch page, where the
  * player owns the viewport.
  *
- * Nothing here leaves Solvn. The social row and the Discord invite used to be
- * outbound links with `target="_blank"`, and they are gone: a footer button that
- * hands the viewer to another site is exactly what this app promises never to
- * do. The only address left is the DMCA `mailto:` — it opens the viewer's own
- * mail client to write to us, it does not move the page.
+ * Nothing in the navigation here leaves Solvn. The social row and the Discord
+ * invite used to be outbound links with `target="_blank"`, and they are gone: a
+ * footer button that hands the viewer to another site is exactly what this app
+ * promises never to do. The only address left is the DMCA `mailto:` — it opens the
+ * viewer's own mail client to write to us, it does not move the page.
+ *
+ * One exception now sits above this block rather than inside it: the sponsored
+ * banner in components/sponsor.js, which is a paid placement, labelled as one,
+ * kept out of the navigation and out of the watch page. It is the advert, not a
+ * link the site made for itself, and the markup says so.
  */
 
 import { h, icon, qs } from '../lib/dom.js';
@@ -17,6 +22,7 @@ import { settings } from '../lib/store.js';
 import { logoMark } from '../lib/brand.js';
 import { cloudActive } from '../lib/cloud.js';
 import { staticHost } from '../lib/account.js';
+import { adSlot } from './sponsor.js';
 import { reportSheet } from './report-issue.js';
 
 const FOOT = '#sitefoot';
@@ -33,6 +39,7 @@ function navColumn() {
     { href: '#/library', label: t('Library') },
     { href: '#/updates', label: t('Airing schedule') },
     { href: '#/top', label: t('Top 100') },
+    { href: '#/advertise', label: t('Advertise on Solvn') },
     { href: '#/settings', label: t('Settings') },
   ];
   return h(
@@ -109,7 +116,13 @@ export function renderFooter() {
   if (!foot) return;
   const year = new Date().getFullYear(); // generated at render time
 
+  /* The paid banner sits above the footer block, not inside it: it is not part of
+     the site's own navigation, and an empty mount takes no space. The desk and
+     settings pages get no mount at all, and replaceChildren turns a null argument
+     into the word "null" on the page, so it is spread in only when it exists. */
+  const ad = adSlot();
   foot.replaceChildren(
+    ...(ad ? [ad] : []),
     h(
       'div.foot-inner',
       {},
