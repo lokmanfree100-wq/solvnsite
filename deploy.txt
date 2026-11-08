@@ -167,9 +167,13 @@ an array of entries in this shape:
 A file address (.m3u8/.mp4/.webm) plays in Solvn's own player with no third-party
 page on the screen at all, so it carries no ads — that is the shape to prefer. An
 embed page is framed and the frame is set to the deal the site owner asked for: it
-MAY open an advert in a new browser tab, which is why the watch page tells every
-viewer in three seconds to step back to Solvn and keep watching, and it still
-cannot move your visitors off the page or start a download onto their device.
+MAY open an advert in a new browser tab, and a press inside it MAY take the
+visitor's tab to that host's own page — some players refuse to run at all without
+that, so it is granted as `allow-top-navigation-by-user-activation`. Which is why
+both watch pages say so in a three-second note before the picture starts, with an
+"Agree and continue" button, and tell the viewer to go back one step. What the
+frame still cannot do is navigate on its own with no press (`allow-top-navigation`
+is refused) or start a download onto their device (`allow-downloads` is refused).
 Whatever it draws inside its own frame, including its advertising, belongs to it
 and Solvn cannot filter it from outside. That is why this list ships empty
 and why AniGato is blocked in code: the choice of host is the choice of what your

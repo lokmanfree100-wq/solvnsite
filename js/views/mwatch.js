@@ -11,8 +11,9 @@
  *    in our own <video>. Nothing outside this site executes here either.
  *  - Embed pool: somebody else's player page (VidLink → Vidsrc SU → Vidsrc CC →
  *    MultiEmbed), health-checked through /health first, with automatic failover.
- *    The frame is sandboxed with lib/sources.js FRAME_SANDBOX, so its adverts may
- *    open a tab but it cannot move this page or download anything. It is the last
+ *    The frame is sandboxed with lib/sources.js FRAME_SANDBOX: its adverts may
+ *    open a tab and a press inside it may take this page to the host, but it
+ *    cannot navigate on its own or download anything. It is the last
  *    resort, for a title no provider in the ladder has a file for.
  *
  * The safety chip lists every outside host mounted on the page, live — and reads
@@ -38,10 +39,11 @@ const FILE_URL = /^https:\/\/\S+\.(?:m3u8|mp4)(?:[?#]|$)/i;
 
 /* The embed pool, ordered calm-hosts-first. Solvn cannot filter what these pages
    draw inside their own frame — a cross-origin document is unread from out here —
-   so the guards are the order, the referrer policy, the sandbox (adverts open in a
-   tab the viewer walks back from; no top navigation, no downloads — the visitor
-   keeps this page) and the choice to put them last, behind two engines that play a
-   file in our own player. A viewer who wants none of it presses Clean room. */
+   so the guards are the order, the referrer policy, the sandbox (adverts open in
+   a tab the viewer walks back from, and a press may take this page to the host;
+   no navigation without a press, no downloads) and the choice to put them last,
+   behind two engines that play a file in our own player. A viewer who wants none
+   of it presses Clean room. */
 const SERVERS = {
   vidlink: {
     label: 'Server 1 · VidLink',
@@ -294,8 +296,9 @@ export async function MovieWatchView(ctx) {
 
   /* ---- what to expect --------------------------------------------------
      One short note on the way to the picture, in the viewer's own language: this
-     player is somebody else's page, and pressing play can open an advert in a new
-     tab. It fades by itself after three seconds, because a warning that stays on
+     player is somebody else's page, an advert can open in a new tab, and a press
+     inside it can take this tab to that host — Back one step returns to the film.
+     It fades by itself after three seconds, because a warning that stays on
      screen becomes the thing in the way, and it returns for the next title, which
      may be a different host. The long version — what the frame can and cannot do —
      lives in the safety panel under the player, where it can be read at leisure. */
@@ -322,7 +325,7 @@ export async function MovieWatchView(ctx) {
       ? t('Direct stream: this site read the file address from a provider list it controls, and the video bytes go straight into our own <video>. None of their page loads — no document, no script, no frame — so there is no third-party player here to put an ad, a pop-up or a download in front of you. When the ladder names no file for a title, the page says which provider failed and why, and hands you the other two engines.')
       : mode === 'clean'
         ? t('Clean room: only Archive items carrying an explicit public-domain or Creative-Commons statement are eligible, obvious screen recordings are refused, the title and runtime must match, and the file plays in our own <video> element. No third-party document, script or frame loads — the only outside bytes are the media file and its artwork, and every control you can click belongs to us.')
-        : t('Embed pool: the player is a page owned by the server you picked, running inside a frame. Its adverts can open a new browser tab — that is the whole inconvenience, and stepping back to this tab ends it. What the frame cannot do is move this page elsewhere or put a file on your device, so anything saying "install this", "update your codec" or "download to play" is an advert, not Solvn. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.');
+        : t('Embed pool: the player is a page owned by the server you picked, running inside a frame. Its adverts can open a new browser tab, and a press inside it can take this tab to that host\'s own page — go back one step and the film is still here. What the frame cannot do is move this page without a press or put a file on your device, so anything saying "install this", "update your codec" or "download to play" is an advert, not Solvn. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.');
     safetyPanel.replaceChildren(
       h('p.m-safety-about', {}, about),
       h('div.m-safety-list', {}, ...list),

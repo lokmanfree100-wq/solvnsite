@@ -28,8 +28,8 @@
  * Placeholders: {anilist} {episode} {audio} {next} {accent} for anime, and
  * {tmdb} — which the movies page reads for itself. A file address (.m3u8/.mp4/
  * .webm) plays in Solvn's own player with no third-party page on the screen; an
- * embed page is framed, sandboxed so it cannot move the tab, and whatever it
- * paints inside its frame belongs to it.
+ * embed page is framed, sandboxed so it cannot move the tab without a press or
+ * download anything, and whatever it paints inside its frame belongs to it.
  */
 
 export const DEFAULT_SERVERS = [];

@@ -1761,7 +1761,12 @@
 /* ---- the "this player is not ours" note ----------------------------------
    Shared by both watch pages, above the player box and never over the picture.
    It fades by itself after three seconds (js/components/advisory.js), so the
-   transition also collapses the space it took rather than leaving a gap. */
+   transition also collapses the space it took rather than leaving a gap.
+
+   Lit like the letterbox it sits above: near-black, one neon edge in whatever
+   accent the member chose, and a glow rather than a border heavy enough to read
+   as a dialog. Nothing animates — the light is static, so it costs no frames
+   while a film is starting. */
 
 .play-advisory {
   display: flex;
@@ -1769,9 +1774,15 @@
   gap: var(--sp-3);
   margin: 0 0 var(--sp-3);
   padding: var(--sp-4) var(--sp-5);
-  border: 1px solid var(--hairline);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
   border-radius: var(--r-lg);
-  background: var(--glass);
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--accent-wash), transparent 62%),
+    linear-gradient(180deg, var(--glass-strong), var(--void));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 26%, transparent),
+    0 0 26px -14px var(--accent-glow),
+    0 10px 30px -22px #000;
   transition: opacity var(--t-med), transform var(--t-med), max-height var(--t-med);
   max-height: 320px;
 }
@@ -1781,6 +1792,7 @@
   height: 18px;
   margin-top: 2px;
   color: var(--accent);
+  filter: drop-shadow(0 0 6px var(--accent-glow));
 }
 .play-advisory-copy {
   display: grid;
@@ -1794,6 +1806,8 @@
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
+  color: var(--accent-text);
+  text-shadow: 0 0 14px var(--accent-glow);
 }
 .play-advisory-body {
   margin: 0;
@@ -1805,6 +1819,7 @@
 .play-advisory .btn {
   flex: none;
   align-self: center;
+  box-shadow: 0 0 18px -8px var(--accent-glow);
 }
 .play-advisory.is-gone {
   opacity: 0;
@@ -1813,11 +1828,13 @@
   padding-block: 0;
   margin-block: 0;
   border-color: transparent;
+  box-shadow: none;
   overflow: hidden;
 }
 @media (max-width: 700px) {
   .play-advisory {
     flex-wrap: wrap;
+    padding: var(--sp-3) var(--sp-4);
   }
   .play-advisory .btn {
     align-self: flex-start;

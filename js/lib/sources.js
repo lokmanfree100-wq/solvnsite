@@ -17,11 +17,12 @@
  *    page says so and points at Settings; whoever runs the site either names one
  *    there, or names the sources every visitor should get once, in
  *    `lib/defaults.js`. Both go through the same gate below.
- * 2. The frame can advertise, but it cannot move the visitor. `FRAME_SANDBOX`
- *    grants `allow-popups`, so an ad a player opens lands in a new browser tab
- *    and the viewer steps back to Solvn; it omits `allow-top-navigation` and
- *    `allow-downloads`, so the same player cannot pull this page away to its own
- *    site and cannot put a file on the device without being asked.
+ * 2. The frame can advertise, and a press inside it can take the visitor's tab.
+ *    `FRAME_SANDBOX` grants `allow-popups`, so an ad opens in a new browser tab,
+ *    and `allow-top-navigation-by-user-activation`, because some hosts refuse to
+ *    run without it. It omits `allow-top-navigation` and `allow-downloads`, so the
+ *    player cannot pull this page away on its own and cannot put a file on the
+ *    device. Both watch pages say so before the picture starts.
  * 3. When one server is silent, the watch page moves to the next one by itself.
  *    Every enabled server gets a turn on the current audio track, then a turn on
  *    the other one, and only after all of them does the player say there is
@@ -50,13 +51,16 @@ import { t } from './i18n.js';
    enough that a provider which recovers is used again by itself. */
 const COOLDOWN_MS = 30 * 60 * 1000;
 
-/* One list, both watch pages. `allow-popups` plus `allow-popups-to-escape-sandbox`
-   is the deliberate concession: a player's advert opens as an ordinary browser
-   tab, which the viewer closes or steps back from. What stays refused is the two
-   things that actually cost a person something — moving *this* tab somewhere else
-   (`allow-top-navigation`) and writing a file to the device (`allow-downloads`). */
+/* One list, both watch pages. Two deliberate concessions, both paid for by the
+   warning in components/advisory.js: `allow-popups` plus
+   `allow-popups-to-escape-sandbox` lets an advert open as an ordinary browser tab,
+   and `allow-top-navigation-by-user-activation` lets a press inside the player
+   take this tab to its own page — some hosts refuse to run at all without it.
+   What stays refused is what costs a person something without them choosing it:
+   navigating this tab on its own (`allow-top-navigation`) and writing a file to
+   the device (`allow-downloads`). */
 export const FRAME_SANDBOX =
-  'allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-presentation allow-popups allow-popups-to-escape-sandbox';
+  'allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-presentation allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation';
 export const FRAME_ALLOW = 'autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope';
 
 /* ---- audio tracks ------------------------------------------------------
