@@ -26,6 +26,9 @@
 
 /* ==========================================================================
    Hero spotlight
+   Facts only: the poster in the corner, the title, the year, the kind, the score
+   and three genres. The stage is sized from that card, not from the viewport —
+   the phone rules live in mobile.css, which loads after this file.
    ========================================================================== */
 
 .hero-wrap {
@@ -37,7 +40,7 @@
   position: relative;
   border-radius: var(--r-xl);
   overflow: hidden;
-  min-height: clamp(430px, 62vh, 560px);
+  min-height: clamp(360px, 44vh, 448px);
   background: var(--surface);
   border: 1px solid var(--line-strong);
   box-shadow: var(--sh-3);
@@ -90,7 +93,8 @@
   transition: none;
 }
 
-/* No banner on AniList — blurred cover as the stage, sharp poster on top. */
+/* No banner — the poster is blurred into the stage instead of stretched across
+   it, and the sharp copy of it stays in the corner beside the title. */
 .hero-art.is-fallback {
   background: var(--surface);
 }
@@ -103,21 +107,6 @@
   object-position: center 24%;
   filter: blur(38px) brightness(0.6) saturate(1.35);
   transform: scale(1.12);
-}
-.hero-poster {
-  position: absolute;
-  z-index: 1;
-  inset-inline-end: clamp(20px, 7vw, 96px);
-  top: 50%;
-  translate: 0 -50%;
-  height: min(78%, 430px);
-  width: auto;
-  object-fit: cover;
-  object-position: center top;
-  border-radius: var(--r-md);
-  box-shadow: var(--sh-3), 0 0 0 1px var(--line-strong);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
 }
 
 .hero-scrim {
@@ -141,54 +130,51 @@
 .hero-content {
   position: relative;
   z-index: 2;
-  padding: clamp(20px, 4vw, 40px);
+  padding: clamp(18px, 3vw, 32px);
   width: 100%;
-  max-width: 660px;
+  max-width: 720px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   animation: fade-up var(--t-slow) var(--ease) both;
 }
 
-.hero-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 26px;
-  padding: 0 11px;
-  border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid var(--line-strong);
-  color: var(--text);
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  box-shadow: var(--inner-hi-strong);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
+/* Poster and heading are flex siblings, so the corner art can never land on top
+   of the words at any width. The row is as tall as the taller of the two, and
+   the poster's fixed 2:3 box means a slow image has already paid for its space. */
+.hero-head {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(12px, 1.6vw, 18px);
+  width: 100%;
+  min-width: 0;
 }
-.hero-eyebrow svg {
-  width: 13px;
-  height: 13px;
-  color: var(--accent-text);
+.hero-thumb {
+  flex: none;
+  width: clamp(80px, 7.4vw, 104px);
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: var(--sh-3), 0 0 0 1px var(--line-strong);
+}
+.hero-heading {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 2px;
 }
 
 .hero-title {
-  font-size: clamp(28px, 5.4vw, 50px);
+  font-size: clamp(24px, 3.5vw, 40px);
   font-weight: 800;
-  letter-spacing: -0.038em;
-  line-height: 1.04;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
   text-wrap: balance;
   text-shadow: 0 4px 34px rgba(0, 0, 0, 0.8);
-}
-.hero-alt {
-  font-size: 13.5px;
-  color: var(--text-dim);
-  max-width: 46ch;
-  margin-top: -4px;
 }
 .hero-meta {
   display: flex;
@@ -203,17 +189,21 @@
 .hero-meta .sep {
   opacity: 0.4;
 }
-.hero-desc {
-  font-size: 14px;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.78);
-  max-width: 58ch;
+.hero-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-text);
+}
+.hero-score svg {
+  width: 13px;
+  height: 13px;
+  filter: drop-shadow(0 0 8px var(--accent-glow));
 }
 .hero-genres {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 2px;
 }
 .hero-chip {
   height: 26px;
@@ -245,7 +235,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 2px;
 }
 
 .hero-controls {
@@ -303,7 +293,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: var(--sp-5);
+  margin-top: var(--sp-4);
 }
 .hero-dots button {
   position: relative;
@@ -335,41 +325,6 @@
 @media (hover: hover) {
   .hero-dots button:hover {
     background: rgba(255, 255, 255, 0.8);
-  }
-}
-
-@media (max-width: 700px) {
-  .hero {
-    min-height: 480px;
-    border-radius: var(--r-lg);
-  }
-  .hero-banner {
-    object-position: center top;
-  }
-  .hero-poster {
-    top: 34px;
-    translate: 0 0;
-    inset-inline-end: clamp(10px, 3vw, 18px);
-    height: auto;
-    width: 33%;
-    max-width: 148px;
-  }
-  .hero-scrim {
-    background:
-      linear-gradient(180deg, rgba(3, 4, 7, 0.4) 0%, rgba(3, 4, 7, 0.6) 45%, rgba(2, 3, 5, 0.97) 100%);
-  }
-  .hero-content {
-    max-width: 100%;
-    padding-bottom: 66px;
-  }
-  .hero-desc {
-    display: none;
-  }
-  /* The arrows are the only way to change the spotlight, so they stay on screen
-     at every width instead of being traded for room. */
-  .hero-controls {
-    inset-inline-end: 12px;
-    bottom: 12px;
   }
 }
 

@@ -316,7 +316,7 @@
    `dvh` tracks the visible area; the vh line above stays as the fallback. */
 @media (pointer: coarse), (max-width: 760px) {
   .hero {
-    min-height: clamp(400px, 62dvh, 520px);
+    min-height: clamp(360px, 44dvh, 448px);
   }
 }
 
@@ -334,68 +334,91 @@
     --gutter: 14px;
   }
 
-  /* No vertical over-stretch: the frame is bounded by the visible viewport and
-     the text block fits inside it at every phone width. */
+  /* Better than half the height it used to be. The card is facts only now, so
+     the frame is sized from the card: a 48px corner poster, two lines of title,
+     one line of meta, one row of genres, one row of buttons — and the 44px
+     arrows keep their own band at the foot. Nothing trades a tap target for
+     room; the prose and the second title are what gave way. */
   .hero {
-    min-height: clamp(330px, 54dvh, 420px);
+    min-height: clamp(222px, 32dvh, 254px);
     border-radius: var(--r-lg);
   }
   .hero-content {
-    padding: 16px 16px 56px;
+    max-width: 100%;
+    padding: 12px 12px 52px;
     gap: 8px;
   }
-  .hero-eyebrow {
-    height: 22px;
-    padding: 0 9px;
-    font-size: 10px;
+  .hero-head {
+    gap: 11px;
   }
-  .hero-eyebrow svg {
+  .hero-thumb {
+    width: 48px;
+    border-radius: var(--r-sm);
+  }
+  .hero-heading {
+    gap: 5px;
+    padding-top: 0;
+  }
+  .hero-title {
+    font-size: clamp(17px, 4.9vw, 21px);
+    line-height: 1.14;
+  }
+  .hero-meta {
+    font-size: 11px;
+    gap: 6px;
+    line-height: 1.4;
+  }
+  .hero-score svg {
     width: 11px;
     height: 11px;
   }
-  .hero-title {
-    font-size: clamp(21px, 6.1vw, 30px);
-    line-height: 1.1;
-  }
-  .hero-alt {
-    font-size: 12.5px;
-  }
-  .hero-meta {
-    font-size: 11.5px;
-    gap: 6px;
-  }
+  /* Three chips that never wrap: a long genre name in Arabic or French would
+     otherwise push a second row into a frame that has no room for one, so the
+     strip swipes sideways the way the category tabs above it already do. */
   .hero-genres {
+    flex-wrap: nowrap;
     gap: 5px;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .hero-genres::-webkit-scrollbar {
+    display: none;
   }
   .hero-chip {
+    flex: none;
     height: 24px;
     padding: 0 10px;
-    font-size: 11px;
+    font-size: 10.5px;
   }
   .hero-actions {
     gap: 8px;
-    margin-top: 4px;
+    margin-top: 0;
+    width: 100%;
   }
-  .hero-poster {
-    top: 24px;
-    width: 34%;
-    max-width: 124px;
+  .hero-scrim {
+    background:
+      linear-gradient(180deg, rgba(3, 4, 7, 0.42) 0%, rgba(3, 4, 7, 0.66) 44%, rgba(2, 3, 5, 0.97) 100%);
   }
   /* One tidy line at the bottom: the dots read from the far side, the arrows
      hold the other, and neither reaches over the other. */
   .hero-foot {
     position: absolute;
-    inset-inline-start: 16px;
-    bottom: 15px;
+    inset-inline-start: 14px;
+    bottom: 17px;
     z-index: 4;
   }
   .hero-dots {
     margin-top: 0;
     gap: 8px;
   }
+  .hero-dots button::after {
+    inset: -16px -4px;
+  }
   .hero-controls {
     inset-inline-end: 10px;
-    bottom: 10px;
+    bottom: 6px;
     gap: 6px;
   }
 
@@ -413,23 +436,33 @@
     font-size: 12px;
   }
 
-  /* The banner's paragraph is the one block of prose in the fold. Three lines is
-     enough to decide whether to tap, and the fourth was never read on a phone. */
-  .hero-desc {
-    font-size: 12.5px;
-    line-height: 1.5;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    overflow: hidden;
-  }
   /* Two buttons that share a line and split it evenly read as a pair of
-     controls; two of different widths read as a layout that gave up. */
+     controls; two of different widths read as a layout that gave up. 38px keeps
+     a thumb-sized target and leaves the band below it clear for the arrows. */
   .hero-actions > .btn {
     flex: 1 1 0;
     min-width: 0;
+    height: 38px;
+    padding: 0 12px;
+    font-size: 13px;
+    gap: 6px;
     justify-content: center;
+  }
+  .hero-actions > .btn svg {
+    width: 15px;
+    height: 15px;
+  }
+  /* A third button — the hub's trailer — becomes a circle beside the pair
+     instead of a third of the line: "Start watching" needs the room more, and
+     the play head says what it does without the word. */
+  .hero-actions > .hero-trailer {
+    flex: 0 0 38px;
+    width: 38px;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .hero-actions > .hero-trailer span {
+    display: none;
   }
 
   .page-head {
@@ -489,6 +522,21 @@
   .tab svg {
     width: 20px;
     height: 20px;
+  }
+  /* A dozen dots and two 44px arrows cannot share 292px at full size, so the
+     dots give up 2px each and the tap area follows the new pitch exactly. */
+  .hero-dots {
+    gap: 6px;
+  }
+  .hero-dots button {
+    width: 6px;
+    height: 6px;
+  }
+  .hero-dots button::after {
+    inset: -16px -3px;
+  }
+  .hero-dots button[aria-selected='true'] {
+    width: 16px;
   }
 }
 

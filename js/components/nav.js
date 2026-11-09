@@ -392,17 +392,17 @@ export function renderNav() {
     /* Rooms holds the seat a friend invited you to. It takes the rail place that
        Messages used to keep: private chats stay one tap away in the More sheet,
        and a room is the thing a member actually walks back to mid-episode. */
-    partyUsable() ? sideLink({ label: t('Rooms'), path: '/rooms', iconName: 'users', active: path === '/rooms' }) : null,
+    ...(partyUsable() ? [sideLink({ label: t('Rooms'), path: '/rooms', iconName: 'users', active: path === '/rooms' })] : []),
     /* The gift inbox lives inside Profile now, so it has no rail entry of its
        own: one place to look for anything addressed to this member. */
     /* A deal is written on the server that runs this site, for the same reason a
        message is — so the link appears and disappears with the same capability. */
-    tradeUsable() ? sideLink({ label: t('Trades'), path: '/trades', iconName: 'swap', active: path === '/trades' }) : null,
+    ...(tradeUsable() ? [sideLink({ label: t('Trades'), path: '/trades', iconName: 'swap', active: path === '/trades' })] : []),
     /* The rail's unread number rides on Profile now, because that is where the
        inbox it counts lives — private lines and gifted cards alike. */
     profileLink,
     sideLink({ label: t('Settings'), path: '/settings', iconName: 'settings', active: path === '/settings' }),
-    staff ? sideLink({ label: t('Admin'), path: '/admin', iconName: 'lock', active: path === '/admin' }) : null,
+    ...(staff ? [sideLink({ label: t('Admin'), path: '/admin', iconName: 'lock', active: path === '/admin' })] : []),
     h('div.side-foot', {}, t('Solvn — anime, films & series in HD')),
   );
   paintBadge();

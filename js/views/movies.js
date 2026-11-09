@@ -16,9 +16,11 @@ import { t } from '../lib/i18n.js';
 import { sheet } from '../lib/ui.js';
 import { stillImage } from '../components/media.js';
 import { categoryTabs } from '../components/cats.js';
+import { hero, heroSkeleton, filmPick } from '../components/hero.js';
 import { makeDeduper } from '../lib/dedupe.js';
+import { watched } from '../lib/util.js';
 import {
-  api, poster, backdrop, nameOf, yearOf, rating, runtimeText, seasonsLabel, genreMap,
+  api, poster, nameOf, yearOf, rating, genreMap,
   firstTrailer, movieContinueWatching, movieWatchlist, movieProgress, servingOffline,
 } from '../lib/tmdb.js';
 
@@ -254,185 +256,18 @@ function mGrid({ title, sub, type, fetcher }) {
 }
 
 /* ---- hero -----------------------------------------------------------------
-   The same contract as the anime spotlight: 5s crossfade, held while pointed
-   at, touched, focused or hidden, silent under reduced motion, 44px arrows and
-   dots. Reuses the site's own .hero classes so it looks like the same banner. */
-
-const ROTATE_MS = 5000;
-const FADE_OUT_MS = 900;
+   The hub's banner is the Home spotlight with a Trailer button on it: the same
+   facts-only card, the same polite 5s rotation, the same 44px arrows. Only the
+   picks are built here, because the trailer sheet belongs to this page. */
 
 function mHero(items, { onCleanup }) {
-  const slides = items.slice(0, 6);
-  if (!slides.length) return h('div');
-
-  const reduceQ = matchMedia('(prefers-reduced-motion: reduce)');
-  let index = 0;
-  let current = null;
-  let timer = 0;
-  let hovering = false;
-  let focused = false;
-  let touching = false;
-
-  const stage = h('div.hero');
-  const dots = h('div.hero-dots', { role: 'tablist', 'aria-label': t('Featured titles') });
-
-  slides.forEach((d, i) =>
-    dots.append(
-      h('button', {
-        role: 'tab',
-        type: 'button',
-        'aria-selected': i === 0 ? 'true' : 'false',
-        'aria-label': nameOf(d),
-        onclick: () => go(i),
-      }),
-    ),
-  );
-
-  function content(d) {
-    const type = typeOf(d);
+  const picks = items.map((d) => {
+    const p = filmPick(d, typeOf(d));
     const trailer = firstTrailer((d.videos || {}).results);
-    const metaBits = [];
-    if (d.vote_average) metaBits.push(h('span', { class: 'tnum' }, icon('star'), ` ${rating(d.vote_average)}`));
-    const y = yearOf(d);
-    if (y) metaBits.push(h('span', { class: 'tnum' }, String(y)));
-    if (type === 'movie' && d.runtime) metaBits.push(h('span', {}, runtimeText(d.runtime)));
-    if (type === 'tv' && d.number_of_seasons) metaBits.push(h('span', {}, seasonsLabel(d.number_of_seasons)));
-
-    return h(
-      'div.hero-content',
-      {},
-      h('div.hero-eyebrow', {}, icon('trending'), t('Trending this week')),
-      h('h2.hero-title.display', {}, nameOf(d)),
-      h(
-        'div.hero-meta',
-        {},
-        ...metaBits.flatMap((bit, i) => (i ? [h('span.sep', {}, '·'), bit] : [bit])),
-      ),
-      h('p.hero-desc.clamp-2', {}, d.overview || t('No synopsis available yet.')),
-      (d.genres || []).length
-        ? h(
-            'div.hero-genres',
-            {},
-            ...d.genres.slice(0, 3).map((g) => h('a.hero-chip', { href: `#/movies?type=${type}&genre=${g.id}` }, t(g.name))),
-          )
-        : null,
-      h(
-        'div.hero-actions',
-        {},
-        h('a.btn.btn--primary.btn--lg', { href: watchHref(type, d.id) }, icon('play'), t('Start watching')),
-        h('a.btn.btn--glass.btn--lg', { href: detailHref(type, d.id) }, icon('info'), t('Details')),
-        trailer ? h('button.btn.btn--glass.btn--lg', { type: 'button', onclick: () => openTrailer(trailer.key, nameOf(d)) }, icon('play'), t('Trailer')) : null,
-      ),
-      h('div.hero-foot', {}, dots),
-    );
-  }
-
-  function art(d, eager) {
-    const banner = backdrop(d.backdrop_path, 'w1280');
-    if (banner) {
-      const imgEl = h('img.hero-banner', { src: banner, alt: '', decoding: 'async', fetchpriority: eager ? 'high' : null });
-      imgEl.addEventListener(
-        'error',
-        () => {
-          d.backdrop_path = null;
-          if (slides[index] === d) show(index, { animate: false });
-        },
-        { once: true },
-      );
-      return h('div.hero-art', {}, imgEl, h('div.hero-scrim'));
-    }
-    const p = poster(d.poster_path, 'w500') || poster(d.poster_path, 'original');
-    return h(
-      'div.hero-art.is-fallback',
-      {},
-      p ? h('img.hero-blur', { src: p, alt: '', decoding: 'async' }) : null,
-      p ? h('img.hero-poster', { src: p, alt: '', decoding: 'async' }) : null,
-      h('div.hero-scrim'),
-    );
-  }
-
-  function show(i, { animate = true } = {}) {
-    index = (i + slides.length) % slides.length;
-    const d = slides[index];
-    const next = h('div.hero-slide', {}, art(d, index === 0), content(d));
-
-    if (!animate || reduceQ.matches) {
-      next.classList.add('is-instant');
-      stage.replaceChildren(next);
-      current = next;
-      requestAnimationFrame(() => next.classList.add('is-in'));
-    } else {
-      const leaving = current;
-      leaving?.classList.remove('is-in');
-      stage.append(next);
-      void next.offsetWidth;
-      requestAnimationFrame(() => next.classList.add('is-in'));
-      current = next;
-      if (leaving) {
-        const drop = () => leaving.remove();
-        leaving.addEventListener('transitionend', drop, { once: true });
-        setTimeout(drop, FADE_OUT_MS);
-      }
-    }
-
-    [...dots.children].forEach((d2, n) => d2.setAttribute('aria-selected', String(n === index)));
-  }
-
-  function go(i) {
-    show(i);
-    start();
-  }
-
-  function advance() {
-    if (document.hidden || hovering || focused || touching) return;
-    show(index + 1);
-  }
-
-  function start() {
-    clearInterval(timer);
-    timer = 0;
-    if (slides.length < 2 || reduceQ.matches) return;
-    timer = setInterval(advance, ROTATE_MS);
-  }
-
-  const onReduce = () => start();
-  reduceQ.addEventListener('change', onReduce);
-
-  const wrap = h(
-    'section.hero-wrap',
-    {},
-    stage,
-    h(
-      'div.hero-controls',
-      {},
-      h('button.hero-nav.prev', { type: 'button', 'aria-label': t('Previous spotlight'), onclick: () => go(index - 1) }, icon('chevronLeft', { cls: 'flip' })),
-      h('button.hero-nav.next', { type: 'button', 'aria-label': t('Next spotlight'), onclick: () => go(index + 1) }, icon('chevronRight', { cls: 'flip' })),
-    ),
-  );
-
-  wrap.addEventListener('pointerenter', () => { hovering = true; });
-  wrap.addEventListener('pointerleave', () => { hovering = false; });
-  wrap.addEventListener('focusin', () => { focused = true; });
-  wrap.addEventListener('focusout', () => { focused = false; });
-  wrap.addEventListener('touchstart', () => { touching = true; }, { passive: true });
-  const lift = () => {
-    if (!touching) return;
-    touching = false;
-    start();
-  };
-  wrap.addEventListener('touchend', lift, { passive: true });
-  wrap.addEventListener('touchcancel', lift, { passive: true });
-
-  show(0, { animate: false });
-  start();
-
-  onCleanup?.(() => {
-    clearInterval(timer);
-    timer = 0;
-    reduceQ.removeEventListener('change', onReduce);
+    if (trailer) p.onTrailer = () => openTrailer(trailer.key, p.name);
+    return p;
   });
-
-  return wrap;
+  return hero(picks, { onCleanup });
 }
 
 /* ---- hub sections --------------------------------------------------------- */
@@ -715,7 +550,7 @@ export async function MoviesView(ctx) {
   });
   wrap.append(searchField);
 
-  const heroSlot = h('div.home-hero-slot', {}, h('section.hero-wrap', {}, h('div.hero.sk', { style: { minHeight: '420px', borderRadius: 'var(--r-xl)' } })));
+  const heroSlot = h('div.home-hero-slot', {}, heroSkeleton());
   wrap.append(heroSlot);
 
   /* ---- one title, once --------------------------------------------------
@@ -726,13 +561,14 @@ export async function MoviesView(ctx) {
      whichever shelf sits higher up and simply does not repeat below. The
      spotlight waits at the front of that queue: it is the one slate chosen on
      purpose, and a slow API must not keep the whole page hanging, so the rails
-     hold off for it briefly rather than forever. */
+     hold off for it briefly rather than forever. Its grace covers a trending
+     query plus the six detail rows the Trailer button needs, not one round trip. */
   const dedupe = makeDeduper((m) => `${typeOf(m)}:${m.id}`);
   let releaseHero;
   const heroChosen = new Promise((r) => {
     releaseHero = r;
   });
-  const heroWait = Promise.race([heroChosen, new Promise((r) => setTimeout(r, 2000))]);
+  const heroWait = Promise.race([heroChosen, new Promise((r) => setTimeout(r, 4500))]);
 
   /* continue watching — local, tmdb-prefixed, never collides with anime ids */
   const cw = movieContinueWatching(14);
@@ -811,14 +647,40 @@ export async function MoviesView(ctx) {
     })
     .catch(() => genreSlot.remove());
 
-  /* hero last-in: trending picks with details for the trailer button */
-  api
-    .trending('week')
-    .then((r) => (r.results || []).filter((m) => typeOf(m) === type).slice(0, 6))
-    .catch(() => [])
-    .then(async (picks) => {
-      const details = await Promise.all(picks.map((p) => api.details(typeOf(p), p.id).catch(() => p)));
-      for (const d of details) if (!d.media_type) d.media_type = typeOf(d);
+  /* hero last-in: the hub's spotlight, drawn from what is trending, what is new
+     and what is popular for the type on screen, taken in turns so one shelf
+     cannot fill the banner by itself. Trending mixes in people, and a person row
+     reads as a series to typeOf(), so they are dropped before the type filter.
+     Details come last and only for the Trailer button — a shelf that is slow or
+     down costs its own picks, not the frame. */
+  const shelves = type === 'tv'
+    ? [() => api.trending('week'), () => api.onTheAir(), () => api.popularTv()]
+    : [() => api.trending('week'), () => api.nowPlaying(), () => api.popularMovies()];
+  const shelfRows = (r) =>
+    (r?.results || []).filter((m) => m.media_type !== 'person' && !m.adult && typeOf(m) === type);
+  const answers = new Array(shelves.length).fill([]);
+  const gather = Promise.all(
+    shelves.map((f, i) => watched(f(), 4000).then((r) => { answers[i] = shelfRows(r); }).catch(() => {})),
+  );
+
+  Promise.race([gather, new Promise((r) => setTimeout(r, 4200))])
+    .then(async () => {
+      const seen = new Set();
+      const picks = [];
+      for (let i = 0; i < 20 && picks.length < 8; i++) {
+        for (const list of answers) {
+          const m = list[i];
+          if (!m || seen.has(m.id)) continue;
+          seen.add(m.id);
+          picks.push(m);
+        }
+      }
+      const chosen = picks.slice(0, 8);
+      const details = await watched(
+        Promise.all(chosen.map((p) => api.details(type, p.id).catch(() => p))),
+        3000,
+      ).catch(() => chosen);
+      for (const d of details) if (!d.media_type) d.media_type = type;
       const mine = dedupe.claimSync(details.filter((d) => d.backdrop_path || d.poster_path));
       releaseHero();
       if (!mine.length) return heroSlot.remove();

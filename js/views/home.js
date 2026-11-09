@@ -2,7 +2,7 @@
 
 import { h, icon } from '../lib/dom.js';
 import { browse, hiddenGems, genres, spotlight } from '../lib/anilist.js';
-import { api as tmdb } from '../lib/tmdb.js';
+import { api as tmdb, typeOf } from '../lib/tmdb.js';
 import { continueWatching, settings } from '../lib/store.js';
 import { watched } from '../lib/util.js';
 import { makeDeduper } from '../lib/dedupe.js';
@@ -11,11 +11,11 @@ import { categoryTabs } from '../components/cats.js';
 import { mRail } from './movies.js';
 import { continueRail } from '../components/continue-watching.js';
 import { discussionStrip } from '../components/discussion.js';
-import { hero, heroSkeleton } from '../components/hero.js';
+import { hero, heroSkeleton, animePick, filmPick } from '../components/hero.js';
 import { t, genre } from '../lib/i18n.js';
 
 /** Interleave ranked lists so one query cannot fill a whole rail by itself. */
-function blend(lists) {
+function blend(lists, keyOf = (m) => m.id) {
   const out = [];
   const seen = new Set();
   const at = lists.map(() => 0);
@@ -25,8 +25,9 @@ function blend(lists) {
       const m = list[at[k]++];
       if (!m) return;
       moved = true;
-      if (!seen.has(m.id)) {
-        seen.add(m.id);
+      const key = keyOf(m);
+      if (!seen.has(key)) {
+        seen.add(key);
         out.push(m);
       }
     });
@@ -61,11 +62,13 @@ function continueRow(dedupe) {
   return continueRail(dedupe.claimSync(continueWatching(14)));
 }
 
-/** Sequels of the same show collapse to one spotlight slot, so 15 slides means
- *  15 different franchises rather than four rounds of Attack on Titan. The key
- *  is the leading words of the base title, which is what carries the franchise. */
-const franchise = (m) =>
-  (m.title?.romaji || m.title?.english || '')
+/** Sequels of the same show collapse to one spotlight slot, so a full banner
+ *  means a dozen different franchises rather than four rounds of Attack on
+ *  Titan. The key is the leading words of the base title, which is what carries
+ *  the franchise — and it works across both halves, so a live-action remake
+ *  cannot take the slot its anime original already holds. */
+const franchise = (p) =>
+  String(p.name || '')
     .toLowerCase()
     .split(':')[0]
     .replace(/\(.*?\)/g, '')
@@ -79,8 +82,8 @@ const franchise = (m) =>
 
 function uniqueFranchises(items) {
   const seen = new Set();
-  return items.filter((m) => {
-    const key = franchise(m);
+  return items.filter((p) => {
+    const key = franchise(p);
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -124,6 +127,17 @@ export async function HomeView(ctx) {
   const heroSlot = h('div.home-hero-slot', {}, heroSkeleton());
   wrap.append(heroSlot, categoryTabs());
 
+  /* Every shelf on the page holds off until the spotlight has taken its picks —
+     that slate is the one thing here chosen on purpose, and it is the only row
+     that asks both databases at once. The grace it is given is longer than one
+     round trip because it fires eight queries; past that a dead API must not
+     keep every row below it waiting. */
+  let releaseHero;
+  const heroChosen = new Promise((r) => {
+    releaseHero = r;
+  });
+  const heroWait = Promise.race([heroChosen, new Promise((r) => setTimeout(r, 4500))]);
+
   /* The film shelves sit directly under the spotlight, in the same order as the
      tabs above them, so the top of the page previews the whole site and not only
      the anime half. They queue on their own de-dupe, keyed by type + id: TMDB and
@@ -136,7 +150,7 @@ export async function HomeView(ctx) {
     const items = (r?.results || [])
       .filter((m) => !m.media_type || m.media_type === type)
       .map((m) => ({ ...m, media_type: type }));
-    return (await filmDedupe.claim(items)).slice(0, 18);
+    return (await filmDedupe.claim(items, { after: heroWait })).slice(0, 18);
   };
   const filmRail = (heading, sub, viewAll, load) =>
     mRail({ heading: t(heading), sub: t(sub), viewAll, fetcher: load });
@@ -147,15 +161,6 @@ export async function HomeView(ctx) {
     filmRail('Series', t('What is on the air, and what to binge next.'), '#/movies?type=tv', filmLoad('tv', () => tmdb.popularTv())),
     filmRail('Kids Movies', t('Family films, animation and something for younger viewers.'), '#/movies?list=kids', filmLoad('movie', kidsShelf)),
   ];
-
-  /* Rails hold off until the spotlight has taken its picks — that slate is the
-     one thing on the page chosen on purpose — but only briefly, so a slow API
-     cannot keep every row waiting. */
-  let releaseHero;
-  const heroChosen = new Promise((r) => {
-    releaseHero = r;
-  });
-  const heroWait = Promise.race([heroChosen, new Promise((r) => setTimeout(r, 2000))]);
 
   /* Headings arrive already translated so the year in "Best Anime of 2026" can
      interpolate without turning the i18n key itself into a template.
@@ -226,18 +231,76 @@ export async function HomeView(ctx) {
 
   wrap.append(...sections);
 
-  /* Trending right now plus the all-time favourites the spotlight already
-     weaves together. hero() shuffles what it is handed, so the opening frame
-     and the running order differ on every visit. */
-  Promise.all([
-    watched(spotlight(25)).catch(() => []),
-    watched(browse({ sort: ['TRENDING_DESC'], perPage: 16 }).then(itemsOf)).catch(() => []),
-  ])
-    .then(([spot, trend]) => {
-      const picks = dedupe.claimSync(uniqueFranchises(visible(blend([spot, trend]))).slice(0, 15));
+  /* The spotlight is the whole site in one frame: what is new, what is trending
+     and what is popular, from the anime half and the film half alike. Each half
+     is blended down to one list first and the two then take turns, so the banner
+     is half anime and half films/series rather than whichever API happened to
+     answer with the longer page. hero() shuffles what it is handed, so the
+     opening frame and the running order differ on every visit. */
+  const animeLoads = [
+    () => browse({ sort: ['TRENDING_DESC'], perPage: 16 }).then(itemsOf),
+    () => browse({ sort: ['START_DATE_DESC'], perPage: 14 }).then(itemsOf),
+    () => spotlight(25),
+  ];
+  const filmLoads = [
+    () => tmdb.trending('week'),
+    () => tmdb.nowPlaying(),
+    () => tmdb.onTheAir(),
+    () => tmdb.popularMovies(),
+    () => tmdb.popularTv(),
+  ];
+  const hasArt = (m) => !!(m.bannerImage || m.coverImage?.extraLarge || m.coverImage?.large);
+  const filmRows = (r) =>
+    (r?.results || []).filter((m) => !m.adult && m.media_type !== 'person' && (m.poster_path || m.backdrop_path));
+
+  /* Eight queries, and the banner is built from whichever of them answered: a
+     shelf that is slow or down costs its own picks, not the whole frame. The
+     array is pre-filled because a hole in it would shift the film half into the
+     anime half when the two are sliced apart below. */
+  const answers = new Array(animeLoads.length + filmLoads.length).fill(null);
+  const gather = Promise.all(
+    [...animeLoads, ...filmLoads].map((f, i) =>
+      watched(f(), 4000)
+        .then((r) => {
+          answers[i] = r;
+        })
+        .catch(() => {}),
+    ),
+  );
+
+  Promise.race([gather, new Promise((r) => setTimeout(r, 4200))])
+    .then(async () => {
+      const anime = answers
+        .slice(0, animeLoads.length)
+        .map((list) => visible(itemsOf(list)).filter(hasArt).map(animePick));
+      const films = answers.slice(animeLoads.length).map((r) => filmRows(r).map((m) => filmPick(m, typeOf(m))));
+      const byKey = (p) => p.key;
+      const slate = uniqueFranchises(blend([blend(anime, byKey), blend(films, byKey)], byKey)).slice(0, 12);
+
+      /* Claimed before the rails below ask, and on each half's own queue: TMDB
+         and AniList number their titles in separate sequences. */
+      const taken = new Set([
+        ...dedupe.claimSync(slate.filter((p) => p.source === 'anime')).map(byKey),
+        ...filmDedupe.claimSync(slate.filter((p) => p.source === 'film')).map(byKey),
+      ]);
+      const mine = slate.filter((p) => taken.has(p.key));
       releaseHero();
-      if (!picks.length) return heroSlot.remove();
-      heroSlot.replaceChildren(hero(picks, { onCleanup: ctx?.onCleanup }));
+      if (!mine.length) return heroSlot.remove();
+
+      /* A shelf card carries no genres, so a chosen film asks for its own row
+         once. The banner does not wait on that for long: the year, the kind and
+         the score already make a complete card without the genre chips. */
+      const ready = await Promise.race([
+        Promise.all(
+          mine.map(async (p) => {
+            if (p.source !== 'film' || p.genres.length) return p;
+            const d = await tmdb.details(p.media_type, p.id).catch(() => null);
+            return d ? filmPick(d, p.media_type) : p;
+          }),
+        ),
+        new Promise((r) => setTimeout(() => r(mine), 2500)),
+      ]);
+      heroSlot.replaceChildren(hero(ready, { onCleanup: ctx?.onCleanup }));
     })
     .catch(() => {
       releaseHero();

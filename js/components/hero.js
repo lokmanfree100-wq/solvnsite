@@ -1,28 +1,91 @@
 /**
- * Spotlight banner used on Home.
+ * Spotlight — one banner, both halves of the site.
  *
- * It advances on its own every 5s with a crossfade, and it also answers to
- * the 44px arrows and the dots. The timer is polite: it holds while a viewer
- * is pointing at the banner, holding a finger on it or tabbing through it, it
- * holds while the tab is hidden, and it never runs at all under
- * `prefers-reduced-motion`. It is torn down through the view's `onCleanup`, so
- * a route change cannot leave a phantom interval repainting a detached node.
+ * The card carries facts and nothing else: the poster in the corner, the title,
+ * the year, the kind, the score and up to three genres. No synopsis, no
+ * alternate title, no episode count. A banner is a decision; the detail page is
+ * the read, and on a phone the paragraph was the difference between a banner and
+ * a wall.
+ *
+ * It advances on its own every 5s with a crossfade, and it also answers to the
+ * 44px arrows and the dots. The timer is polite: it holds while a viewer is
+ * pointing at the banner, holding a finger on it or tabbing through it, it holds
+ * while the tab is hidden, and it never runs at all under
+ * `prefers-reduced-motion`. It is torn down through the view's `onCleanup`, so a
+ * route change cannot leave a phantom interval repainting a detached node.
  *
  * Vertical scrolling, the wheel and swipes belong to the page — nothing here
  * captures them.
  */
 
 import { h, icon } from '../lib/dom.js';
-import { title, titleAlt, formatLabel, yearOf, episodeCount, statusLabel, plainDescription, scoreLabel } from '../lib/util.js';
+import { title, formatLabel, yearOf, scoreLabel } from '../lib/util.js';
 import { t, genre } from '../lib/i18n.js';
+import { nameOf, typeOf, yearOf as filmYear, rating, poster as filmPoster, backdrop as filmBackdrop } from '../lib/tmdb.js';
 import { sfx } from '../lib/sounds.js';
 
-const MAX_SLIDES = 15;
+const MAX_SLIDES = 12;
 const ROTATE_MS = 5000;
 /* A touch longer than --t-slow (420ms) so an outgoing slide is only dropped
    once its fade-out has definitely finished — or, if `transitionend` never
    arrives, once this fallback timer does. */
 const FADE_OUT_MS = 900;
+
+/* ---- the two adapters ----------------------------------------------------
+   AniList and TMDB name the same five facts differently and link to different
+   players. Everything below this line reads one shape, so the banner cannot
+   grow a second layout for the film half. `key` is stamped with the source
+   because the two databases number their titles in separate sequences. */
+
+/** An AniList media row. `id` stays on the pick: the page's anime de-dupe queue
+    claims by it, so a spotlight title cannot reappear in a rail below. */
+export function animePick(m) {
+  const bits = [t('Anime')];
+  const f = formatLabel(m.format);
+  if (f) bits.push(f);
+  return {
+    key: `anilist:${m.id}`,
+    id: m.id,
+    source: 'anime',
+    name: title(m),
+    year: yearOf(m) ? String(yearOf(m)) : '',
+    kind: bits.join(' · '),
+    score: scoreLabel(m.averageScore),
+    genres: (m.genres || []).slice(0, 3).map((g) => ({
+      label: genre(g),
+      href: `#/discover?genre=${encodeURIComponent(g)}`,
+    })),
+    poster: m.coverImage?.extraLarge || m.coverImage?.large || '',
+    backdrop: m.bannerImage || '',
+    watch: `#/watch/${m.id}/1`,
+    detail: `#/anime/${m.id}`,
+  };
+}
+
+/** A TMDB row. Shelf cards carry no genres, so `genres` may be filled in later
+    from the title's own detail row — the pick is still complete without it. */
+export function filmPick(d, type, genres = null) {
+  const kind = type || typeOf(d);
+  const list = genres || d.genres || [];
+  return {
+    key: `tmdb:${kind}:${d.id}`,
+    id: d.id,
+    media_type: kind,
+    source: 'film',
+    name: nameOf(d),
+    year: filmYear(d),
+    kind: kind === 'tv' ? t('Series') : t('Film'),
+    score: d.vote_average ? rating(d.vote_average) : null,
+    genres: list.slice(0, 3).map((g) => ({
+      label: t(g.name),
+      href: `#/movies?type=${kind}&genre=${g.id}`,
+    })),
+    poster: filmPoster(d.poster_path, 'w500'),
+    backdrop: filmBackdrop(d.backdrop_path, 'w1280') || '',
+    watch: kind === 'tv' ? `#/mwatch/${d.id}?type=tv&s=1&e=1` : `#/mwatch/${d.id}?type=movie`,
+    detail: `#/movie/${d.id}?type=${kind}`,
+  };
+}
 
 /** Fisher-Yates: a fresh order and a fresh opening frame on every visit. */
 function shuffle(list) {
@@ -34,14 +97,8 @@ function shuffle(list) {
   return a;
 }
 
-/**
- * `hero(items)` expects a curated slate; the rotation order is randomised here
- * so a returning viewer never meets the same first three frames twice.
- */
 export function hero(items, { onCleanup } = {}) {
-  const slides = shuffle(
-    items.filter((m) => m.bannerImage || m.coverImage?.extraLarge || m.coverImage?.large),
-  ).slice(0, MAX_SLIDES);
+  const slides = shuffle(items.filter((p) => p.poster || p.backdrop)).slice(0, MAX_SLIDES);
   if (!slides.length) return h('div');
 
   const reduceQ = matchMedia('(prefers-reduced-motion: reduce)');
@@ -56,113 +113,121 @@ export function hero(items, { onCleanup } = {}) {
   const stage = h('div.hero');
   const dots = h('div.hero-dots', { role: 'tablist', 'aria-label': t('Featured titles') });
 
-  slides.forEach((m, i) =>
+  slides.forEach((p, i) =>
     dots.append(
       h('button', {
         role: 'tab',
         type: 'button',
         'aria-selected': i === 0 ? 'true' : 'false',
-        'aria-label': title(m),
+        'aria-label': p.name,
         onclick: () => go(i),
       }),
     ),
   );
 
-  function content(m) {
-    const genres = (m.genres || []).slice(0, 3);
-    const metaBits = [formatLabel(m.format)];
-    const y = yearOf(m);
-    if (y) metaBits.push(String(y));
-    const ec = episodeCount(m);
-    if (ec && m.status !== 'RELEASING') metaBits.push(ec);
-    const s = scoreLabel(m.averageScore);
-    if (s) metaBits.push(t('{score}/10', { score: s }));
-    if (m.status && m.status !== 'FINISHED') metaBits.push(statusLabel(m.status));
+  function content(p) {
+    const bits = [];
+    if (p.year) bits.push(h('span.tnum', {}, p.year));
+    if (p.kind) bits.push(h('span', {}, p.kind));
+    if (p.score) bits.push(h('span.hero-score', {}, icon('star'), h('span.tnum', {}, p.score)));
 
     return h(
       'div.hero-content',
       {},
-      h('div.hero-eyebrow', {}, icon('trending'), t('Spotlight')),
-      h('h2.hero-title.display', {}, title(m)),
-      titleAlt(m) ? h('p.hero-alt.clamp-1', {}, titleAlt(m)) : null,
-      h('div.hero-meta', {}, ...metaBits.flatMap((bit, i) => (i ? [h('span.sep', {}, '·'), h('span', { class: 'tnum' }, bit)] : [h('span', {}, bit)]))),
-      h('p.hero-desc.clamp-2', {}, plainDescription(m.description, 170) || t('No synopsis available yet.')),
-      genres.length
-        ? h(
-            'div.hero-genres',
-            {},
-            ...genres.map((g) => h('a.hero-chip', { href: `#/discover?genre=${encodeURIComponent(g)}` }, genre(g))),
-          )
+      /* Poster and title are flex siblings, so the corner art can never sit on
+         top of the words at any width — the row is as tall as whichever of the
+         two is taller, and the stage is sized from that. */
+      h(
+        'div.hero-head',
+        {},
+        thumb(p),
+        h(
+          'div.hero-heading',
+          {},
+          h('h2.hero-title.display.clamp-2', {}, p.name),
+          h('div.hero-meta', {}, ...bits.flatMap((bit, i) => (i ? [h('span.sep', {}, '·'), bit] : [bit]))),
+        ),
+      ),
+      p.genres.length
+        ? h('div.hero-genres', {}, ...p.genres.map((g) => h('a.hero-chip', { href: g.href }, g.label)))
         : null,
       h(
         'div.hero-actions',
         {},
-        h('a.btn.btn--primary.btn--lg', { href: `#/watch/${m.id}/1` }, icon('play'), t('Start watching')),
-        h('a.btn.btn--glass.btn--lg', { href: `#/anime/${m.id}` }, icon('info'), t('Details')),
+        h('a.btn.btn--primary.btn--lg', { href: p.watch }, icon('play'), h('span', {}, t('Start watching'))),
+        h('a.btn.btn--glass.btn--lg', { href: p.detail }, icon('info'), h('span', {}, t('Details'))),
+        p.onTrailer
+          ? h(
+              'button.btn.btn--glass.btn--lg.hero-trailer',
+              { type: 'button', 'aria-label': t('Trailer'), onclick: p.onTrailer },
+              icon('play'),
+              h('span', {}, t('Trailer')),
+            )
+          : null,
       ),
       // The dots element is reused across slides; appending it moves the node.
       h('div.hero-foot', {}, dots),
     );
   }
 
-  /**
-   * Backdrop ladder, highest resolution first: banner, then the biggest cover
-   * we were given, then the poster. Each `<img>` walks its own remaining
-   * sources on error, so a missing size falls through instead of leaving a
-   * blank stage. `slides` already guarantees one of these exists.
-   */
-  function coverImg(cls, sources, eager) {
-    const list = [...new Set(sources.filter(Boolean))];
-    const img = h(`img.${cls}`, { alt: '', decoding: 'async', fetchpriority: eager ? 'high' : null });
-    let i = 0;
-    img.addEventListener('error', () => {
-      i += 1;
-      if (i < list.length) img.src = list[i];
-      else img.remove();
+  /** The corner poster. A missing or broken file leaves the backdrop carrying
+      the frame on its own rather than an empty box beside the title. */
+  function thumb(p) {
+    if (!p.poster) return null;
+    const img = h('img.hero-thumb', {
+      src: p.poster,
+      alt: '',
+      decoding: 'async',
+      loading: 'lazy',
+      fetchpriority: null,
     });
-    img.src = list[0];
+    img.addEventListener('error', () => img.remove(), { once: true });
     return img;
   }
 
-  function art(m, eager) {
-    const xL = m.coverImage?.extraLarge;
-    const large = m.coverImage?.large;
-
-    if (m.bannerImage) {
-      const banner = h('img.hero-banner', { src: m.bannerImage, alt: '', decoding: 'async', fetchpriority: eager ? 'high' : null });
-      // A banner can 404 or be trimmed oddly for a given title; the cover
-      // treatment below then takes over instead of leaving an empty stage.
-      banner.addEventListener(
-        'error',
-        () => {
-          m.bannerImage = null;
-          if (slides[index] === m) show(index, { animate: false });
-        },
-        { once: true },
-      );
-      return h('div.hero-art', {}, banner, h('div.hero-scrim'));
+  /** A poster stretched across a wide stage crops to a face and a shoulder, so
+      without a banner the poster is blurred into the stage instead and the sharp
+      copy of it stays in the corner. A banner that 404s falls to the same
+      treatment rather than leaving an empty frame. */
+  function art(p, eager) {
+    const box = h('div.hero-art');
+    const blurred = () => {
+      box.classList.add('is-fallback');
+      const img = p.poster
+        ? h('img.hero-blur', { src: p.poster, alt: '', decoding: 'async', fetchpriority: eager ? 'high' : null })
+        : null;
+      img?.addEventListener('error', () => img.remove(), { once: true });
+      box.replaceChildren(...(img ? [img] : []), h('div.hero-scrim'));
+    };
+    if (!p.backdrop) {
+      blurred();
+      return box;
     }
-
-    return h(
-      'div.hero-art.is-fallback',
-      {},
-      coverImg('hero-blur', [xL, large], eager),
-      coverImg('hero-poster', [xL, large], eager),
-      h('div.hero-scrim'),
-    );
+    const banner = h('img.hero-banner', {
+      src: p.backdrop,
+      alt: '',
+      decoding: 'async',
+      fetchpriority: eager ? 'high' : null,
+    });
+    banner.addEventListener('error', blurred, { once: true });
+    box.append(banner, h('div.hero-scrim'));
+    return box;
   }
 
   function show(i, { animate = true } = {}) {
     index = (i + slides.length) % slides.length;
-    const m = slides[index];
-    const eager = index === 0;
-    const next = h('div.hero-slide', {}, art(m, eager), content(m));
+    const p = slides[index];
+    const next = h('div.hero-slide', {}, art(p, index === 0), content(p));
+    const lead = next.querySelector('.hero-thumb');
+    if (lead && index === 0) {
+      lead.loading = 'eager';
+      lead.setAttribute('fetchpriority', 'high');
+    }
 
     if (!animate || reduceQ.matches) {
-      next.classList.add('is-instant');
+      next.classList.add('is-instant', 'is-in');
       stage.replaceChildren(next);
       current = next;
-      requestAnimationFrame(() => next.classList.add('is-in'));
     } else {
       /* A real crossfade: the outgoing slide is left mounted (absolute over the
          same footprint, so no layout shift) while the newcomer fades up over
@@ -265,5 +330,5 @@ export function hero(items, { onCleanup } = {}) {
 }
 
 export function heroSkeleton() {
-  return h('section.hero-wrap', {}, h('div.hero.sk', { style: { minHeight: '420px', borderRadius: 'var(--r-xl)' } }));
+  return h('section.hero-wrap', {}, h('div.hero.sk'));
 }

@@ -569,7 +569,6 @@ html[dir='rtl'] {
 html[dir='rtl'] :is(
   .display,
   .eyebrow,
-  .hero-eyebrow,
   .brand,
   .suggest-head,
   .set-group > h3,

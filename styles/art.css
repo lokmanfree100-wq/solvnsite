@@ -30,7 +30,6 @@
 .hero-banner {
   filter: saturate(1.1) contrast(1.06) brightness(1.04);
 }
-.hero-poster,
 .feature-lead .card-art img,
 .split-art .card-art img,
 .detail-poster .card-art img {
