@@ -19,18 +19,21 @@ const COPY = {
     badge: 'Maintenance in progress',
     title: 'Site Under Maintenance',
     body: 'We are upgrading solvn.site for a much better experience. Stay tuned!',
+    emailLabel: 'Email us',
   },
   ar: {
     dir: 'rtl',
     badge: 'الصيانة جارية',
     title: 'الموقع تحت الصيانة',
     body: 'نقوم حالياً بتطوير وتحسين solvn.site لتجربة أفضل بكثير. ترقبونا قريبًا!',
+    emailLabel: 'راسلنا',
   },
   fr: {
     dir: 'ltr',
     badge: 'Maintenance en cours',
     title: 'Site en maintenance',
     body: "Nous mettons à jour solvn.site pour une meilleure expérience. Restez à l'écoute !",
+    emailLabel: 'Écrivez-nous',
   },
 };
 
@@ -43,6 +46,11 @@ const DISCORD_SVG =
 
 const INSTAGRAM_SVG =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4"/><circle cx="12" cy="12" r="4.3"/><circle cx="17.4" cy="6.6" r="1.15" fill="currentColor" stroke="none"/></svg>';
+
+const MAIL_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.6" y="4.6" width="18.8" height="14.8" rx="3.2"/><path d="m3.6 6.6 8.4 6.4 8.4-6.4"/></svg>';
+
+const CONTACT_EMAIL = 'adminsolvn7@gmail.com';
 
 const SOCIALS = [
   {
@@ -80,6 +88,7 @@ export function mountMaintenance() {
   let lang = COPY[nav] ? nav : 'en';
 
   const badgeText = h('span.mnt-badge-text');
+  const emailLabel = h('small.mnt-email-label');
   const titleEl = h('h1.mnt-title');
   const bodyEl = h('p.mnt-body');
   const msg = h('div.mnt-msg', { role: 'status', 'aria-live': 'polite' }, titleEl, bodyEl);
@@ -124,13 +133,21 @@ export function mountMaintenance() {
     ),
   );
 
+  const email = h(
+    'a.mnt-email',
+    { href: `mailto:${CONTACT_EMAIL}`, 'aria-label': `${CONTACT_EMAIL}` },
+    h('span.mnt-email-ic', { html: MAIL_SVG }),
+    h('span.mnt-email-tx', {}, h('strong', {}, CONTACT_EMAIL), emailLabel),
+    h('span.mnt-social-arrow', {}, icon('arrowUpRight')),
+  );
+
   const card = h(
     'div.mnt-card',
     {},
     h(
       'header.mnt-head',
       {},
-      h('div.mnt-mark', {}, icon('cat')),
+      h('div.mnt-mark', {}, h('img.mnt-logo', { src: 'assets/solvn-cat.jpg', alt: 'Solvn', decoding: 'async' })),
       h('div.mnt-brand', {}, h('span.mnt-word', {}, 'Solvn'), h('span.mnt-tld', {}, 'solvn.site')),
     ),
     h('div.mnt-badge', {}, h('span.mnt-dot', { 'aria-hidden': 'true' }), badgeText),
@@ -138,6 +155,7 @@ export function mountMaintenance() {
     msg,
     h('div.mnt-divider', { 'aria-hidden': 'true' }),
     socials,
+    email,
     h('footer.mnt-foot', {}, icon('globe'), h('span', {}, 'solvn.site')),
   );
 
@@ -147,9 +165,9 @@ export function mountMaintenance() {
     h(
       'div.mnt-bg',
       { 'aria-hidden': 'true' },
-      h('span.mnt-orb.mnt-orb--violet'),
-      h('span.mnt-orb.mnt-orb--cyan'),
-      h('span.mnt-orb.mnt-orb--magenta'),
+      h('span.mnt-orb.mnt-orb--blue'),
+      h('span.mnt-orb.mnt-orb--ice'),
+      h('span.mnt-orb.mnt-orb--deep'),
     ),
     h('div.mnt-grain', { 'aria-hidden': 'true' }),
     h('div.mnt-vignette', { 'aria-hidden': 'true' }),
@@ -163,6 +181,7 @@ export function mountMaintenance() {
     titleEl.textContent = c.title;
     bodyEl.textContent = c.body;
     badgeText.textContent = c.badge;
+    emailLabel.textContent = c.emailLabel;
     for (const b of qsa('.mnt-pill', overlay)) {
       const on = b.dataset.lang === lang;
       b.classList.toggle('is-active', on);
