@@ -11,10 +11,10 @@
  *    in our own <video>. Nothing outside this site executes here either.
  *  - Embed pool: somebody else's player page (VidLink → Vidsrc SU → Vidsrc CC →
  *    MultiEmbed), health-checked through /health first, with automatic failover.
- *    The frame is sandboxed with lib/sources.js FRAME_SANDBOX: its adverts may
- *    open a tab and a press inside it may take this page to the host, but it
- *    cannot navigate on its own or download anything. It is the last
- *    resort, for a title no provider in the ladder has a file for.
+ *    The frame is sandboxed with lib/sources.js FRAME_SANDBOX: scripts, its own
+ *    origin and forms only, so the browser refuses it popups, navigation of this
+ *    page and downloads. Ads may paint inside their box and go no further. It is
+ *    the last resort, for a title no provider in the ladder has a file for.
  *
  * The safety chip lists every outside host mounted on the page, live — and reads
  * zero while either file engine is playing.
@@ -296,8 +296,9 @@ export async function MovieWatchView(ctx) {
 
   /* ---- what to expect --------------------------------------------------
      One short note on the way to the picture, in the viewer's own language: this
-     player is somebody else's page, an advert can open in a new tab, and a press
-     inside it can take this tab to that host — Back one step returns to the film.
+     player is somebody else's page and may paint its own adverts inside the
+     picture — but the locked frame cannot open a tab, move this page or download
+     anything, so there is nothing to walk back from.
      It fades by itself after three seconds, because a warning that stays on
      screen becomes the thing in the way, and it returns for the next title, which
      may be a different host. The long version — what the frame can and cannot do —
@@ -325,7 +326,7 @@ export async function MovieWatchView(ctx) {
       ? t('Direct stream: this site read the file address from a provider list it controls, and the video bytes go straight into our own <video>. None of their page loads — no document, no script, no frame — so there is no third-party player here to put an ad, a pop-up or a download in front of you. When the ladder names no file for a title, the page says which provider failed and why, and hands you the other two engines.')
       : mode === 'clean'
         ? t('Clean room: only Archive items carrying an explicit public-domain or Creative-Commons statement are eligible, obvious screen recordings are refused, the title and runtime must match, and the file plays in our own <video> element. No third-party document, script or frame loads — the only outside bytes are the media file and its artwork, and every control you can click belongs to us.')
-        : t('Embed pool: the player is a page owned by the server you picked, running inside a frame. Its adverts can open a new browser tab, and a press inside it can take this tab to that host\'s own page — go back one step and the film is still here. What the frame cannot do is move this page without a press or put a file on your device, so anything saying "install this", "update your codec" or "download to play" is an advert, not Solvn. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.');
+        : t('Embed pool: the player is a page owned by the server you picked, running inside a locked frame. It may paint its own adverts inside the picture, but the browser refuses it new tabs, movement of this page and downloads — so anything saying "install this", "update your codec" or "download to play" is an advert drawn in their box, and pressing it cannot take you out of that box. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.');
     safetyPanel.replaceChildren(
       h('p.m-safety-about', {}, about),
       h('div.m-safety-list', {}, ...list),
@@ -723,8 +724,8 @@ export async function MovieWatchView(ctx) {
     if (frame) return frame;
     frame = h('iframe', {
       /* One list for both watch pages, so the film frame and the anime frame can
-         never drift apart. Its adverts open as a new tab; this page stays here
-         and no file reaches the device without the viewer asking for one. */
+         never drift apart. No popups, no navigation of this page, no downloads:
+         an advert stays inside the box it was painted in. */
       sandbox: FRAME_SANDBOX,
       allow: 'fullscreen; autoplay; encrypted-media; picture-in-picture',
       referrerpolicy: 'origin',

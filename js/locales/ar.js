@@ -2108,8 +2108,8 @@ const ui = {
   'File': 'الملف',
   'clean room': 'الغرفة النظيفة',
   'Archive.org refused the stream for this browser. Try the embed pool instead.': 'رفض Archive.org البث لهذا المتصفح. جرّب مجموعة التضمين بدلًا منه.',
-  'Embed pool: the player is a page owned by the server you picked, running inside a frame. Its adverts can open a new browser tab, and a press inside it can take this tab to that host\'s own page — go back one step and the film is still here. What the frame cannot do is move this page without a press or put a file on your device, so anything saying "install this", "update your codec" or "download to play" is an advert, not Solvn. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.':
-    'مجموعة التضمين: المشغّل صفحة يملكها الخادم الذي اخترته، تعمل داخل إطار. يمكن لإعلاناته أن تفتح تبويبًا جديدًا، ويمكن لضغطة داخله أن تأخذ هذا التبويب إلى صفحة ذلك المضيف — ارجع خطوة واحدة ويبقى الفيلم هنا. ما لا يستطيع الإطار فعله هو نقل هذه الصفحة من دون ضغطة أو وضع ملف على جهازك، فكل ما يقول «ثبّت هذا» أو «حدّث مكوّن فكّ الترميز» أو «نزّل لتتمكن من المشاهدة» هو إعلانٌ لا Solvn. نقدّم المضيفين الأهدأ أولًا ولا نرسل لهم سوى مرجعنا. المتصفح يخفي عنّا طلبات ذلك الإطار الداخلية، لذا هذه القائمة قد تنقص — لكنها لا تزيد أبدًا.',
+  'Embed pool: the player is a page owned by the server you picked, running inside a locked frame. It may paint its own adverts inside the picture, but the browser refuses it new tabs, movement of this page and downloads — so anything saying "install this", "update your codec" or "download to play" is an advert drawn in their box, and pressing it cannot take you out of that box. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.':
+    'مجموعة التضمين: المشغّل صفحة يملكها الخادم الذي اخترته، تعمل داخل إطار مقفل. قد يرسم إعلاناته داخل الصورة نفسها، لكن المتصفح يرفض له التبويبات الجديدة ونقل هذه الصفحة والتنزيلات — فكل ما يقول «ثبّت هذا» أو «حدّث مكوّن فكّ الترميز» أو «نزّل لتتمكن من المشاهدة» هو إعلان مرسوم داخل صندوقهم، والضغط عليه لا يخرجك من ذلك الصندوق. نقدّم المضيفين الأهدأ أولًا ولا نرسل لهم سوى مرجعنا. المتصفح يخفي عنّا طلبات ذلك الإطار الداخلية، لذا هذه القائمة قد تنقص — لكنها لا تزيد أبدًا.',
   '{host} is blocked on Solvn — its player page serves the pop-ups and adult ads members reported.': 'حُظر {host} على Solvn — صفحة مشغّله تعرض النوافذج المنبثقة وإعلانات الكبار التي أبلغ عنها الأعضاء.',
   'Anime #{id}': 'أنمي #{id}',
   'Hosted by {name}': 'يستضيفه {name}',
@@ -2183,8 +2183,8 @@ const ui = {
   'Sci-Fi': 'خيال علمي',
   'This player belongs to another site':
     'هذا المشغّل يخصّ موقعًا آخر',
-  'External redirects may occur. If redirected to another page, simply go back one step and the movie will play.':
-    'قد تحدث إعادة توجيه خارجية. إذا نُقلت إلى صفحة أخرى، ارجع خطوة واحدة فقط وسيكمل الفيلم العمل.',
+  'It may show its own ads inside the picture, but it cannot open new tabs, move this page or download anything.':
+    'قد يعرض إعلاناته داخل الصورة نفسها، لكنه لا يستطيع فتح تبويبات جديدة، ولا نقل هذه الصفحة، ولا تنزيل أي شيء.',
   'Agree and continue':
     'أوافق، أكمل',
   'The clean room has no copy of this title':

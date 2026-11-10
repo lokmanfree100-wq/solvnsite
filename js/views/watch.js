@@ -204,11 +204,10 @@ export function WatchView({ params, route, onCleanup }) {
 
   /* The stage is whatever holds the picture, and `lib/playback.js` builds it: a
      `<video>` Solvn owns when the source is a file it can play, a sandboxed frame
-     when the source is somebody else's player page. The frame may advertise — a
-     pop-up lands in a new tab the viewer walks back from — and a press inside it
-     may take this page to the host, which is why the note above the picture says
-     so first. It gets no navigation without a press and no downloads, so it
-     cannot move this page on its own or touch the device. */
+     when the source is somebody else's player page. The frame may advertise
+     inside its own box, and the note above the picture says so first — but the
+     lock gives it no popups, no navigation of this page and no downloads, so an
+     advert cannot open a tab or take the viewer anywhere. */
   const stageTitle = () => `${title(media)} — ${t('Episode {n}', { n: ep })} (${trackName(audio)})`;
   let stage = null;
   /* Solvn's mark is drawn here, on the player box, rather than asked of whatever
@@ -440,9 +439,10 @@ export function WatchView({ params, route, onCleanup }) {
         paintSubs();
       });
       /* The ladder can land on somebody else's player page, where an advert may
-         open a new tab and a press may take this tab to the host. Say both here,
-         once, and get out of the way — the note fades after three seconds. A
-         direct stream file plays in our own element and earns no warning. */
+         paint itself inside the picture. Say that once, and get out of the way —
+         the note fades after three seconds. The lock stops it leaving the box, so
+         there is no redirect to warn about. A direct stream file plays in our own
+         element and earns no warning. */
       if (kind === 'embed' && advisoryMount) showPlayAdvisory(advisoryMount, playerShell);
     }
     stage.src(url);

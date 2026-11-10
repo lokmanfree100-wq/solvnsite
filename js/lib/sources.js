@@ -13,16 +13,19 @@
  *
  * Two rules follow from that.
  *
- * 1. Nothing is planted. A fresh install has no source of its own, and the watch
- *    page says so and points at Settings; whoever runs the site either names one
- *    there, or names the sources every visitor should get once, in
- *    `lib/defaults.js`. Both go through the same gate below.
- * 2. The frame can advertise, and a press inside it can take the visitor's tab.
- *    `FRAME_SANDBOX` grants `allow-popups`, so an ad opens in a new browser tab,
- *    and `allow-top-navigation-by-user-activation`, because some hosts refuse to
- *    run without it. It omits `allow-top-navigation` and `allow-downloads`, so the
- *    player cannot pull this page away on its own and cannot put a file on the
- *    device. Both watch pages say so before the picture starts.
+ * 1. Two halves, one gate. A viewer names their own player in Settings; whoever
+ *    runs the site names the sources every visitor gets once, in
+ *    `lib/defaults.js`. Device entries come first and both halves pass the same
+ *    validation below, so a banned host stays banned even from inside the repo.
+ *    Empty both and the watch page says so and points at Settings.
+ * 2. The frame is locked. `FRAME_SANDBOX` grants only what a player needs to
+ *    draw and play: scripts, its own origin, and forms. It omits `allow-popups`,
+ *    every `allow-top-navigation*` token and `allow-downloads`, so the browser
+ *    itself refuses the frame new tabs, navigation of this page and files on the
+ *    device — whatever its adverts try. A host that refuses to run inside that
+ *    lock is not framed at all: it is left out of `lib/defaults.js`, because the
+ *    only way to satisfy it is to hand it the tab, which is the harm this site
+ *    exists without. Both watch pages say what to expect before the picture.
  * 3. When one server is silent, the watch page moves to the next one by itself.
  *    Every enabled server gets a turn on the current audio track, then a turn on
  *    the other one, and only after all of them does the player say there is
@@ -51,16 +54,16 @@ import { t } from './i18n.js';
    enough that a provider which recovers is used again by itself. */
 const COOLDOWN_MS = 30 * 60 * 1000;
 
-/* One list, both watch pages. Two deliberate concessions, both paid for by the
-   warning in components/advisory.js: `allow-popups` plus
-   `allow-popups-to-escape-sandbox` lets an advert open as an ordinary browser tab,
-   and `allow-top-navigation-by-user-activation` lets a press inside the player
-   take this tab to its own page — some hosts refuse to run at all without it.
-   What stays refused is what costs a person something without them choosing it:
-   navigating this tab on its own (`allow-top-navigation`) and writing a file to
-   the device (`allow-downloads`). */
-export const FRAME_SANDBOX =
-  'allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-presentation allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation';
+/* One lock, both watch pages, every host. Three tokens and nothing else: the
+   player may run its scripts, keep its own origin and submit its own forms.
+   Absent are `allow-popups` (no second tab, ever), every `allow-top-navigation*`
+   (this page cannot be moved, with or without a press) and `allow-downloads`
+   (nothing reaches the device). Those absences are enforced by the browser, not
+   by trust: an advert inside the frame may paint itself, but its window.open and
+   its top-level anchors are refused before they run. A cross-origin frame cannot
+   be read or rewritten from out here, so this lock and the choice of host are the
+   only two levers Solvn actually has — and both are applied to every frame. */
+export const FRAME_SANDBOX = 'allow-scripts allow-same-origin allow-forms';
 export const FRAME_ALLOW = 'autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope';
 
 /* ---- audio tracks ------------------------------------------------------
@@ -138,15 +141,15 @@ const PLACEHOLDERS = ['anilist', 'tmdb', 'episode', 'audio', 'next', 'accent'];
 const MAX_URL = 500;
 
 /* ---- hosts Solvn will not play from, whoever pastes them ----------------
-   AniGato is the source this build used to plant on every fresh device, and it
-   is the reason a member who clicked play got a pop-under of porn before the
-   episode did: the ads are not in Solvn, they are inside that company's page,
-   and a frame we do not own cannot be filtered from outside — the browser will
-   not let us read it. So the block lives at the gate every source passes before
-   it is ever stored or framed: the address is refused, the ladder skips it, and
-   the Settings field says why. Drop a domain in here and it stops being a
-   source on every device, not just a disabled row somebody could re-enable. */
-const BLOCKED_HOSTS = ['anigato.lol', 'anig.to'];
+   Empty today. The protection that used to live here — banning AniGato for the
+   pop-unders its page served — is now enforced by the browser for every host
+   through FRAME_SANDBOX above: no frame may open a tab, move this page or put a
+   file on the device, so a pop-under cannot escape whichever host paints it.
+   AniGato is therefore framed under that lock in lib/defaults.js, with the
+   advisory warning that its own (adult) adverts still draw inside the picture.
+   Drop a domain in here to refuse it outright anyway: the gate below skips it in
+   both halves, so a banned host stays banned even from inside the repo. */
+const BLOCKED_HOSTS = [];
 
 /** The host an address points at, or '' when it is not a whole https address. */
 function hostOf(url) {
@@ -180,18 +183,17 @@ export const isMediaUrl = (url) => HLS_URL.test(String(url || '')) || FILE_URL.t
 /** `media` plays inside Solvn; `embed` is somebody else's page, framed. */
 export const serverKind = (server) => (isMediaUrl(server?.url) ? 'media' : 'embed');
 
-/* ---- a device that has configured nothing ------------------------------
-   An earlier build planted AniGato's embed here so a first visit could play
-   something without any setup. That plant is gone, and it is not coming back:
-   seeding it would hand every new member precisely the pop-unders and adult
-   ads the site has been asked to stop, because those live inside that company's
-   page and cannot be filtered from a frame we do not own.
+/* ---- the sweep that keeps a banned host off a device --------------------
+   An earlier build seeded AniGato's embed on every fresh device. AniGato now
+   ships in lib/defaults.js under the strict lock, so it is no longer pruned;
+   this sweep still removes any stored source whose host is added to
+   BLOCKED_HOSTS later, so a ban reaches devices that already saved the address,
+   not just new visits.
 
-   So an empty ladder is now the honest starting point. The watch page says
-   there is no source and points at Settings, and whoever runs the install
-   chooses what Solvn plays — per viewer in Settings, or once for everyone in
-   lib/defaults.js — which is the only arrangement where the ads question has an
-   answer. */
+   What ships today is named in lib/defaults.js and carries the advisory, the
+   sandbox and the failover ladder with it. A deployment that empties that list
+   gets an honest "no source" and the route to Settings, not a stranger framed to
+   fill the silence. */
 function pruneBlockedSources() {
   const stored = settings.get('servers');
   if (!Array.isArray(stored)) return;
@@ -241,10 +243,10 @@ export const isSiteServer = (server) => !!server?.site;
 /**
  * Everything the anime ladder may use.
  *
- * Nothing is planted here. The watch page says "nothing to play" until whoever
- * runs the install points it at a source in Settings, and it offers that route
- * rather than framing a stranger to fill the silence: Solvn only plays what the
- * operator chose, and a blocked host never becomes a source by accident.
+ * The viewer's own entries first, then the site's from lib/defaults.js, and a
+ * blocked host never becomes a source by accident whichever half named it. Empty
+ * both halves and the watch page offers the route to Settings instead of framing
+ * a stranger to fill the silence.
  *
  * One thing is filtered out: a template that asks for `{tmdb}` is a film
  * address, and an anime episode carries no TMDB id to put in it — so leaving it

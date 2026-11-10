@@ -9,9 +9,9 @@
  * An **embed** source is somebody else's player *page*, framed. Solvn cannot
  * restyle, re-skin or silence what is drawn inside a cross-origin frame, which
  * is why an embed always carries its own corner mark and its own quality guess.
- * The frame keeps `allow-popups`, so its adverts open in a tab the viewer walks
- * back from, and omits top-navigation and downloads, so it can neither move this
- * page nor put a file on the device.
+ * The frame is locked to scripts, its own origin and forms: the browser refuses
+ * it popups, top-navigation and downloads, so an advert can paint itself inside
+ * the box but can neither open a tab, move this page nor touch the device.
  *
  * HLS is the awkward one: Safari plays an `.m3u8` natively and every other
  * browser needs MSE, so `hls.js` is vendored in `public/vendor/` and loaded only

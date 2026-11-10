@@ -1,11 +1,13 @@
 /**
  * The one line a visitor needs before somebody else's player starts.
  *
- * Both watch pages mount a frame they do not control, and two things about it can
- * surprise a person: an advert appearing in a new tab, and a press inside the
- * player taking this tab to the host's own page. The sandbox allows the second
- * only on a real press (`allow-top-navigation-by-user-activation` in
- * lib/sources.js), so it is a choice the viewer made and can undo with Back.
+ * Both watch pages mount a frame they do not control. One thing about it can
+ * surprise a person: an advert painted inside the picture, in somebody else's
+ * colours. What it cannot do is leave that box — `FRAME_SANDBOX` in
+ * lib/sources.js omits `allow-popups`, every top-navigation token and
+ * `allow-downloads`, so the browser refuses new tabs, movement of this page and
+ * files on the device before the frame's own code ever runs. The note says the
+ * one true thing (ads may appear in their box) and promises the containment.
  * Say both, then get out of the way: the note fades by itself after three
  * seconds, because a warning still on screen during the good part has become the
  * thing in the way of the film. The full account — what the frame can reach and
@@ -50,7 +52,7 @@ export function showPlayAdvisory(mount, before = null) {
       h(
         'p.play-advisory-body',
         {},
-        t('External redirects may occur. If redirected to another page, simply go back one step and the movie will play.'),
+        t('It may show its own ads inside the picture, but it cannot open new tabs, move this page or download anything.'),
       ),
     ),
     h('button.btn.btn--primary.btn--sm', { type: 'button', onclick: fade }, icon('play'), t('Agree and continue')),

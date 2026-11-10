@@ -2148,7 +2148,7 @@ const ui = {
   'File': 'Fichier',
   'clean room': 'salle propre',
   'Archive.org refused the stream for this browser. Try the embed pool instead.': 'Archive.org a refusé le flux pour ce navigateur. Essayez le pool d’intégration à la place.',
-  'Embed pool: the player is a page owned by the server you picked, running inside a frame. Its adverts can open a new browser tab, and a press inside it can take this tab to that host\'s own page — go back one step and the film is still here. What the frame cannot do is move this page without a press or put a file on your device, so anything saying "install this", "update your codec" or "download to play" is an advert, not Solvn. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.': 'Pool d’intégration : le lecteur est une page appartenant au serveur que vous avez choisi, exécutée dans un cadre. Ses publicités peuvent ouvrir un nouvel onglet, et un appui à l’intérieur peut emmener cet onglet vers la page de cet hôte — revenez d’un pas en arrière et le film est toujours là. Ce que le cadre ne peut pas faire, c’est déplacer cette page sans appui ou déposer un fichier sur votre appareil : donc tout ce qui dit « installez ceci », « mettez à jour votre codec » ou « téléchargez pour lire » est une publicité, pas Solvn. Nous plaçons d’abord les hôtes calmes et ne leur transmettons que notre référent. Le navigateur nous cache les requêtes internes de ce cadre : cette liste peut donc être incomplète, jamais exagérée.',
+  'Embed pool: the player is a page owned by the server you picked, running inside a locked frame. It may paint its own adverts inside the picture, but the browser refuses it new tabs, movement of this page and downloads — so anything saying "install this", "update your codec" or "download to play" is an advert drawn in their box, and pressing it cannot take you out of that box. We choose calm hosts first and send them only our referrer. The browser hides that frame\'s internal requests from us, so this list under-reports — it never over-reports.': 'Pool d’intégration : le lecteur est une page appartenant au serveur que vous avez choisi, exécutée dans un cadre verrouillé. Il peut peindre ses propres publicités dans l’image, mais le navigateur lui refuse les nouveaux onglets, le déplacement de cette page et les téléchargements — donc tout ce qui dit « installez ceci », « mettez à jour votre codec » ou « téléchargez pour lire » est une publicité peinte dans leur boîte, et appuyer dessus ne peut pas vous en faire sortir. Nous plaçons d’abord les hôtes calmes et ne leur transmettons que notre référent. Le navigateur nous cache les requêtes internes de ce cadre : cette liste peut donc être incomplète, jamais exagérée.',
   '{host} is blocked on Solvn — its player page serves the pop-ups and adult ads members reported.': '{host} est bloqué sur Solvn — sa page de lecteur diffuse les pop-ups et les publicités pour adultes signalés par les membres.',
   'Anime #{id}': 'Anime #{id}',
   'Hosted by {name}': 'Hébergé par {name}',
@@ -2222,8 +2222,8 @@ const ui = {
   'Sci-Fi': 'Science-fiction',
   'This player belongs to another site':
     'Ce lecteur appartient à un autre site',
-  'External redirects may occur. If redirected to another page, simply go back one step and the movie will play.':
-    'Des redirections externes peuvent survenir. Si vous êtes envoyé vers une autre page, revenez simplement d’un pas en arrière et le film reprendra.',
+  'It may show its own ads inside the picture, but it cannot open new tabs, move this page or download anything.':
+    'Il peut afficher ses propres publicités dans l’image, mais il ne peut ni ouvrir de nouveaux onglets, ni déplacer cette page, ni télécharger quoi que ce soit.',
   'Agree and continue':
     'J’accepte et je continue',
   'The clean room has no copy of this title':
