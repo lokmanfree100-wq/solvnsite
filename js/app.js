@@ -40,6 +40,7 @@ import { verifyCloudSchema } from './lib/cloud.js';
 import { beat, markAway } from './lib/presence.js';
 import { askAboutAccount, resetSheet } from './components/account.js';
 import { leaveForHome } from './lib/domain.js';
+import { MAINTENANCE_MODE, mountMaintenance } from './lib/maintenance.js';
 
 /* Mail became a shelf on the profile page. The old /mailbox address stays alive
    for bookmarks and saved links, and does one thing: carries the visitor to
@@ -100,7 +101,7 @@ function pulse(path) {
     lastPulseUser = null;
   }
 }
-setInterval(() => pulse(parse().path), 60_000);
+if (!MAINTENANCE_MODE) setInterval(() => pulse(parse().path), 60_000);
 
 function applyTheme() {
   paintAccent();
@@ -269,120 +270,127 @@ function syncChrome() {
 }
 
 /* ---- boot ------------------------------------------------------------ */
-applyTheme();
-syncChrome();
-installShortcuts();
-installInterfaceSounds();
-initTilt();
-
-/* The intro animates itself in CSS over 3.5s; JS only lifts the dead node out
-   once the veil has finished fading. Under reduced motion the whole thing is a
-   short fade, so the node goes early rather than holding a still frame.
-   `introMs` is also when the interface is worth talking to: the veil sits at
-   full opacity until ~78% of the animation and is layered above every sheet, so
-   anything opened before it lifts is spent behind a black screen. */
-const splash = qs('#splash');
-const introMs = splash ? (matchMedia('(prefers-reduced-motion: reduce)').matches ? 900 : 3600) : 0;
-const introEnds = Date.now() + introMs;
-if (splash) {
-  setTimeout(() => splash.remove(), introMs);
-}
-
-/* Somebody who reached the site under an address it no longer uses is looking at
-   a page that has already told them where Solvn lives and is on its way there.
-   The notice owns the screen, so the only thing worth doing here is not spending
-   the next two seconds building and fetching a view nobody will read. */
-const leaving = leaveForHome();
-
-let lastY = 0;
-window.addEventListener(
-  'scroll',
-  () => {
-    const y = window.scrollY;
-    if ((y > 8) !== (lastY > 8)) setTopbarStuck(y > 8);
-    lastY = y;
-  },
-  { passive: true },
-);
-
-window.addEventListener('beforeunload', rememberScroll);
-onChange(mount);
-document.addEventListener('kitsune:nav', renderNav);
-document.addEventListener('kitsune:theme', applyTheme);
-/* A session change only swaps the chip and the nav counts — the page is the same,
-   except for the heartbeat, which gains or loses a row at the same moment. */
-document.addEventListener('kitsune:account', () => {
-  renderNav();
-  pulse(parse().path);
-  /* A session arriving or leaving is a day of showing up, counted here rather
-     than on the binder alone: the card a signed-in day guarantees should not
-     depend on which page a member happened to open. */
-  noteSeen();
-});
-
-/* A new language rewrites every label, so the live view is rebuilt rather than
-   patched — same route, new strings, new inline direction. */
-document.addEventListener('kitsune:lang', () => {
+/* Maintenance is a hard gate: while the flag is up the router never starts and
+   no view mounts, so every address lands on the overlay and the real interface
+   below stays untouched. Flip MAINTENANCE_MODE (lib/maintenance.js) to lift it. */
+if (MAINTENANCE_MODE) {
+  mountMaintenance();
+} else {
+  applyTheme();
   syncChrome();
-  mount(parse());
-});
+  installShortcuts();
+  installInterfaceSounds();
+  initTilt();
 
-/* Recovery is the only thing the API layer announces, and even that is just a
-   repaint: rows swap from saved copies back to live data with no interrupting
-   bar. Going quiet needs no announcement — the page simply stays full. */
-document.addEventListener('kitsune:api', () => mount(parse()));
+  /* The intro animates itself in CSS over 3.5s; JS only lifts the dead node out
+     once the veil has finished fading. Under reduced motion the whole thing is a
+     short fade, so the node goes early rather than holding a still frame.
+     `introMs` is also when the interface is worth talking to: the veil sits at
+     full opacity until ~78% of the animation and is layered above every sheet, so
+     anything opened before it lifts is spent behind a black screen. */
+  const splash = qs('#splash');
+  const introMs = splash ? (matchMedia('(prefers-reduced-motion: reduce)').matches ? 900 : 3600) : 0;
+  const introEnds = Date.now() + introMs;
+  if (splash) {
+    setTimeout(() => splash.remove(), introMs);
+  }
 
-/* Coming back to the tab is the moment a viewer expects fresh rows, so drop the
-   outage backoff instead of serving the same snapshot for another five minutes. */
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) return;
-  /* A tab left open across 04:00 is still a member who came back the next day,
-     and the run should read that way rather than wait for a reload. */
-  noteSeen();
-  if (!apiDown()) return;
-  retryNow();
-  mount(parse());
-});
+  /* Somebody who reached the site under an address it no longer uses is looking at
+     a page that has already told them where Solvn lives and is on its way there.
+     The notice owns the screen, so the only thing worth doing here is not spending
+     the next two seconds building and fetching a view nobody will read. */
+  const leaving = leaveForHome();
 
-if (!leaving) {
-  startRouter();
+  let lastY = 0;
+  window.addEventListener(
+    'scroll',
+    () => {
+      const y = window.scrollY;
+      if ((y > 8) !== (lastY > 8)) setTopbarStuck(y > 8);
+      lastY = y;
+    },
+    { passive: true },
+  );
 
-  /* The page never waits on the session: the chip repaints itself when the answer
-     arrives. Only the pages that are *about* the session are rebuilt, and only if
-     somebody deep-linked straight into one of them. The same probe finds out
-     whether this copy has a server at all — if it does not, the view is rebuilt
-     once so that the controls needing one are taken out rather than left to fail.
+  window.addEventListener('beforeunload', rememberScroll);
+  onChange(mount);
+  document.addEventListener('kitsune:nav', renderNav);
+  document.addEventListener('kitsune:theme', applyTheme);
+  /* A session change only swaps the chip and the nav counts — the page is the same,
+     except for the heartbeat, which gains or loses a row at the same moment. */
+  document.addEventListener('kitsune:account', () => {
+    renderNav();
+    pulse(parse().path);
+    /* A session arriving or leaving is a day of showing up, counted here rather
+       than on the binder alone: the card a signed-in day guarantees should not
+       depend on which page a member happened to open. */
+    noteSeen();
+  });
 
-     The cloud is asked first, and the session only after it: on the permanent
-     domain the project address is compiled in, so whether that database really
-     exists is what decides where an account lives — and a sign-in that reaches a
-     schema nobody has built yet looks from the outside like a dead button. */
-  verifyCloudSchema()
-    .catch(() => {})
-    .then(restore)
-    /* A session this browser cannot read is not a reason to leave the site dead:
-       the chain that mounts the first page and wires every button hangs off it,
-       so a throw here would look exactly like a Sign in button that does nothing. */
-    .catch(() => {})
-    .then(() => {
-      /* The session is known now, so today can be counted. Idempotent inside a
-         card day, silent for a guest, and it never blocks the first paint. */
-      noteSeen();
-      const { path } = parse();
-      if (staticHost() || path === '/profile' || path.startsWith('/profile/')) mount(parse());
-      /* An email link that came here to reset a password carries a session that
-         exists for no other purpose, so the first thing on screen is the sheet
-         that spends it. Nothing else about the page changes. */
-      if (takeRecovery()) {
-        resetSheet();
-        return;
-      }
-      /* A first visitor is asked about an account once, and only after the answer
-         about the session is known — otherwise a returning member would be offered
-         a signup form over their own profile. It waits for the intro as well, since
-         a sheet under the veil is a sheet nobody sees. A deep link straight into the
-         player is the one screen it must not land on: the episode owns that moment. */
-      if (path.startsWith('/watch/')) return;
-      setTimeout(askAboutAccount, Math.max(0, introEnds - Date.now()));
-    });
+  /* A new language rewrites every label, so the live view is rebuilt rather than
+     patched — same route, new strings, new inline direction. */
+  document.addEventListener('kitsune:lang', () => {
+    syncChrome();
+    mount(parse());
+  });
+
+  /* Recovery is the only thing the API layer announces, and even that is just a
+     repaint: rows swap from saved copies back to live data with no interrupting
+     bar. Going quiet needs no announcement — the page simply stays full. */
+  document.addEventListener('kitsune:api', () => mount(parse()));
+
+  /* Coming back to the tab is the moment a viewer expects fresh rows, so drop the
+     outage backoff instead of serving the same snapshot for another five minutes. */
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    /* A tab left open across 04:00 is still a member who came back the next day,
+       and the run should read that way rather than wait for a reload. */
+    noteSeen();
+    if (!apiDown()) return;
+    retryNow();
+    mount(parse());
+  });
+
+  if (!leaving) {
+    startRouter();
+
+    /* The page never waits on the session: the chip repaints itself when the answer
+       arrives. Only the pages that are *about* the session are rebuilt, and only if
+       somebody deep-linked straight into one of them. The same probe finds out
+       whether this copy has a server at all — if it does not, the view is rebuilt
+       once so that the controls needing one are taken out rather than left to fail.
+
+       The cloud is asked first, and the session only after it: on the permanent
+       domain the project address is compiled in, so whether that database really
+       exists is what decides where an account lives — and a sign-in that reaches a
+       schema nobody has built yet looks from the outside like a dead button. */
+    verifyCloudSchema()
+      .catch(() => {})
+      .then(restore)
+      /* A session this browser cannot read is not a reason to leave the site dead:
+         the chain that mounts the first page and wires every button hangs off it,
+         so a throw here would look exactly like a Sign in button that does nothing. */
+      .catch(() => {})
+      .then(() => {
+        /* The session is known now, so today can be counted. Idempotent inside a
+           card day, silent for a guest, and it never blocks the first paint. */
+        noteSeen();
+        const { path } = parse();
+        if (staticHost() || path === '/profile' || path.startsWith('/profile/')) mount(parse());
+        /* An email link that came here to reset a password carries a session that
+           exists for no other purpose, so the first thing on screen is the sheet
+           that spends it. Nothing else about the page changes. */
+        if (takeRecovery()) {
+          resetSheet();
+          return;
+        }
+        /* A first visitor is asked about an account once, and only after the answer
+           about the session is known — otherwise a returning member would be offered
+           a signup form over their own profile. It waits for the intro as well, since
+           a sheet under the veil is a sheet nobody sees. A deep link straight into the
+           player is the one screen it must not land on: the episode owns that moment. */
+        if (path.startsWith('/watch/')) return;
+        setTimeout(askAboutAccount, Math.max(0, introEnds - Date.now()));
+      });
+  }
 }
