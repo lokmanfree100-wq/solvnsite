@@ -6,6 +6,7 @@ import { paintAccent } from './lib/accent.js';
 import { apiDown, retryNow } from './lib/anilist.js';
 import { t } from './lib/i18n.js';
 import { renderNav, setTopbarStuck, focusSearch } from './components/nav.js';
+import { mountCat } from './components/cat.js';
 import { renderFooter, footerVisible } from './components/footer.js';
 import { errorState } from './components/media.js';
 import { closeSheets } from './lib/ui.js';
@@ -369,6 +370,9 @@ if (MAINTENANCE_MODE) {
   });
 
   if (!leaving) {
+    /* The mascot floats outside every view and outside the bar itself. It is
+       mounted once, before the first route, so the welcome flight is seen. */
+    mountCat();
     startRouter();
 
     /* The page never waits on the session: the chip repaints itself when the answer

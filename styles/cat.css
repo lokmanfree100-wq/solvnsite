@@ -1,163 +1,162 @@
 /* ==========================================================================
-   SOLVN CAT — the mascot and its conversation panel
+   SOLVN CAT — the floating 3D mascot and its conversation panel
    --------------------------------------------------------------------------
-   The cat art is the uploaded drawing, untouched: black fur, a painted blue
-   aura, white-blue eyes. Everything here frames it — a dark glass seat in the
-   bar, a slow 3D float, and a pulse over the eyes that makes the drawing feel
-   awake without redrawing it.
+   The character is drawn by Three.js in the canvas (see components/cat.js):
+   black fur with a fresnel rim, white-blue eyes, energy rings and sparks. This
+   file only seats it above the page, adds the outer halo and the hover label,
+   and styles the chat panel. Nothing here paints a cat: the fallback image is
+   shown only when WebGL cannot start.
    ========================================================================== */
 
-/* ---- the button in the top bar ------------------------------------------ */
-
-.cat-launch {
-  position: relative;
-  flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid rgba(120, 178, 255, 0.28);
-  border-radius: 13px;
-  background:
-    radial-gradient(120% 120% at 30% 15%, rgba(90, 150, 255, 0.28), transparent 62%),
-    rgba(10, 13, 22, 0.72);
+.cat-float {
+  position: fixed;
+  top: 78px;
+  right: 22px;
+  z-index: 75;
+  width: 108px;
+  height: 116px;
   cursor: pointer;
-  isolation: isolate;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    transform 180ms var(--ease),
-    border-color var(--t-med),
-    box-shadow var(--t-med);
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.5));
+  isolation: isolate;
+  transition: filter var(--t-med), transform 180ms var(--ease), top 360ms var(--ease);
 }
 
-.cat-launch:hover {
-  border-color: rgba(140, 200, 255, 0.55);
-  box-shadow: 0 0 0 1px rgba(110, 180, 255, 0.16), 0 8px 24px -12px rgba(40, 110, 255, 0.7);
+.cat-float[hidden] {
+  display: none;
 }
 
-.cat-launch:active {
-  transform: scale(0.93);
+.cat-float:active {
+  transform: scale(0.97);
 }
 
-.cat-launch:focus-visible {
-  outline: 2px solid rgba(140, 200, 255, 0.8);
-  outline-offset: 2px;
+.cat-float:focus-visible {
+  outline: 2px solid rgba(150, 205, 255, 0.9);
+  outline-offset: 4px;
+  border-radius: 26px;
 }
 
-.cat-launch-art {
+.cat-float:hover {
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 22px rgba(60, 130, 255, 0.4));
+}
+
+.cat-float.is-open {
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 30px rgba(80, 155, 255, 0.6));
+}
+
+.cat-canvas {
   position: relative;
   z-index: 2;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  overflow: hidden;
   display: block;
-  perspective: 120px;
-}
-
-.cat-launch-art img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: inherit;
-  transform: translateZ(0) rotateX(0) rotateY(0);
-  filter: saturate(1.15) contrast(1.06) brightness(1.05) drop-shadow(0 0 6px rgba(70, 140, 255, 0.35));
-  animation: cat-float 5.2s ease-in-out infinite;
-  will-change: transform;
-}
-
-@keyframes cat-float {
-  0%,
-  100% {
-    transform: rotateX(0deg) rotateY(-5deg) translateY(0);
-  }
-  30% {
-    transform: rotateX(5deg) rotateY(0deg) translateY(-1.4px);
-  }
-  65% {
-    transform: rotateX(-3deg) rotateY(5deg) translateY(0.8px);
-  }
-}
-
-/* Two soft lights over the eyes in the drawing (≈38% and 50% across, 38% down). */
-.cat-launch-eyes {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
   pointer-events: none;
-  mix-blend-mode: screen;
-  background:
-    radial-gradient(circle at 38% 39%, rgba(150, 220, 255, 0.95) 0 8%, rgba(80, 160, 255, 0.35) 16%, transparent 34%),
-    radial-gradient(circle at 50% 39%, rgba(150, 220, 255, 0.95) 0 8%, rgba(80, 160, 255, 0.35) 16%, transparent 34%);
-  animation: cat-eyes 4.6s ease-in-out infinite;
 }
 
-@keyframes cat-eyes {
-  0%,
-  100% {
-    opacity: 0.55;
-    filter: blur(1px);
-  }
-  48% {
-    opacity: 1;
-    filter: blur(0.4px);
-  }
-  55% {
-    opacity: 0.35;
-    filter: blur(1.4px);
-  }
-}
-
-/* A breath of aura behind the button, not a neon sign. */
-.cat-launch-ring {
+/* The breath of light behind the character. The in-canvas aura does the real
+   work; this keeps the edge soft against dark artwork. */
+.cat-float-halo {
   position: absolute;
-  inset: -5px;
   z-index: 1;
-  border-radius: 17px;
-  background: radial-gradient(closest-side, rgba(64, 132, 255, 0.4), transparent 78%);
-  opacity: 0.55;
-  filter: blur(6px);
-  animation: cat-aura 4.6s ease-in-out infinite;
+  inset: 16% 10% 8%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(64, 132, 255, 0.42), rgba(40, 90, 220, 0.12) 62%, transparent 78%);
+  filter: blur(12px);
+  opacity: 0.7;
+  animation: cat-float-halo 4.8s ease-in-out infinite;
   pointer-events: none;
 }
 
-@keyframes cat-aura {
+@keyframes cat-float-halo {
   0%,
   100% {
-    opacity: 0.4;
-    transform: scale(0.92);
+    opacity: 0.5;
+    transform: scale(0.94);
   }
   50% {
-    opacity: 0.75;
-    transform: scale(1.04);
+    opacity: 0.8;
+    transform: scale(1.05);
   }
 }
 
-.cat-launch-spark {
+.cat-float-tip {
   position: absolute;
-  right: -4px;
-  top: -5px;
-  z-index: 4;
-  width: 13px;
-  height: 13px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: #bfe4ff;
-  background: rgba(12, 24, 48, 0.9);
-  border: 1px solid rgba(130, 195, 255, 0.45);
-  box-shadow: 0 0 10px rgba(80, 160, 255, 0.55);
+  z-index: 3;
+  top: calc(100% - 10px);
+  left: 50%;
+  transform: translate(-50%, 4px);
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(140, 190, 255, 0.3);
+  background: rgba(10, 15, 26, 0.86);
+  color: #dcebff;
+  font: 600 9.5px/1.2 var(--font-ui, system-ui, sans-serif);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-med), transform var(--t-med);
 }
 
-.cat-launch-spark svg {
-  width: 8px;
-  height: 8px;
+.cat-float:hover .cat-float-tip,
+.cat-float:focus-visible .cat-float-tip {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
-.cat-launch.is-open {
-  border-color: rgba(150, 210, 255, 0.7);
-  box-shadow: 0 0 0 1px rgba(120, 190, 255, 0.3), 0 0 24px -6px rgba(70, 150, 255, 0.75);
+.cat-fallback {
+  display: none;
+  width: 86%;
+  height: 86%;
+  margin: 7%;
+  object-fit: cover;
+  border-radius: 26px;
+  border: 1px solid rgba(120, 180, 255, 0.4);
+  box-shadow: 0 0 30px -6px rgba(60, 130, 255, 0.7);
+}
+
+.cat-float.is-flat .cat-canvas {
+  display: none;
+}
+
+.cat-float.is-flat .cat-fallback {
+  display: block;
+}
+
+@media (max-width: 760px) {
+  .cat-float {
+    right: 10px;
+    width: 84px;
+    height: 92px;
+  }
+
+  /* On a phone the panel occupies the same right column; the cat steps aside
+     while it is open, then returns when the panel closes. */
+  .cat-float.is-open {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.9);
+    pointer-events: none;
+  }
+
+  .cat-float-tip {
+    display: none;
+  }
+}
+
+@media (max-width: 370px) {
+  .cat-float {
+    right: 6px;
+    width: 74px;
+    height: 82px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-float-halo {
+    animation: none;
+  }
 }
 
 /* ---- the panel ----------------------------------------------------------- */
@@ -586,24 +585,6 @@
 /* ---- phone --------------------------------------------------------------- */
 
 @media (max-width: 760px) {
-  .cat-launch {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-  }
-
-  .cat-launch-art {
-    width: 31px;
-    height: 31px;
-  }
-
-  .cat-launch-spark {
-    width: 11px;
-    height: 11px;
-    right: -3px;
-    top: -4px;
-  }
-
   .cat-panel {
     right: 8px;
     left: 8px;
@@ -629,9 +610,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cat-launch-art img,
-  .cat-launch-eyes,
-  .cat-launch-ring,
   .cat-face-glow {
     animation: none;
   }

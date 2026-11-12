@@ -15,7 +15,6 @@ import { partyUsable } from '../lib/rooms.js';
 import { isStaff } from '../lib/account.js';
 import { mountLiveSearch, disposeLiveSearch } from './searchlive.js';
 import { noticeBell, disposeBell } from './notices.js';
-import { catButton } from './cat.js';
 
 /* God mode has no entry point in the interface: /admin is reached by URL, by
    the one account the server recognises, and its gate is server-side. */
@@ -452,7 +451,6 @@ export function renderNav() {
     noticeBell(),
     h('div.lang-pick', {}, languagePicker()),
     accountChip(),
-    catButton(),
     moreButton(),
   );
 
