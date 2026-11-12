@@ -1,16 +1,15 @@
-/** Home: one uniform grid of posters per shelf, and no title twice. */
+/** Home: five dense poster rows under one cinematic spotlight, and no title twice. */
 
 import { h, icon } from '../lib/dom.js';
-import { browse, hiddenGems, genres } from '../lib/anilist.js';
+import { browse, hiddenGems } from '../lib/anilist.js';
 import { continueWatching, settings } from '../lib/store.js';
 import { watched } from '../lib/util.js';
 import { makeDeduper } from '../lib/dedupe.js';
-import { lazyGrid } from '../components/media.js';
+import { lazyRow } from '../components/media.js';
 import { categoryTabs } from '../components/cats.js';
 import { continueRail } from '../components/continue-watching.js';
-import { discussionStrip } from '../components/discussion.js';
 import { spotlight, spotlightSkeleton, pickSpotlight } from '../components/spotlight.js';
-import { t, genre } from '../lib/i18n.js';
+import { t } from '../lib/i18n.js';
 
 /** Interleave ranked lists so one query cannot fill a whole rail by itself. */
 function blend(lists, keyOf = (m) => m.id) {
@@ -34,31 +33,6 @@ function blend(lists, keyOf = (m) => m.id) {
 }
 
 const itemsOf = (r) => (Array.isArray(r) ? r : (r?.items ?? []));
-
-function genreStrip(list) {
-  return h(
-    'section.section',
-    {},
-    h(
-      'div.section-head',
-      {},
-      h('h2', {}, t('Browse by genre')),
-      h('span.spacer'),
-      h('a.link-all', { href: '#/discover' }, t('Open discover'), icon('chevronRight', { cls: 'flip' })),
-    ),
-    h('div.genre-strip', {}, ...list.map((g) => h('a.genre-pill', { href: `#/discover?genre=${encodeURIComponent(g)}` }, genre(g)))),
-  );
-}
-
-/**
- * Locally-stored progress, shown before anything else — and shown nowhere at all
- * when this browser has not started something. The titles it holds are claimed
- * here first, so a show you are mid-way through cannot turn up again in a rail
- * of recommendations below it.
- */
-function continueRow(dedupe) {
-  return continueRail(dedupe.claimSync(continueWatching(14)), { grid: true });
-}
 
 /**
  * Slim greeting strip above the shelves. Once dismissed it is remembered in
@@ -115,58 +89,61 @@ export async function HomeView(ctx) {
     return visible(await dedupe.claim(blend(parts), { after: spotWait }));
   };
 
-  /* One shape for every shelf: the same poster, the same frame, the same grid.
-     The readings of the page differ by the query behind each grid, not by the
-     size of a card — a lead poster twice the height of its neighbours was what
-     made the old home look broken at every width between two breakpoints. */
-  const grid = (heading, sub, loads, extra = {}) =>
-    lazyGrid({ heading, sub, load: fetch(loads), ...extra });
+  /* Exactly five full-width rows. Each row is the same rail: a poster, a title
+     and one line of facts, scrollable sideways. Continue-watching is the first
+     when this browser has progress — and then the last row makes way, so the
+     page always lands on five, never four and never six. */
+  const row = (heading, sub, loads, extra = {}) =>
+    lazyRow({ heading, sub, load: fetch(loads), ...extra });
 
-  const genreSection = h('div.home-genre-slot');
-
-  const sections = [
-    continueRow(dedupe),
-    grid(
+  /* One resumed title is a note, not a row: a rail with a single poster in it
+     reads as a broken shelf. The history row appears once there is enough of
+     it to scroll. */
+  const resumed = continueWatching(20);
+  const rows = [
+    resumed.length >= 3 ? continueRail(dedupe.claimSync(resumed)) : null,
+    row(
+      t('Trending Now'),
+      t('What everyone is watching right now.'),
+      [
+        () => browse({ sort: ['TRENDING_DESC'], perPage: 24 }),
+        () => browse({ sort: ['POPULARITY_DESC'], perPage: 18 }),
+      ],
+      { viewAll: '#/discover?sort=TRENDING_DESC' },
+    ),
+    row(
+      t('Popular This Season'),
+      t('The season everyone is talking about.'),
+      [
+        () => browse({ sort: ['POPULARITY_DESC'], seasonYear: year, perPage: 20 }),
+        () => browse({ sort: ['TRENDING_DESC'], perPage: 16 }),
+      ],
+      { viewAll: `#/discover?sort=POPULARITY_DESC&year=${year}` },
+    ),
+    row(
       t('Top Rated Masterpieces'),
       t('The best-scoring completed series, in order.'),
       [() => browse({ sort: ['SCORE_DESC'], status: 'FINISHED', minimumScore: 80, perPage: 24 })],
-      { viewAll: '#/discover?sort=SCORE_DESC&status=FINISHED', limit: 18 },
+      { viewAll: '#/discover?sort=SCORE_DESC&status=FINISHED' },
     ),
-    grid(
-      t('Best Anime of {year}', { year }),
-      t('Fresh airdates and what everyone is watching this year.'),
+    row(
+      t('New & Upcoming'),
+      t('Fresh airdates and the next big premieres.'),
       [
-        () => browse({ sort: ['POPULARITY_DESC'], seasonYear: year, perPage: 16 }),
-        () => browse({ sort: ['START_DATE_DESC'], perPage: 12 }),
-        () => browse({ sort: ['TRENDING_DESC'], perPage: 16 }),
+        () => browse({ sort: ['START_DATE_DESC'], perPage: 20 }),
+        () => browse({ status: 'NOT_YET_RELEASED', sort: ['POPULARITY_DESC'], perPage: 16 }),
       ],
-      { viewAll: '#/discover?sort=START_DATE_DESC', limit: 18 },
+      { viewAll: '#/discover?sort=START_DATE_DESC' },
     ),
-    grid(
-      t('Dark, Moody & Indie Aesthetic Picks'),
-      t('Brooding thrillers, quiet psychological drama, off-format one-offs.'),
-      [
-        () => browse({ genre: 'Psychological', sort: ['SCORE_DESC'], perPage: 12 }),
-        () => browse({ genre: 'Mystery', sort: ['SCORE_DESC'], perPage: 12 }),
-        () => browse({ genre: 'Thriller', sort: ['SCORE_DESC'], perPage: 12 }),
-        () => browse({ format: 'OVA', sort: ['SCORE_DESC'], minimumScore: 72, perPage: 10 }),
-        () => browse({ format: 'ONA', sort: ['SCORE_DESC'], minimumScore: 72, perPage: 10 }),
-      ],
-      { viewAll: '#/discover?genre=Psychological&sort=SCORE_DESC', limit: 18 },
-    ),
-    grid(
+    row(
       t('Hidden Gems & Sci-Fi'),
       t('Praised by few, and futures worth the detour.'),
       [hiddenGems, () => browse({ genre: 'Sci-Fi', sort: ['SCORE_DESC'], perPage: 16 })],
-      { viewAll: '#/discover?genre=Sci-Fi&sort=SCORE_DESC', limit: 18 },
+      { viewAll: '#/discover?genre=Sci-Fi&sort=SCORE_DESC' },
     ),
-    genreSection,
-    /* Last, and smaller than everything above it: the site room is a note at the
-       foot of the page, not a section to browse. */
-    discussionStrip({ onCleanup: ctx?.onCleanup }),
   ].filter(Boolean);
 
-  wrap.append(...sections);
+  wrap.append(...rows.slice(0, 5));
 
   /* Three slates, blended so one query cannot fill the band. The component
      folds franchises and takes the top eight; a dead catalogue costs the
@@ -190,10 +167,6 @@ export async function HomeView(ctx) {
       releaseSpot();
       spotSlot.remove();
     });
-
-  watched(genres())
-    .then((list) => genreSection.replaceChildren(genreStrip(list.slice(0, 14))))
-    .catch(() => genreSection.remove());
 
   return wrap;
 }

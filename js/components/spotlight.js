@@ -22,6 +22,8 @@
 
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
+import { inList, toggleList } from '../lib/store.js';
+import { toast } from '../lib/ui.js';
 import { title, plainDescription } from '../lib/util.js';
 import { stillImage } from './media.js';
 import { episodes as fetchEpisodes } from '../lib/anilist.js';
@@ -94,8 +96,30 @@ function art(m, eager) {
   return box;
 }
 
-/* Title, one line of synopsis, two buttons. Nothing else lives on the band. */
+/* Title, one line of synopsis, three buttons. Nothing else lives on the band. */
 function copyFor(m) {
+  const saved = Boolean(inList(m.id));
+  const mine = h(
+    'button.spot-btn.spot-mine',
+    {
+      type: 'button',
+      class: saved ? 'is-on' : null,
+      'aria-pressed': String(saved),
+      onclick: () => {
+        const added = toggleList(m, 'watching');
+        mine.classList.toggle('is-on', added);
+        mine.setAttribute('aria-pressed', String(added));
+        mine.querySelector('span').textContent = added ? t('In My List') : t('My List');
+        toast(added ? t('Added to My List') : t('Removed from My List'), {
+          tone: 'ok',
+          iconName: added ? 'check' : 'x',
+        });
+      },
+    },
+    icon('plus'),
+    h('span', {}, saved ? t('In My List') : t('My List')),
+  );
+
   return [
     h('h2.spot-title', {}, title(m)),
     h('p.spot-desc', {}, plainDescription(m.description, 240) || t('No synopsis for this title yet.')),
@@ -103,6 +127,7 @@ function copyFor(m) {
       'div.spot-actions',
       {},
       h('a.spot-btn.spot-play', { href: `#/watch/${m.id}/1` }, icon('play'), h('span', {}, t('Play now'))),
+      mine,
       h('a.spot-btn.spot-more', { href: `#/anime/${m.id}` }, icon('info'), h('span', {}, t('Details'))),
     ),
   ];

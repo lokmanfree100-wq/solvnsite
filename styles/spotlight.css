@@ -366,10 +366,28 @@
   height: 14px;
 }
 
+/* One lane of episodes at every width: the strip is a companion to the hero,
+   not a second catalogue, and a single row keeps the first shelf above the
+   fold. */
 .spot-eps-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  display: flex;
   gap: 12px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.spot-eps-list::-webkit-scrollbar {
+  display: none;
+}
+.spot-ep {
+  flex: 0 0 206px;
+  scroll-snap-align: start;
+}
+@media (min-width: 1400px) {
+  .spot-ep {
+    flex-basis: 224px;
+  }
 }
 
 .spot-ep {
@@ -529,7 +547,7 @@
      lifted clear of it rather than ending underneath it. */
   .spot-body {
     gap: 11px;
-    padding: 18px 18px calc(168px + env(safe-area-inset-bottom));
+    padding: 18px 18px calc(188px + env(safe-area-inset-bottom));
     padding-top: 92px;
   }
 
@@ -609,4 +627,31 @@
     transition: none;
   }
 
+}
+
+/* Three actions have to fit one phone row without shrinking below a thumb. */
+.spot-mine.is-on {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
+    color-mix(in srgb, var(--spot-accent) 30%, transparent);
+  border-color: var(--spot-line);
+  color: #fff;
+}
+.spot-mine.is-on svg {
+  color: var(--spot-bright);
+}
+@media (max-width: 899px) {
+  .spot-actions {
+    gap: 8px;
+  }
+  .spot-btn {
+    height: 42px;
+    padding: 0 14px;
+    font-size: 12.5px;
+    gap: 7px;
+  }
+  .spot-btn svg {
+    width: 15px;
+    height: 15px;
+  }
 }

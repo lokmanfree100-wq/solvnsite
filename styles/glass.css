@@ -760,3 +760,91 @@ button.icon-btn,
     animation: none;
   }
 }
+
+/* ==========================================================================
+   Cinematic pass — brighter art, denser rails, a lifted dock
+   --------------------------------------------------------------------------
+   The artwork is the product: posters keep their colour and gain contrast so a
+   rail reads as a wall of covers rather than a strip of dark rectangles. The
+   rows are smaller than a catalogue card so five of them fill the page without
+   scrolling through empty bands.
+   ========================================================================== */
+
+.page-home .row {
+  --card-w: 132px;
+  gap: 12px;
+}
+@media (min-width: 900px) {
+  .page-home .row {
+    --card-w: 142px;
+    gap: 14px;
+  }
+}
+@media (min-width: 1400px) {
+  .page-home .row {
+    --card-w: 152px;
+  }
+}
+@media (max-width: 760px) {
+  .page-home .row {
+    --card-w: 122px;
+  }
+}
+
+/* Five rows, close enough together to read as one edit. */
+.page-home > .section {
+  margin-top: clamp(18px, 2.2vw, 28px);
+}
+.page-home .section-head {
+  margin-bottom: 10px;
+}
+
+/* The poster lift, without pushing any image past its brights. */
+.card-art img {
+  filter: saturate(1.24) contrast(1.09) brightness(1.08);
+}
+@media (hover: hover) {
+  .card:hover .card-art img {
+    filter: saturate(1.26) contrast(1.11) brightness(1.12);
+  }
+}
+.card-art {
+  box-shadow: 0 18px 38px -28px rgba(0, 0, 0, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+/* ---- the floating dock ---------------------------------------------------
+   Deeper glass than the panels it holds, so the active tab reads as a lit chip
+   inside a dark trough rather than a label on a flat bar. */
+.tabbar {
+  padding: 6px;
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.015) 60%),
+    rgba(10, 11, 15, 0.74);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  backdrop-filter: blur(26px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 24px 56px -24px rgba(0, 0, 0, 0.95),
+    0 0 40px -28px var(--accent-glow);
+}
+.tabbar .tab {
+  border-radius: 20px;
+  transition:
+    background var(--t-med) var(--ease),
+    color var(--t-med) var(--ease),
+    transform 180ms var(--ease);
+}
+.tabbar .tab svg {
+  transition: transform 260ms var(--ease-out-back), filter var(--t-med);
+}
+.tabbar .tab.is-active {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+}
+.tabbar .tab.is-active svg {
+  transform: translateY(-1px) scale(1.06);
+  filter: drop-shadow(0 0 10px var(--accent-glow));
+}
+.tabbar .tab:active {
+  transform: scale(0.94);
+}
