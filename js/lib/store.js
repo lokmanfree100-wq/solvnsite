@@ -29,38 +29,24 @@ export const LIST_LABELS = {
 
 export const DEFAULT_ACCENT = 'mono';
 /** Highlight shades, id -> hex without the '#'. Each id has a generated block in
-   tokens.css (both come from the same ramp in lib/color.js); mono is :root
-   itself. A colour picked by hand is not an id in this table — it is stored in
-   `accentCustom` and painted as inline custom properties by lib/accent.js. */
+   tokens.css (both come from the same ramp in lib/color.js); every id now has a
+   block of its own, including mono — the page's own palette is violet, so the
+   monochrome choice has to be a preset rather than the bare :root. A colour
+   picked by hand is not an id in this table — it is stored in `accentCustom` and
+   painted as inline custom properties by lib/accent.js. */
 export const ACCENTS = {
-  mono: 'e9ebee',
-  violet: '8b6cff',
-  iris: '6d7bff',
-  orchid: 'c06bff',
-  lilac: 'd5c7ff',
-  electric: '3d8bff',
-  crimson: 'ff3b5c',
-  cyber: 'a85cff',
-  emerald: '2ee6a6',
-  gold: 'ffc247',
-  pink: 'ff4fa3',
-  cyan: '22e0f5',
+  mono: 'ffffff',
+  slate: 'd1d5db',
+  ash: '9ca3af',
+  graphite: '6b7280',
 };
 /** Names shown in Settings and read out by a screen reader. They reach t()
    through this table, so they are listed in the key extractor's INDIRECT set. */
 export const ACCENT_LABELS = {
-  mono: 'Neutral White',
-  violet: 'Violet',
-  iris: 'Iris',
-  orchid: 'Orchid',
-  lilac: 'Lilac',
-  electric: 'Electric Blue',
-  crimson: 'Crimson',
-  cyber: 'Cyber Purple',
-  emerald: 'Emerald',
-  gold: 'Golden Yellow',
-  pink: 'Hot Pink',
-  cyan: 'Cyan',
+  mono: 'Classic White',
+  slate: 'Slate',
+  ash: 'Ash Grey',
+  graphite: 'Graphite',
 };
 /** The id a hand-picked colour is filed under, and the id `accent` holds while
    one is in force. lib/accent.js resolves either into a ramp or a hex. */

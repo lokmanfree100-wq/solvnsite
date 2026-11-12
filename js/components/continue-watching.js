@@ -97,13 +97,16 @@ function card(e, onRemove, { eager = false } = {}) {
  * `continueWatching()` in the caller, already handed through the page's dedupe
  * queue so a title in this row never shows up again further down.
  */
-export function continueRail(entries) {
+export function continueRail(entries, { grid = false } = {}) {
   const items = (entries || []).filter((e) => e?.id && e.at);
   if (!items.length) return null;
 
-  const track = h('div.row.no-scrollbar', { role: 'list', 'aria-label': t('Continue watching') });
+  const track = h(`div.${grid ? 'grid home-grid' : 'row.no-scrollbar'}`, {
+    role: 'list',
+    'aria-label': t('Continue watching'),
+  });
   const section = h(
-    'section.section.row-wrap.cw-wrap',
+    `section.section.cw-wrap${grid ? '' : '.row-wrap'}`,
     {},
     h(
       'div.section-head',
@@ -120,17 +123,20 @@ export function continueRail(entries) {
   const next = h('button.row-arrow.next', { 'aria-label': t('Scroll forwards'), hidden: true }, icon('chevronRight', { cls: 'flip' }));
 
   const update = () => {
+    if (grid) return;
     const max = scrollMax(track);
     const pos = scrollPos(track);
     prev.hidden = pos <= 4;
     next.hidden = max <= 4 || pos >= max - 4;
   };
-  const nudge = (dir) => scrollInlineBy(track, dir * Math.max(track.clientWidth * 0.8, 220));
-  prev.addEventListener('click', () => nudge(-1));
-  next.addEventListener('click', () => nudge(1));
-  track.addEventListener('scroll', update, { passive: true });
-  new ResizeObserver(update).observe(track);
-  requestAnimationFrame(update);
+  if (!grid) {
+    const nudge = (dir) => scrollInlineBy(track, dir * Math.max(track.clientWidth * 0.8, 220));
+    prev.addEventListener('click', () => nudge(-1));
+    next.addEventListener('click', () => nudge(1));
+    track.addEventListener('scroll', update, { passive: true });
+    new ResizeObserver(update).observe(track);
+    requestAnimationFrame(update);
+  }
 
   /* Taking one out deletes the saved position, so the row has to agree with the
      store right away — and if that was the last one, the whole section goes,
@@ -150,6 +156,6 @@ export function continueRail(entries) {
     track.append(node);
   });
 
-  section.append(prev, next);
+  if (!grid) section.append(prev, next);
   return section;
 }

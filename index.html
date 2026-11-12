@@ -3,22 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#050505" />
-    <meta name="description" content="Solvn — anime, films &amp; series in HD. One player, no installs, nothing to pay for." />
+    <meta name="theme-color" content="#0b0c0e" />
+    <meta name="description" content="Solvn — anime &amp; cartoons in HD. One player, no installs, nothing to pay for." />
     <link rel="canonical" href="https://solvn.site/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Solvn" />
-    <meta property="og:title" content="Solvn — anime, films &amp; series in HD" />
-    <meta property="og:description" content="Solvn — anime, films &amp; series in HD. One player, no installs, nothing to pay for." />
+    <meta property="og:title" content="Solvn — anime &amp; cartoons in HD" />
+    <meta property="og:description" content="Solvn — anime &amp; cartoons in HD. One player, no installs, nothing to pay for." />
     <meta property="og:url" content="https://solvn.site/" />
     <meta property="og:image" content="https://solvn.site/assets/solvn-cat.jpg" />
     <meta property="og:image:width" content="736" />
     <meta property="og:image:height" content="736" />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Solvn — anime, films &amp; series in HD" />
-    <meta name="twitter:description" content="Solvn — anime, films &amp; series in HD. One player, no installs, nothing to pay for." />
+    <meta name="twitter:title" content="Solvn — anime &amp; cartoons in HD" />
+    <meta name="twitter:description" content="Solvn — anime &amp; cartoons in HD. One player, no installs, nothing to pay for." />
     <meta name="twitter:image" content="https://solvn.site/assets/solvn-cat.jpg" />
-    <title>Solvn — anime, films &amp; series in HD</title>
+    <title>Solvn — anime &amp; cartoons in HD</title>
     <link rel="preload" as="image" href="assets/solvn-cat.jpg" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -28,8 +28,6 @@
          the frame itself is a click or two away anyway. -->
     <link rel="preconnect" href="https://s4.anilist.co" crossorigin />
     <link rel="dns-prefetch" href="https://graphql.anilist.co" />
-    <!-- TMDB artwork for the Movies & Series section. -->
-    <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Cairo:wght@400;600;700;800&display=swap"
       rel="stylesheet"
@@ -53,10 +51,17 @@
     <link rel="stylesheet" href="styles/report.css" />
     <link rel="stylesheet" href="styles/art.css" />
     <link rel="stylesheet" href="styles/gacha.css" />
-    <link rel="stylesheet" href="styles/movies.css" />
     <link rel="stylesheet" href="styles/sponsor.css" />
     <link rel="stylesheet" href="styles/mobile.css" />
     <link rel="stylesheet" href="styles/maintenance.css" />
+    <!-- The vibrant glass theme layer. Last, so it can re-light every sheet above
+         it without any of them having to know the default palette changed. -->
+    <link rel="stylesheet" href="styles/vibrant.css" />
+    <!-- The material layer: transparency, rims and depth on every surface. It
+         loads after the theme so its shadows win without !important. -->
+    <link rel="stylesheet" href="styles/glass.css" />
+    <!-- The home spotlight: its own palette tokens and episode strip. -->
+    <link rel="stylesheet" href="styles/spotlight.css" />
     <!-- The tab icon is the same file the splash and the chrome use, and it is
          already preloaded above, so it costs no request of its own. -->
     <link rel="icon" type="image/jpeg" href="assets/solvn-cat.jpg" />
@@ -76,7 +81,7 @@
           />
         </div>
         <span class="splash-word">Solvn</span>
-        <span class="splash-sub">anime, films &amp; series</span>
+        <span class="splash-sub">anime &amp; cartoons</span>
       </div>
     </div>
 
@@ -84,7 +89,6 @@
 
     <div class="app-shell">
       <header id="topbar" class="topbar"></header>
-      <nav id="sidenav" class="sidenav" aria-label="Primary"></nav>
       <main id="view" class="view" tabindex="-1"></main>
       <footer id="sitefoot" class="site-foot"></footer>
       <nav id="tabbar" class="tabbar" aria-label="Primary"></nav>

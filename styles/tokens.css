@@ -1,79 +1,85 @@
 :root {
-  /* ---- colour: "Graphite & Neutral" ----------------------------------
-     Deep black, charcoal, crisp white — and one accent, which is light itself.
-     The interface answers you in grey and white: hover, focus, the active nav
-     item, a link, a primary button. Nothing on this site reaches for a colour
-     to say "look at me"; a member's own banner is the one place colour is
-     allowed to come back, and it only ever tints that member's page. A chosen
-     accent in Settings is the exception a person opts into, never the default.
-     The ambient field is the same light at very low alpha, so the page feels
-     lit rather than coloured, and panels read as glass from their hairline and
-     blur, not from colour bleeding behind them. */
-  --bg: #050505;
+  /* ---- colour: "Charcoal & Glass" ---------------------------------------
+     Charcoal black, dark slate, and no hue at all. The page is a spectrum of
+     neutral greys and white light at low alpha, so the posters remain the only
+     colour on screen and the chrome reads as glass rather than as a tinted
+     pane. There is no coloured ambient field: the background is flat charcoal.
+     The accent is white too — a control that is lit is a control that is white
+     — and the second voice is a cool grey rather than a second colour. Every
+     preset in Settings is a shade of the same grey scale. */
+  --bg: #0b0c0e;
   /* Deeper than the page: the letterbox black behind the player and the
      startup veil, where nothing should be lit. */
-  --void: #000000;
+  --void: #07080a;
 
-  --surface: rgba(18, 19, 21, 0.72);
-  --surface-2: rgba(23, 24, 27, 0.78);
-  --surface-3: rgba(31, 33, 36, 0.82);
-  --surface-hover: rgba(39, 41, 45, 0.88);
+  --surface: rgba(26, 28, 32, 0.72);
+  --surface-2: rgba(30, 32, 37, 0.78);
+  --surface-3: rgba(36, 39, 44, 0.82);
+  --surface-hover: rgba(44, 47, 53, 0.9);
 
-  --glass: rgba(12, 13, 14, 0.6);
-  --glass-strong: rgba(6, 7, 8, 0.88);
+  --glass: rgba(20, 21, 24, 0.62);
+  --glass-strong: rgba(12, 13, 15, 0.92);
   --blur-sm: 10px;
   --blur-md: 16px;
   --blur-lg: 26px;
 
-  --line: rgba(255, 255, 255, 0.09);
-  --line-strong: rgba(255, 255, 255, 0.18);
-  --hairline: rgba(255, 255, 255, 0.09);
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.2);
+  --hairline: rgba(255, 255, 255, 0.08);
   --inner-hi: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   --inner-hi-strong: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  /* The lit edge, stripped of the halo it used to carry: a 1px hairline and
-     nothing else, so a resting card never glows. */
-  --ring-glow: 0 0 0 1px var(--line);
 
-  --text: #f5f6f7;
-  --text-dim: #a2a8b0;
-  /* On a flat #050505 page with no light field behind it, this is the
-     darkest grey that still clears 4.5:1 for secondary copy. */
-  --text-faint: #7d848c;
+  --text: #ffffff;
+  --text-dim: #9ca3af;
+  /* The darkest neutral that still clears 4.5:1 for secondary copy on the
+     charcoal page. */
+  --text-faint: #6b7280;
 
   /* --accent is the fill, --accent-bright the lit end of a hover, --accent-text
      the shade used for accent-coloured *text* on a dark surface. The fill is
      light, so it always carries near-black ink and clears contrast on the
      first try; on the page it reads as the same white the type already uses,
      which is the point — a control that is lit is a control that is white. */
-  --accent: #e9ebee;
-  --accent-bright: #edeff1;
-  --accent-deep: #b6b7ba;
-  --accent-text: #f0f2f4;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(233, 235, 238, 0.3);
-  --accent-wash: rgba(233, 235, 238, 0.13);
-  --accent-line: rgba(237, 239, 241, 0.36);
-  /* The two lights the page sits in: a wide, very soft field behind the content
-     and a tighter one under a control that is lit. Both are low alpha on
-     purpose — enough to feel like a mood, not enough to draw the eye away from
-     what you are reading. */
-  --ambient: rgba(233, 235, 238, 0.17);
-  --ambient-soft: rgba(233, 235, 238, 0.09);
-  /* Icons used to carry a coloured bloom. They don't any more, so every rule
-     that reaches for this becomes a no-op instead of a leftover glow. */
-  --accent-drop: none;
+  --accent: #ffffff;
+  --accent-bright: #ffffff;
+  --accent-deep: #d1d5db;
+  --accent-text: #e5e7eb;
+  --accent-ink: #0b0c0e;
+  --accent-glow: rgba(255, 255, 255, 0.22);
+  --accent-wash: rgba(255, 255, 255, 0.08);
+  --accent-line: rgba(255, 255, 255, 0.3);
 
-  /* Legacy light-field names, now the same light as everything else: any
-     gradient still written against them resolves to soft white. New rules
-     should use --ambient instead. */
-  --glow-cyan: #fafafb;
-  --glow-violet: #f5f6f7;
-  --glow-blue: #c6c8ca;
+  /* The second voice: cool slate grey, for the live edge and the quiet marks
+     that used to take a colour. A grey cannot compete with white, so a rating
+     chip still reads as secondary. */
+  --accent-2: #9ca3af;
+  --accent-2-bright: #d1d5db;
+  --accent-2-wash: rgba(255, 255, 255, 0.06);
+  --accent-2-line: rgba(255, 255, 255, 0.22);
+
+  /* Ready-made ramps, for the few places that should read as a gradient rather
+     than a fill: the brand word, a hero headline, the locked page's title. */
+  --grad-brand: linear-gradient(102deg, #ffffff 0%, #f3f4f6 46%, var(--accent-text) 100%);
+  --grad-title: linear-gradient(96deg, #ffffff 6%, #f3f4f6 40%, var(--accent-text) 70%, var(--accent-2-bright) 100%);
+
+  /* There is no coloured light field: the page is flat charcoal, and the only
+     ambience left is a trace of white so the top edge is not mathematically
+     flat. Both resolve near zero on purpose. */
+  --ambient: rgba(255, 255, 255, 0.035);
+  --ambient-soft: rgba(255, 255, 255, 0.02);
+
+  /* Legacy light-field names. Older gradients (arena, gacha, profile banners)
+     still reach for these, so they resolve to the same water the new theme
+     uses rather than to white or an old palette. New rules should use
+     --ambient. */
+  --glow-cyan: #ffffff;
+  --glow-violet: #e5e7eb;
+  --glow-blue: #9ca3af;
 
   --success: #5ad19a;
   --warn: #e0b341;
   --danger: #f08a8a;
-  --gold: #d9c089;
+  --gold: #e5e7eb;
 
   --scrim: rgba(0, 0, 0, 0.78);
 
@@ -96,7 +102,6 @@
 
   --tabbar-h: 68px;
   --topbar-h: 60px;
-  --sidenav-w: 244px;
   --gutter: 18px;
   --page-max: 1560px;
   --card-w: 148px;
@@ -118,7 +123,6 @@
   --sh-2: var(--inner-hi), 0 10px 26px -12px rgba(0, 0, 0, 0.85);
   --sh-3: var(--inner-hi), 0 26px 60px -22px rgba(0, 0, 0, 0.95);
   --sh-pop: var(--inner-hi-strong), 0 34px 90px -28px rgba(0, 0, 0, 1), 0 0 0 1px var(--line);
-  --sh-neon: 0 12px 36px -14px rgba(0, 0, 0, 0.85);
 
   /* ---- 3D ------------------------------------------------------------ */
   --persp: 900px;
@@ -138,178 +142,69 @@
   color-scheme: dark;
 }
 
-/* Accent themes, selectable in Settings. Each one only moves the accent:
-   surfaces, text and hairlines stay mono, so switching accent never turns the
-   site back into a coloured theme. Every block is generated from the same
-   derivation the custom picker uses (lib/color.js): a bright fill takes the
-   dark ink and a deep fill the light one, so a label always clears 4.5:1, and
-   --accent-text is walked lighter until it clears 4.5:1 against the page.
-   "Neutral" is the default and deliberately has no block here — :root already
-   is neutral. A colour chosen in the picker is not one of these ids; it is
-   painted as inline custom properties by lib/accent.js under data-accent=
-   'custom', so a preset switch and a custom choice never fight. */
-[data-accent='violet'] {
-  --accent: #8b6cff;
-  --accent-bright: #a78bff;
-  --accent-deep: #6d4ce0;
-  --accent-text: #bda6ff;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(139, 108, 255, 0.3);
-  --accent-wash: rgba(139, 108, 255, 0.13);
-  --accent-line: rgba(167, 139, 255, 0.36);
-  --ambient: rgba(139, 108, 255, 0.17);
-  --ambient-soft: rgba(139, 108, 255, 0.09);
-  --glow-cyan: #d8ccff;
-  --glow-violet: #b79dff;
-  --glow-blue: #8f79d6;
+/* Accent presets, selectable in Settings. The theme is locked to charcoal and
+   glass, so a preset only chooses a shade of white: surfaces, text and
+   hairlines stay charcoal in every one of them and no preset introduces a hue.
+   "Classic White" is the default and deliberately has no block here â€” :root is
+   it, so the two paths can never diverge. A colour picked by hand is painted as
+   inline custom properties by lib/accent.js under data-accent='custom'. */
+[data-accent='mono'] {
+  --accent: #ffffff;
+  --accent-bright: #ffffff;
+  --accent-deep: #d1d5db;
+  --accent-text: #e5e7eb;
+  --accent-ink: #0b0c0e;
+  --accent-glow: rgba(255, 255, 255, 0.22);
+  --accent-wash: rgba(255, 255, 255, 0.08);
+  --accent-line: rgba(255, 255, 255, 0.3);
+  --ambient: rgba(255, 255, 255, 0.035);
+  --ambient-soft: rgba(255, 255, 255, 0.02);
+  --glow-cyan: #ffffff;
+  --glow-violet: #e5e7eb;
+  --glow-blue: #9ca3af;
 }
-[data-accent='iris'] {
-  --accent: #6d7bff;
-  --accent-bright: #8a95ff;
-  --accent-deep: #5560c7;
-  --accent-text: #9fa8ff;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(109, 123, 255, 0.3);
-  --accent-wash: rgba(109, 123, 255, 0.13);
-  --accent-line: rgba(138, 149, 255, 0.36);
-  --ambient: rgba(109, 123, 255, 0.17);
-  --ambient-soft: rgba(109, 123, 255, 0.09);
-  --glow-cyan: #dbdeff;
-  --glow-violet: #bdc4ff;
-  --glow-blue: #5d69d9;
+[data-accent='slate'] {
+  --accent: #d1d5db;
+  --accent-bright: #e5e7eb;
+  --accent-deep: #b6bcc4;
+  --accent-text: #e5e7eb;
+  --accent-ink: #0b0c0e;
+  --accent-glow: rgba(209, 213, 219, 0.22);
+  --accent-wash: rgba(209, 213, 219, 0.08);
+  --accent-line: rgba(229, 231, 235, 0.3);
+  --ambient: rgba(255, 255, 255, 0.03);
+  --ambient-soft: rgba(255, 255, 255, 0.018);
+  --glow-cyan: #ffffff;
+  --glow-violet: #e5e7eb;
+  --glow-blue: #9ca3af;
 }
-[data-accent='orchid'] {
-  --accent: #c06bff;
-  --accent-bright: #cd89ff;
-  --accent-deep: #9653c7;
-  --accent-text: #d59dff;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(192, 107, 255, 0.3);
-  --accent-wash: rgba(192, 107, 255, 0.13);
-  --accent-line: rgba(205, 137, 255, 0.36);
-  --ambient: rgba(192, 107, 255, 0.17);
-  --ambient-soft: rgba(192, 107, 255, 0.09);
-  --glow-cyan: #efdaff;
-  --glow-violet: #e3bcff;
-  --glow-blue: #a35bd9;
+[data-accent='ash'] {
+  --accent: #9ca3af;
+  --accent-bright: #b8bec7;
+  --accent-deep: #7c828b;
+  --accent-text: #d1d5db;
+  --accent-ink: #0b0c0e;
+  --accent-glow: rgba(156, 163, 175, 0.24);
+  --accent-wash: rgba(156, 163, 175, 0.09);
+  --accent-line: rgba(184, 190, 199, 0.3);
+  --ambient: rgba(255, 255, 255, 0.025);
+  --ambient-soft: rgba(255, 255, 255, 0.015);
+  --glow-cyan: #f3f4f6;
+  --glow-violet: #d1d5db;
+  --glow-blue: #9ca3af;
 }
-[data-accent='lilac'] {
-  --accent: #d5c7ff;
-  --accent-bright: #ddd2ff;
-  --accent-deep: #a69bc7;
-  --accent-text: #e3daff;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(213, 199, 255, 0.3);
-  --accent-wash: rgba(213, 199, 255, 0.13);
-  --accent-line: rgba(221, 210, 255, 0.36);
-  --ambient: rgba(213, 199, 255, 0.17);
-  --ambient-soft: rgba(213, 199, 255, 0.09);
-  --glow-cyan: #f5f1ff;
-  --glow-violet: #ece6ff;
-  --glow-blue: #b5a9d9;
-}
-[data-accent='electric'] {
-  --accent: #3d8bff;
-  --accent-bright: #64a2ff;
-  --accent-deep: #306cc7;
-  --accent-text: #7fb2ff;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(61, 139, 255, 0.3);
-  --accent-wash: rgba(61, 139, 255, 0.13);
-  --accent-line: rgba(100, 162, 255, 0.36);
-  --ambient: rgba(61, 139, 255, 0.17);
-  --ambient-soft: rgba(61, 139, 255, 0.09);
-  --glow-cyan: #cfe2ff;
-  --glow-violet: #a8cbff;
-  --glow-blue: #3476d9;
-}
-[data-accent='crimson'] {
-  --accent: #ff3b5c;
-  --accent-bright: #ff627d;
-  --accent-deep: #c72e48;
-  --accent-text: #ff7e93;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(255, 59, 92, 0.3);
-  --accent-wash: rgba(255, 59, 92, 0.13);
-  --accent-line: rgba(255, 98, 125, 0.36);
-  --ambient: rgba(255, 59, 92, 0.17);
-  --ambient-soft: rgba(255, 59, 92, 0.09);
-  --glow-cyan: #ffced6;
-  --glow-violet: #ffa7b6;
-  --glow-blue: #d9324e;
-}
-[data-accent='cyber'] {
-  --accent: #a85cff;
-  --accent-bright: #b97dff;
-  --accent-deep: #8348c7;
-  --accent-text: #c693ff;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(168, 92, 255, 0.3);
-  --accent-wash: rgba(168, 92, 255, 0.13);
-  --accent-line: rgba(185, 125, 255, 0.36);
-  --ambient: rgba(168, 92, 255, 0.17);
-  --ambient-soft: rgba(168, 92, 255, 0.09);
-  --glow-cyan: #e9d6ff;
-  --glow-violet: #d8b6ff;
-  --glow-blue: #8f4ed9;
-}
-[data-accent='emerald'] {
-  --accent: #2ee6a6;
-  --accent-bright: #58ebb8;
-  --accent-deep: #24b381;
-  --accent-text: #75efc4;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(46, 230, 166, 0.3);
-  --accent-wash: rgba(46, 230, 166, 0.13);
-  --accent-line: rgba(88, 235, 184, 0.36);
-  --ambient: rgba(46, 230, 166, 0.17);
-  --ambient-soft: rgba(46, 230, 166, 0.09);
-  --glow-cyan: #cbf9e9;
-  --glow-violet: #a1f4d7;
-  --glow-blue: #27c48d;
-}
-[data-accent='gold'] {
-  --accent: #ffc247;
-  --accent-bright: #ffce6c;
-  --accent-deep: #c79737;
-  --accent-text: #ffd786;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(255, 194, 71, 0.3);
-  --accent-wash: rgba(255, 194, 71, 0.13);
-  --accent-line: rgba(255, 206, 108, 0.36);
-  --ambient: rgba(255, 194, 71, 0.17);
-  --ambient-soft: rgba(255, 194, 71, 0.09);
-  --glow-cyan: #fff0d1;
-  --glow-violet: #ffe4ac;
-  --glow-blue: #d9a53c;
-}
-[data-accent='pink'] {
-  --accent: #ff4fa3;
-  --accent-bright: #ff72b5;
-  --accent-deep: #c73e7f;
-  --accent-text: #ff8bc2;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(255, 79, 163, 0.3);
-  --accent-wash: rgba(255, 79, 163, 0.13);
-  --accent-line: rgba(255, 114, 181, 0.36);
-  --ambient: rgba(255, 79, 163, 0.17);
-  --ambient-soft: rgba(255, 79, 163, 0.09);
-  --glow-cyan: #ffd3e8;
-  --glow-violet: #ffb0d6;
-  --glow-blue: #d9438b;
-}
-[data-accent='cyan'] {
-  --accent: #22e0f5;
-  --accent-bright: #4ee6f7;
-  --accent-deep: #1bafbf;
-  --accent-text: #6debf8;
-  --accent-ink: #0a0713;
-  --accent-glow: rgba(34, 224, 245, 0.3);
-  --accent-wash: rgba(34, 224, 245, 0.13);
-  --accent-line: rgba(78, 230, 247, 0.36);
-  --ambient: rgba(34, 224, 245, 0.17);
-  --ambient-soft: rgba(34, 224, 245, 0.09);
-  --glow-cyan: #c8f7fd;
-  --glow-violet: #9cf1fb;
-  --glow-blue: #1dbed0;
+[data-accent='graphite'] {
+  --accent: #6b7280;
+  --accent-bright: #9ca3af;
+  --accent-deep: #4b5158;
+  --accent-text: #d1d5db;
+  --accent-ink: #ffffff;
+  --accent-glow: rgba(107, 114, 128, 0.28);
+  --accent-wash: rgba(107, 114, 128, 0.12);
+  --accent-line: rgba(156, 163, 175, 0.32);
+  --ambient: rgba(255, 255, 255, 0.02);
+  --ambient-soft: rgba(255, 255, 255, 0.012);
+  --glow-cyan: #e5e7eb;
+  --glow-violet: #c7cbd1;
+  --glow-blue: #6b7280;
 }

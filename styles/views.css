@@ -40,7 +40,7 @@
   position: relative;
   border-radius: var(--r-xl);
   overflow: hidden;
-  min-height: clamp(360px, 44vh, 448px);
+  min-height: clamp(430px, 54vh, 600px);
   background: var(--surface);
   border: 1px solid var(--line-strong);
   box-shadow: var(--sh-3);
@@ -1654,16 +1654,10 @@ a.stat.is-on .l {
 }
 
 /* Toast already styled; misc */
-.only-mobile {
-  display: initial;
-}
 .only-desktop {
   display: none;
 }
 @media (min-width: 1000px) {
-  .only-mobile {
-    display: none !important;
-  }
   .only-desktop {
     display: inline;
   }
@@ -1771,21 +1765,8 @@ a.stat.is-on .l {
 }
 
 /* ---- classic & toons hub ------------------------------------------------ */
-/* Rows and cards are the shared components; only the closing note needs a
-   home of its own, and it inherits the panel glass used on the detail page. */
 .page-toons {
   padding-bottom: var(--sp-7);
-}
-.toons-note {
-  margin-top: var(--sp-5);
-}
-.toons-note .panel-body p {
-  margin: 0;
-  line-height: 1.65;
-}
-.toons-note .link-all {
-  display: inline-flex;
-  margin-top: var(--sp-3);
 }
 
 /* ---- top 100 ------------------------------------------------------------ */
@@ -2132,4 +2113,94 @@ button.cal-cell:focus-visible { outline: 2px solid var(--accent); outline-offset
 .an-day span { font-size: 10px; color: var(--text-faint); }
 @media (max-width: 560px) {
   .st-grid { grid-template-columns: 1fr; }
+}
+
+/* ---- catalogue ----------------------------------------------------------
+   The browsing grid is deliberately plain: a 2:3 poster, the title, the year.
+   One frame for every card means a wall of art that lines up at every width,
+   and no score, format or badge competing with the poster. */
+.catalogue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: clamp(14px, 1.8vw, 24px);
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .catalogue-grid {
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  }
+}
+.catalogue-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 16px;
+}
+.catalogue-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.catalogue-art {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+.catalogue-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 460ms var(--ease), filter 460ms var(--ease);
+}
+.catalogue-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+.catalogue-card:hover .catalogue-art img {
+  transform: scale(1.045);
+  filter: brightness(1.06);
+}
+.catalogue-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+  transition: color var(--t-fast);
+}
+.catalogue-card:hover .catalogue-title {
+  color: #fff;
+}
+.catalogue-year {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 640px) {
+  .catalogue-grid {
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    gap: 12px;
+  }
+  .catalogue-title {
+    font-size: 12.5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalogue-art img,
+  .catalogue-title {
+    transition: none;
+  }
 }

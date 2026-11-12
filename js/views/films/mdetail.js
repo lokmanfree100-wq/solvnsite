@@ -7,15 +7,15 @@
  * (append_to_response), so the page costs exactly one request.
  */
 
-import { h, icon } from '../lib/dom.js';
-import { t } from '../lib/i18n.js';
-import { toast } from '../lib/ui.js';
-import { errorState, stillImage } from '../components/media.js';
+import { h, icon } from '../../lib/dom.js';
+import { t } from '../../lib/i18n.js';
+import { toast } from '../../lib/ui.js';
+import { errorState, stillImage } from '../../components/media.js';
 import { mCard, mRail, openTrailer } from './movies.js';
 import {
   api, poster, backdrop, img, nameOf, yearOf, rating, runtimeText, seasonsLabel, fmtDate,
   firstTrailer, toggleMovieWatchlist, inMovieWatchlist,
-} from '../lib/tmdb.js';
+} from '../../lib/tmdb.js';
 
 const watchHref = (type, id, s = 1, e = 1) =>
   type === 'tv' ? `#/mwatch/${id}?type=tv&s=${s}&e=${e}` : `#/mwatch/${id}?type=movie`;

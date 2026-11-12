@@ -4,8 +4,8 @@ import { h, icon, qs } from '../lib/dom.js';
 import { browse, genres, DEFAULT_GENRES } from '../lib/anilist.js';
 import { go, parse } from '../lib/router.js';
 import { settings } from '../lib/store.js';
-import { SORTS, recentSeasons, seasonName, formatLabel, statusLabel, totalLabel, watched } from '../lib/util.js';
-import { mediaCard, loadingGrid, emptyState, errorState } from '../components/media.js';
+import { SORTS, recentSeasons, seasonName, formatLabel, statusLabel, totalLabel, watched, title, yearOf } from '../lib/util.js';
+import { posterImage, loadingGrid, emptyState, errorState } from '../components/media.js';
 import { categoryTabs } from '../components/cats.js';
 import { sheet, toast } from '../lib/ui.js';
 import { t, genre } from '../lib/i18n.js';
@@ -14,17 +14,19 @@ const FORMATS = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA'];
 const STATUSES = ['RELEASING', 'FINISHED', 'NOT_YET_RELEASED'];
 const PER_PAGE = 24;
 
-/* Asymmetric grid, driven purely by position: the same index always gets the
-   same shape, so nothing moves while you scroll and "Load more" only ever adds
-   rows at the bottom. Nine slots hold the pattern — one wide card, one tall —
-   which is sparse enough that the page still scans as a grid. */
-const STAGGER_CYCLE = 9;
-const staggerClass = (i) => {
-  const p = i % STAGGER_CYCLE;
-  if (p === 0) return 'is-wide';
-  if (p === 4) return 'is-tall';
-  return null;
-};
+/* One card, one frame: a 2:3 poster, the title, the year. No score, no format,
+   no badge — a catalogue is scanned by name and art, and everything else is on
+   the title's own page. */
+function catalogueCard(m, eager) {
+  const y = yearOf(m);
+  return h(
+    'a.catalogue-card',
+    { href: `#/anime/${m.id}`, 'aria-label': title(m) },
+    h('div.catalogue-art', {}, posterImage(m, { eager })),
+    h('div.catalogue-title', {}, title(m)),
+    y ? h('span.catalogue-year', {}, String(y)) : null,
+  );
+}
 
 const read = () => {
   const q = parse().query;
@@ -35,6 +37,7 @@ const read = () => {
     format: q.format || '',
     status: q.status || '',
     minScore: Number(q.minScore) || 0,
+    year: q.year || '',
     search: q.search || '',
   };
 };
@@ -46,11 +49,11 @@ const write = (state) => {
   go(`/discover${s ? `?${s}` : ''}`, { replace: true, keepScroll: true });
 };
 
-export async function DiscoverView() {
+export async function DiscoverView(ctx) {
   const state = read();
   const wrap = h('div.page-discover');
 
-  const grid = h('div.grid.grid--staggered');
+  const grid = h('div.catalogue-grid');
   const count = h('span.result-count');
   const moreBtn = h('button.btn.btn--primary', {}, t('Load more'));
   const filterBar = h('div.filter-bar');
@@ -83,6 +86,8 @@ export async function DiscoverView() {
   };
 
   const seasons = recentSeasons(10);
+  const thisYear = new Date().getFullYear();
+  const years = Array.from({ length: 60 }, (_, i) => thisYear + 1 - i);
   const scoreChip = (n) => t('Score {n}+', { n });
 
   function buildFilterBar() {
@@ -99,6 +104,12 @@ export async function DiscoverView() {
         value: state.season,
         options: [['', t('Any season')], ...seasons.map((s) => [`${s.season}_${s.year}`, s.label])],
         onPick: (v) => apply({ season: v }),
+      }),
+      select({
+        label: 'Year',
+        value: state.year,
+        options: [['', t('Any year')], ...years.map((y) => [String(y), String(y)])],
+        onPick: (v) => apply({ year: v }),
       }),
       select({
         label: 'Format',
@@ -137,6 +148,7 @@ export async function DiscoverView() {
       genre: state.genre ? genre(state.genre) : '',
       format: state.format ? formatLabel(state.format) : '',
       status: statusLabel(state.status),
+      year: state.year || '',
       minScore: state.minScore ? scoreChip(state.minScore) : '',
       search: state.search ? `“${state.search}”` : '',
     };
@@ -161,7 +173,7 @@ export async function DiscoverView() {
 
   /* ---------- data ---------- */
   function varsFor(p) {
-    const [season, year] = state.season ? state.season.split('_') : [];
+    const [season, seasonYear] = state.season ? state.season.split('_') : [];
     return {
       page: p,
       perPage: PER_PAGE,
@@ -171,7 +183,7 @@ export async function DiscoverView() {
       format: state.format || null,
       status: state.status || null,
       season: season || null,
-      seasonYear: year ? Number(year) : null,
+      seasonYear: state.year ? Number(state.year) : seasonYear ? Number(seasonYear) : null,
       minimumScore: state.minScore || null,
     };
   }
@@ -193,7 +205,12 @@ export async function DiscoverView() {
       if (mine !== requestId) return;
       const allow = settings.get('showNsfw');
       const clean = allow ? got : got.filter((m) => !m.isAdult);
-      items = reset ? clean : items.concat(clean);
+      /* AniList's page boundaries move while its sort is being computed, so the
+         next page can hand back a title the last one already showed. The id is
+         the one thing that is stable, so it is what decides a duplicate. */
+      const seen = new Set(reset ? [] : items.map((m) => m.id));
+      const fresh = clean.filter((m) => !seen.has(m.id));
+      items = reset ? fresh : items.concat(fresh);
       hasNext = Boolean(info.hasNextPage);
       total = info.total || total;
       render();
@@ -220,23 +237,29 @@ export async function DiscoverView() {
           action: h('button.btn.btn--primary', { onclick: resetAll }, icon('refresh'), t('Clear filters')),
         }),
       );
-      grid.classList.remove('grid');
       moreBtn.classList.add('hide');
       count.textContent = '';
       return;
     }
-    grid.classList.add('grid');
-    items.forEach((m, i) => {
-      const card = mediaCard(m, { eager: i < 8 });
-      /* The arrangement class goes on the card the page already has, so the
-         card markup itself is untouched and keeps its art, score and title. */
-      const shape = staggerClass(i);
-      if (shape) card.classList.add(shape);
-      grid.append(card);
-    });
+    items.forEach((m, i) => grid.append(catalogueCard(m, i < 8)));
     count.textContent = totalLabel(total, items.length);
     moreBtn.classList.toggle('hide', !hasNext);
     moreBtn.replaceChildren(icon('chevronDown'), t('Load more'));
+    /* The sentinel is usually already in view on the first page — a short grid
+       plus a 600px margin means it never "enters" again, so nothing would load
+       until the viewer scrolled away and back. Ask once after each render. */
+    requestAnimationFrame(fillViewport);
+  }
+
+  function loadMore() {
+    if (!hasNext || busy) return;
+    page += 1;
+    fetchPage(false);
+  }
+
+  function fillViewport() {
+    if (!hasNext || busy || !items.length) return;
+    if (sentinel.getBoundingClientRect().top < innerHeight + 600) loadMore();
   }
 
   function apply(patch) {
@@ -249,7 +272,7 @@ export async function DiscoverView() {
   }
 
   function resetAll() {
-    Object.assign(state, { sort: 'TRENDING_DESC', season: '', genre: '', format: '', status: '', minScore: 0, search: '' });
+    Object.assign(state, { sort: 'TRENDING_DESC', season: '', genre: '', format: '', status: '', minScore: 0, year: '', search: '' });
     page = 1;
     items = [];
     write(state);
@@ -258,20 +281,26 @@ export async function DiscoverView() {
     fetchPage(true);
   }
 
-  moreBtn.addEventListener('click', () => {
-    if (!hasNext || busy) return;
-    page += 1;
-    fetchPage(false);
-  });
+  moreBtn.addEventListener('click', loadMore);
 
   // Infinite scroll once the manual button is in view.
   const sentinel = h('div', { style: { height: '1px' } });
-  new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && hasNext && !busy && items.length) {
-      page += 1;
-      fetchPage(false);
-    }
-  }, { rootMargin: '600px' }).observe(sentinel);
+  const io = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) loadMore();
+  }, { rootMargin: '600px' });
+  io.observe(sentinel);
+  /* A second, plain-scroll trigger for the same distance: some engines do not
+     deliver an intersection change for a one-pixel element, and a catalogue
+     that stops loading is worse than one extra listener. */
+  const onScroll = () => {
+    if (!hasNext || busy || !items.length) return;
+    if (sentinel.getBoundingClientRect().top < innerHeight + 600) loadMore();
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  ctx?.onCleanup?.(() => {
+    io.disconnect();
+    window.removeEventListener('scroll', onScroll);
+  });
 
   renderPills();
   fetchPage(true);

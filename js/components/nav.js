@@ -1,15 +1,15 @@
-/** Top bar, desktop side nav and mobile tab bar. */
+/** Top bar and mobile dock. */
 
 import { h, icon, qs } from '../lib/dom.js';
 import { go, parse } from '../lib/router.js';
-import { totalListCount, settings, onSettings } from '../lib/store.js';
+import { settings, onSettings } from '../lib/store.js';
 import { randomAnime } from '../lib/anilist.js';
 import { sheet, toast } from '../lib/ui.js';
 import { sfx } from '../lib/sounds.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
 import { logoMark } from '../lib/brand.js';
 import { accountChip } from './account.js';
-import { inboxState, inboxUsable, subscribeInbox } from '../lib/dms.js';
+import { inboxUsable } from '../lib/dms.js';
 import { tradeUsable } from '../lib/trades.js';
 import { partyUsable } from '../lib/rooms.js';
 import { isStaff } from '../lib/account.js';
@@ -19,16 +19,28 @@ import { noticeBell, disposeBell } from './notices.js';
 /* God mode has no entry point in the interface: /admin is reached by URL, by
    the one account the server recognises, and its gate is server-side. */
 
-/* Five places a phone viewer returns to, then More. Toons is not one of them:
-   every category — أفلام, مسلسلات, أنمي, كرتونز, أفلام الأطفال — already sits in
-   the strip pinned under the top bar on the pages that have shelves, so the dock
-   keeps its fifth slot for the films, series and lists this member actually goes
-   back to. */
+/* Five places a phone viewer returns to, then More. Anime and Cartoons are the
+   catalogue now, so the dock carries Cartoons where Movies used to sit: a locked
+   tab would spend a thumb-sized slot on a page that cannot open. The category
+   strip still names Movies and Series, marked "Soon" (lib/locks.js). */
 export const NAV = [
   { id: 'home', label: 'Home', path: '/', icon: 'home' },
-  { id: 'movies', label: 'Movies', path: '/movies', icon: 'film' },
+  { id: 'toons', label: 'Cartoons', path: '/toons', icon: 'cat' },
   { id: 'discover', label: 'Discover', path: '/discover', icon: 'compass' },
   { id: 'library', label: 'Library', path: '/library', icon: 'library' },
+  { id: 'profile', label: 'Profile', path: '/profile', icon: 'user' },
+];
+
+/* The desktop top bar. Same destinations as the dock, in the order a viewer
+   scans them, plus the parked film catalogue: its address is live and raises
+   the one-time note, so it is a real link with a lock on it rather than a
+   disabled chip. Everything that does not fit lives behind the three dots. */
+export const TOP_LINKS = [
+  { id: 'home', label: 'Home', path: '/', icon: 'home' },
+  { id: 'discover', label: 'Discover', path: '/discover', icon: 'compass' },
+  { id: 'toons', label: 'Cartoons', path: '/toons', icon: 'cat' },
+  { id: 'library', label: 'Library', path: '/library', icon: 'library' },
+  { id: 'movies', label: 'Movies', path: '/movies', icon: 'film', locked: true },
   { id: 'profile', label: 'Profile', path: '/profile', icon: 'user' },
 ];
 
@@ -37,16 +49,18 @@ function tabFor(path) {
   if (path === '/') return 'home';
   if (path.startsWith('/search') || path.startsWith('/top')) return 'discover';
   if (path.startsWith('/anime') || path.startsWith('/watch')) return null;
-  if (path.startsWith('/movies') || path.startsWith('/movie') || path.startsWith('/mwatch')) return 'movies';
+  /* The parked catalogues have no dock tab: their pages are a status page, not a
+     place to come back to. */
+  if (path.startsWith('/movies') || path.startsWith('/movie') || path.startsWith('/mwatch')) return null;
   const seg = path.split('/')[1];
   if (seg === 'settings' || seg === 'updates' || seg === 'packs' || seg === 'messages' || seg === 'mailbox' || seg === 'trades' || seg === 'arena') return 'profile';
   return NAV.some((n) => n.id === seg) ? seg : null;
 }
 
-function brand(compact) {
+function brand() {
   return h(
     'a.brand',
-    { href: '#/', 'aria-label': t('Solvn home'), style: compact ? { padding: '2px 12px 20px' } : null },
+    { href: '#/', 'aria-label': t('Solvn home') },
     h('span.brand-mark', {}, logoMark()),
     h('span.brand-word', {}, 'Solvn'),
   );
@@ -115,44 +129,6 @@ function languagePicker() {
   });
   return btn;
 }
-
-function sideLink({ label, path, iconName, count, badge: withBadge, active }) {
-  return h(
-    `a.side-link${active ? '.is-active' : ''}`,
-    { href: `#${path}`, 'aria-current': active ? 'page' : null },
-    icon(iconName),
-    h('span.grow', {}, label),
-    /* A badge link always carries its node, hidden when there is nothing to
-       count — the rail paints that one text node instead of rebuilding. */
-    withBadge ? h('span.count.tnum', { hidden: true }, '') : count ? h('span.count.tnum', {}, String(count)) : null,
-  );
-}
-
-/* ---- the unread count in the rail --------------------------------------
-   A line that lands while you are on Home should show up on the link before you
-   go looking for it, so the rail keeps one node pointed at the inbox number and
-   the store paints that node instead of rebuilding the whole navigation — a
-   rebuild would throw away the header search box mid-type for something that is
-   one text node away.
-
-   The number moved onto Profile with the inbox it counts: private lines are read
-   from the More sheet and gifts are opened under Profile ▸ Mail, so the one
-   place that can honestly say "there is something waiting for you" is the link
-   to the page that holds both. */
-let badge = null;
-
-function paintBadge() {
-  if (!badge?.isConnected) return;
-  const n = inboxState().unread;
-  badge.textContent = n > 99 ? '99+' : String(n);
-  badge.hidden = !n;
-  badge.title = n ? t('{n} unread in your inbox', { n }) : '';
-}
-
-/* The rail wears whatever number the inbox holds, so it repaints on every emit:
-   a delivery, a read tick and a line taken back all move that figure, and one
-   text node is cheaper than deciding after the fact which of them mattered. */
-subscribeInbox(() => paintBadge());
 
 /** One roll at a time — renderNav rebuilds the bar, so the flag lives here. */
 let rolling = false;
@@ -225,8 +201,6 @@ function moreSheet() {
           row(api, { href: '/updates', iconName: 'calendarStar', label: t('Airing schedule'), on: onPath('/updates') }),
           row(api, { href: '/toons', iconName: 'tv', label: t('Classic & Toons'), on: onPath('/toons') }),
           row(api, { href: '/discover', iconName: 'compass', label: t('Discover'), on: onPath('/discover') }),
-          row(api, { href: '/movies', iconName: 'film', label: t('Movies'), on: path.startsWith('/movies') && query.type !== 'tv' }),
-          row(api, { href: '/movies?type=tv', iconName: 'tv', label: t('Series'), on: path.startsWith('/movies') && query.type === 'tv' }),
         ]),
         group(t('Library'), [
           row(api, { href: '/library', iconName: 'library', label: t('Everything'), on: onPath('/library') && !query.tab }),
@@ -259,6 +233,106 @@ function moreSheet() {
       );
     },
   });
+}
+
+/* ---- the three-dot menu -----------------------------------------------
+   The bar carries six destinations and a search box; everything else — the
+   schedule, the binder, rooms, messages, settings, the admin door — waits
+   behind this one control. It is a dropdown, not a sheet: on a desktop the
+   pointer is on the bar already, so the menu opens under the button it came
+   from and closes on the next click outside or Escape. */
+function moreButton() {
+  const wrap = h('div.nav-more');
+  let menu = null;
+
+  const shut = () => {
+    if (!menu) return;
+    menu.remove();
+    menu = null;
+    btn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
+    document.removeEventListener('keydown', onKey);
+  };
+  const outside = (e) => {
+    if (!wrap.contains(e.target)) shut();
+  };
+  const onKey = (e) => {
+    if (e.key !== 'Escape') return;
+    shut();
+    btn.focus();
+  };
+
+  const row = (href, iconName, label, on) =>
+    h(
+      `a.more-row${on ? '.is-active' : ''}`,
+      { href: `#${href}`, 'aria-current': on ? 'page' : null, onclick: () => shut() },
+      icon(iconName),
+      h('span.grow', {}, label),
+      icon('chevronRight', { cls: 'more-caret' }),
+    );
+  const group = (title, rows) =>
+    h('div.more-group', {}, h('p.more-title', {}, title), h('div.more-rows', {}, ...rows));
+
+  const build = () => {
+    const { path } = parse();
+    const on = (p) => path === p;
+    const staff = isStaff();
+    const community = [
+      partyUsable() ? row('/rooms', 'users', t('Rooms'), on('/rooms')) : null,
+      inboxUsable() ? row('/messages', 'chat', t('Messages & friends'), on('/messages')) : null,
+      tradeUsable() ? row('/trades', 'swap', t('Trades'), on('/trades')) : null,
+    ].filter(Boolean);
+
+    return h(
+      'div.nav-more-menu',
+      { role: 'menu', 'aria-label': t('More') },
+      h(
+        'div.more-menu',
+        {},
+        /* The bar already carries Home, Discover, Cartoons, Library, Movies and
+           Profile, so the menu holds only what it cannot: schedule, binder,
+           community and the account doors that are settings-shaped. */
+        group(t('Browse'), [
+          row('/updates', 'calendarStar', t('Airing schedule'), on('/updates')),
+          row('/packs', 'sparkles', t('Card binder'), on('/packs')),
+        ]),
+        community.length ? group(t('Community'), community) : null,
+        group(
+          t('Account'),
+          [
+            row('/settings', 'settings', t('Settings'), on('/settings')),
+            staff ? row('/admin', 'lock', t('Admin'), on('/admin')) : null,
+          ].filter(Boolean),
+        ),
+      ),
+      h('div.nav-tools', {}, randomButton(), soundToggle()),
+    );
+  };
+
+  const btn = h(
+    'button.icon-btn.nav-more-btn',
+    {
+      type: 'button',
+      'aria-haspopup': 'menu',
+      'aria-expanded': 'false',
+      'aria-label': t('More'),
+      title: t('More'),
+    },
+    icon('more', { weight: 2.6 }),
+  );
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (menu) return shut();
+    menu = build();
+    wrap.append(menu);
+    btn.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outside, true);
+    document.addEventListener('keydown', onKey);
+  });
+
+  wrap.append(btn);
+  return wrap;
 }
 
 /* ---- the sound handle -------------------------------------------------
@@ -302,10 +376,6 @@ function soundToggle() {
 export function renderNav() {
   const { path, query } = parse();
   const tab = tabFor(path);
-  const onLibrary = path === '/library';
-  /* The admin page is linked only while a staff session is open. The gate
-     itself is the server's; this just keeps a dead door off everybody's rail. */
-  const staff = isStaff();
 
   /* A route change throws the top bar away, so drop the menu handle with it. */
   closeLangMenu = null;
@@ -354,58 +424,39 @@ export function renderNav() {
     }
   });
 
+  /* One bar, three zones: brand and the destinations on the left, the search
+     box in the middle, and the handful of account tools on the right with
+     everything else folded into the three dots. The side rail and the dock are
+     hidden from 1000px up, so this row is the only navigation on a desktop. */
+  const topnav = h(
+    'nav.topnav',
+    { 'aria-label': t('Primary') },
+    ...TOP_LINKS.map((l) => {
+      const on = tab === l.id || path === l.path;
+      return h(
+        `a.topnav-link${on ? '.is-on' : ''}${l.locked ? '.is-locked' : ''}`,
+        { href: `#${l.path}`, 'aria-current': on ? 'page' : null, 'aria-label': t(l.label) },
+        icon(l.icon),
+        h('span', {}, t(l.label)),
+        l.locked ? icon('lock', { cls: 'topnav-lock' }) : null,
+      );
+    }),
+  );
+
   topbar.replaceChildren(
-    brand(false),
+    brand(),
+    topnav,
     h('span.topbar-spacer'),
     field,
-    randomButton(),
-    soundToggle(),
     noticeBell(),
     h('div.lang-pick', {}, languagePicker()),
     accountChip(),
+    moreButton(),
   );
 
-  /* ---------------- side nav ---------------- */
-  /* Built before the rail so the badge can be pointed at its node: the inbox
-     number is painted after the mount, not guessed while the link is written. */
-  const profileLink = sideLink({ label: t('Profile'), path: '/profile', iconName: 'user', badge: true, active: path.startsWith('/profile') });
-  badge = profileLink.querySelector('.count');
-  /* The TMDB half of the site: one rail entry per catalogue. A title's own pages
-     (detail/watch) keep the entry lit by the type in the URL. */
-  const onMovies = (p) => path.startsWith('/movies') || p.startsWith('/movie') || p.startsWith('/mwatch');
-  qs('#sidenav').replaceChildren(
-    brand(true),
-    sideLink({ label: t('Home'), path: '/', iconName: 'home', active: tab === 'home' }),
-    sideLink({ label: t('Discover'), path: '/discover', iconName: 'compass', active: tab === 'discover' }),
-    sideLink({ label: t('Classic & Toons'), path: '/toons', iconName: 'tv', active: path === '/toons' }),
-    h('div.side-sep'),
-    sideLink({ label: t('Movies'), path: '/movies', iconName: 'film', active: onMovies(path) && query.type !== 'tv' }),
-    sideLink({ label: t('Series'), path: '/movies?type=tv', iconName: 'tv', active: onMovies(path) && query.type === 'tv' }),
-    h('div.side-sep'),
-    /* One Library entry, not one per list: the tabs inside the page already say
-       watching, completed and plan to watch, and a rail that repeats them turns
-       four links into the same destination. */
-    sideLink({ label: t('Library'), path: '/library', iconName: 'library', count: totalListCount(), active: onLibrary }),
-    h('div.side-sep'),
-    sideLink({ label: t('Airing schedule'), path: '/updates', iconName: 'calendarStar', active: path === '/updates' }),
-    sideLink({ label: t('Card binder'), path: '/packs', iconName: 'sparkles', active: path.startsWith('/packs') }),
-    /* Rooms holds the seat a friend invited you to. It takes the rail place that
-       Messages used to keep: private chats stay one tap away in the More sheet,
-       and a room is the thing a member actually walks back to mid-episode. */
-    ...(partyUsable() ? [sideLink({ label: t('Rooms'), path: '/rooms', iconName: 'users', active: path === '/rooms' })] : []),
-    /* The gift inbox lives inside Profile now, so it has no rail entry of its
-       own: one place to look for anything addressed to this member. */
-    /* A deal is written on the server that runs this site, for the same reason a
-       message is — so the link appears and disappears with the same capability. */
-    ...(tradeUsable() ? [sideLink({ label: t('Trades'), path: '/trades', iconName: 'swap', active: path === '/trades' })] : []),
-    /* The rail's unread number rides on Profile now, because that is where the
-       inbox it counts lives — private lines and gifted cards alike. */
-    profileLink,
-    sideLink({ label: t('Settings'), path: '/settings', iconName: 'settings', active: path === '/settings' }),
-    ...(staff ? [sideLink({ label: t('Admin'), path: '/admin', iconName: 'lock', active: path === '/admin' })] : []),
-    h('div.side-foot', {}, t('Solvn — anime, films & series in HD')),
-  );
-  paintBadge();
+  /* The desktop rail is gone: from 1000px up this bar is the navigation, and
+     the dock below is the phone's. Nothing renders into `#sidenav` any more,
+     so there is no hidden tree of links and no unread-count node to maintain. */
 
   /* ---------------- tab bar ---------------- */
   qs('#tabbar').replaceChildren(

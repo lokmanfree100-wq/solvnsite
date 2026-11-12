@@ -21,7 +21,9 @@
    smoothing is already the right answer. */
 
 .card-art img {
-  filter: saturate(1.08) contrast(1.05) brightness(1.03);
+  /* Saturated, not lurid: posters are the whole product here, so they carry a
+     little more colour than the surface around them without turning neon. */
+  filter: saturate(1.18) contrast(1.06) brightness(1.03);
 }
 
 /* The hero stage and the three slots that render art at two densities or

@@ -6,7 +6,7 @@ import { accentId, accentValue, paintAccent, previewAccent } from '../lib/accent
 import { parseHex, toHex } from '../lib/color.js';
 import { clearCache, apiStatus, checkNow } from '../lib/anilist.js';
 import { isSignedIn, tellDiscord, staticHost } from '../lib/account.js';
-import { FAILOVER_CHOICES, MEDIA_HINT, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, isSiteServer, removeServer, serverKind, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
+import { FAILOVER_CHOICES, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, isSiteServer, removeServer, serverKind, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
 import { toast, confirmSheet } from '../lib/ui.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
 import { cloudConfig, cloudActive, clearCloudConfig, testCloudConnection } from '../lib/cloud.js';
@@ -280,7 +280,6 @@ export async function SettingsView() {
         }),
         h('div.cloud-fields', {}, h('label.cloud-field', {}, t('Webhook address'), urlIn)),
         h('div.rowline.wrap', { style: { gap: '8px', padding: '12px 0 0' } }, save, test, clear),
-        h('p.faint.cloud-note', {}, t('Anyone holding this address can post in that channel, so it is kept in this browser and sent only to this Solvn server.')),
       ],
     );
   }
@@ -516,7 +515,6 @@ export async function SettingsView() {
           h('div.txt', {}, h('b', {}, t('Central cloud')), h('span', {}, status)),
         ),
         syncRow,
-        h('p.faint.cloud-note', {}, t('Accounts, binders and packs live in the one Solvn database — the owner sees every member live. This device keeps its own copy too, so cards still open between sign-ins.')),
       );
       return;
     }
@@ -602,7 +600,6 @@ export async function SettingsView() {
           : null,
       ),
       ...(live ? [syncRow] : []),
-      h('p.faint.cloud-note', {}, t('Run the SQL in docs/supabase.sql in the project first, then test. Your local hours upload on the first sign-in.')),
     );
   }
   paintCloud();
@@ -774,19 +771,10 @@ export async function SettingsView() {
         h('label.cloud-field', {}, t('Player address'), urlIn),
       ),
       h(
-        'p.faint.cloud-note',
-        {},
-        t('Two addresses work: a player page — {embed} — or the file itself, an `.m3u8` or `.mp4`, which Solvn plays in its own player — {file}.', {
-          embed: TEMPLATE_HINT,
-          file: MEDIA_HINT,
-        }),
-      ),
-      h(
         'div.cloud-fields',
         {},
         h('label.cloud-field', {}, t('Audio languages this server carries'), trackPicker),
       ),
-      h('p.faint.cloud-note', {}, t('Those languages are what the player switcher, the badges on the cards and the failover ladder will offer. Solvn cannot read from the catalogue which titles were re-voiced — it asks its servers instead, and never promises a track they have not declared.')),
       h('div.rowline.wrap', { style: { gap: '8px', padding: '12px 0 0' } }, add),
       h(
         'div.rowline.wrap',
@@ -794,7 +782,6 @@ export async function SettingsView() {
         h('span.faint', {}, t('Switch servers after')),
         failoverSeg,
       ),
-      h('p.faint.cloud-note', {}, t('How long the player waits for a server to show its page before moving to the next one. Three seconds gives up fastest, which suits a quick connection; fifteen is for a slow line where a player page simply takes its time to arrive.')),
       h('p.faint.cloud-note', {}, t('Put {anilist}, {episode}, {audio}, {next} or {accent} in the address where the player expects them. Only https works, and the page stays inside Solvn: a server can never move you somewhere else.')),
     );
   }

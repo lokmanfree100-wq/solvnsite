@@ -214,7 +214,9 @@ export function WatchView({ params, route, onCleanup }) {
      is inside it: it cannot be covered, removed or hidden by a source, it scales
      with the player instead of the screen, and it rides into full screen because
      the shell it lives in is what goes there. */
-  const frameBox = h('div.player-frame', {}, boot, h('div.player-brand', { 'aria-hidden': 'true' }, 'solvn.site'));
+  /* One mark only: `.player-mark` in the shell, which is also what fullscreen
+     promotes. A second chip inside the frame used to sit underneath it. */
+  const frameBox = h('div.player-frame', {}, boot);
 
   /* Set once the page is assembled: the note about a foreign player mounts just
      above the picture, and nothing may reach it before the page exists. */
@@ -557,7 +559,16 @@ export function WatchView({ params, route, onCleanup }) {
     paintBar();
   }
 
-  const playerShell = h('div.player-shell', {}, frameBox, h('div.player-bar'));
+  /* Site mark on the picture: a small glass tag in the corner, over the frame
+     but clear of every control, and inert to the pointer so it can never swallow
+     a tap meant for the player. */
+  const playerShell = h(
+    'div.player-shell',
+    {},
+    frameBox,
+    h('span.player-mark', { 'aria-hidden': 'true' }, 'solvn.site'),
+    h('div.player-bar'),
+  );
 
   /* ---------------- controls ---------------- */
   /* Three buttons from the first frame — SUB, EN DUB, AR DUB — plus any other

@@ -7,7 +7,7 @@
  * the read, and on a phone the paragraph was the difference between a banner and
  * a wall.
  *
- * It advances on its own every 5s with a crossfade, and it also answers to the
+ * It advances on its own every 6s with a crossfade, and it also answers to the
  * 44px arrows and the dots. The timer is polite: it holds while a viewer is
  * pointing at the banner, holding a finger on it or tabbing through it, it holds
  * while the tab is hidden, and it never runs at all under
@@ -25,11 +25,24 @@ import { nameOf, typeOf, yearOf as filmYear, rating, poster as filmPoster, backd
 import { sfx } from '../lib/sounds.js';
 
 const MAX_SLIDES = 12;
-const ROTATE_MS = 5000;
+const ROTATE_MS = 6000;
 /* A touch longer than --t-slow (420ms) so an outgoing slide is only dropped
    once its fade-out has definitely finished — or, if `transitionend` never
    arrives, once this fallback timer does. */
 const FADE_OUT_MS = 900;
+
+/* One tint per title, hashed from its own key: the spotlight changes colour with
+   the art it is showing, and the change is part of the same crossfade rather
+   than a second animation racing it. A palette rather than a sampled pixel —
+   poster art is cross-origin, so reading its colours would taint the canvas. */
+/* Neutral light only. A banner that turned amber for one title would be a
+   second palette, and the page around it is committed to greys. */
+const TINTS = ['#ffffff', '#e5e7eb', '#d1d5db', '#c7cbd1', '#9ca3af', '#6b7280'];
+function tintFor(key) {
+  let n = 7;
+  for (const ch of String(key)) n = (n * 31 + ch.charCodeAt(0)) >>> 0;
+  return TINTS[n % TINTS.length];
+}
 
 /* ---- the two adapters ----------------------------------------------------
    AniList and TMDB name the same five facts differently and link to different
@@ -217,6 +230,7 @@ export function hero(items, { onCleanup } = {}) {
   function show(i, { animate = true } = {}) {
     index = (i + slides.length) % slides.length;
     const p = slides[index];
+    stage.style.setProperty('--hero-tint', tintFor(p.key));
     const next = h('div.hero-slide', {}, art(p, index === 0), content(p));
     const lead = next.querySelector('.hero-thumb');
     if (lead && index === 0) {

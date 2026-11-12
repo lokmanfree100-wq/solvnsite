@@ -235,6 +235,8 @@ const ui = {
   'Server removed': 'Serveur retiré',
   'Solvn — anime, films & series in HD. One player, no installs, nothing to pay for.':
     'Solvn — animés, films et séries en HD. Un seul lecteur, rien à installer, rien à payer.',
+  'Solvn — anime & cartoons in HD. One player, no installs, nothing to pay for.':
+    'Solvn — animés et dessins animés en HD. Un seul lecteur, rien à installer, rien à payer.',
   'Solvn home': 'Accueil Solvn',
   Language: 'Langue',
   'Later episodes': 'Épisodes suivants',
@@ -772,6 +774,7 @@ const ui = {
   'You already reported that.': 'Vous avez déjà signalé cela.',
   'Welcome': 'Bienvenue',
   'Welcome to Solvn — anime, films & series in HD': 'Bienvenue sur Solvn — animés, films et séries en HD',
+  'Welcome to Solvn — anime & cartoons in HD': 'Bienvenue sur Solvn — animés et dessins animés en HD',
   'Trending picks and all-time favourites, streaming in crisp HD.':
     'Les tendances et les favoris de toujours, en streaming HD.',
   'Dismiss this banner': 'Masquer cette bannière',
@@ -2253,6 +2256,7 @@ const ui = {
   'Real site numbers': 'Vrais chiffres du site',
   'Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device.': 'Votre nom, votre image et vos listes sont enregistrés dans ce navigateur — et dans ce navigateur seulement. La base de données centrale de ce site n’est pas encore activée : un compte ne peut donc pas vous suivre sur un autre appareil.',
   'Solvn — anime, films & series in HD': 'Solvn — animés, films et séries en HD',
+  'Solvn — anime & cartoons in HD': 'Solvn — animés et dessins animés en HD',
   'Opening your profile…': 'Ouverture de votre profil…',
   Off: 'Désactivées',
   On: 'Activés',

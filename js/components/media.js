@@ -112,7 +112,7 @@ function trackBadges(flag) {
 }
 
 /* ---- poster card ---------------------------------------------------- */
-export function mediaCard(media, { to, eager = false, showTitle = true, meta = true, rank = null, progress = null, size = 'large', flag = null } = {}) {
+export function mediaCard(media, { to, eager = false, showTitle = true, meta = true, progress = null, size = 'large', flag = null } = {}) {
   const href = to || `#/anime/${media.id}`;
   const score = media.averageScore;
   const prog = progress ?? (getProgress(media.id) && media.format !== 'MOVIE' ? getProgress(media.id) : null);
@@ -140,9 +140,8 @@ export function mediaCard(media, { to, eager = false, showTitle = true, meta = t
   }
 
   const card = h(
-    `a.card${rank ? '.card--rank' : ''}`,
+    'a.card',
     { href, 'aria-label': title(media) },
-    rank ? h('span.card-rank.tnum', {}, String(rank)) : null,
     art,
     showTitle
       ? h(
@@ -163,7 +162,7 @@ export function cardSkeleton(count = 7) {
 }
 
 /* ---- carousel row ---------------------------------------------------- */
-export function mediaRow({ id, heading, sub, items = [], viewAll, skeleton = false, rank = false, empty, flag = null }) {
+export function mediaRow({ id, heading, sub, items = [], viewAll, skeleton = false, empty, flag = null }) {
   const track = h(`div.row.no-scrollbar${skeleton ? '.is-skeleton' : ''}`, { id, role: 'list' });
   const fill = () => {
     track.replaceChildren();
@@ -177,7 +176,7 @@ export function mediaRow({ id, heading, sub, items = [], viewAll, skeleton = fal
     }
     items.forEach((m, i) => {
       const wrap = h('div', { role: 'listitem', style: { display: 'contents' } });
-      wrap.append(mediaCard(m, { rank: rank ? i + 1 : null, eager: i < 4, flag }));
+      wrap.append(mediaCard(m, { eager: i < 4, flag }));
       track.append(wrap);
     });
   };
@@ -222,13 +221,41 @@ export function mediaRow({ id, heading, sub, items = [], viewAll, skeleton = fal
   );
 }
 
+/* ---- poster grid ------------------------------------------------------ */
+/**
+ * Home's shape now: every shelf is the same card in the same frame, laid out as
+ * a grid that fills the width instead of a rail that scrolls sideways. Nothing
+ * here writes a size — the column count lives in glass.css, so the poster keeps
+ * one proportion from a 360px phone to a 1600px monitor.
+ */
+export function mediaGrid({ id, heading, sub, items = [], viewAll, skeleton = false, empty, limit = 18 }) {
+  const track = h(`div.grid.block-track.home-grid${skeleton ? '.is-skeleton' : ''}`, { id, role: 'list' });
+
+  if (skeleton) {
+    track.append(...cardSkeleton(12));
+  } else if (!items.length) {
+    staticTrack(track, note(empty || t('Nothing to show here right now.')));
+  } else {
+    items.slice(0, limit).forEach((m, i) => {
+      const wrap = h('div', { role: 'listitem', style: { display: 'contents' } });
+      wrap.append(mediaCard(m, { eager: i < 6 }));
+      track.append(wrap);
+    });
+  }
+
+  return h('section.section', {}, blockHead({ heading, sub, viewAll }), track);
+}
+
+export const lazyGrid = (opts) => lazyBlock(opts, mediaGrid);
+
 /* ---- editorial blocks -------------------------------------------------- */
 /* Home's two non-rail shapes. Neither one touches a card: they only say where
    the cards that `mediaCard()` returns get put, so the poster ladder, the hover
-   lift, the rank numerals and the progress bars all carry straight into the new
+   lift, the score badges and the progress bars all carry straight into the new
    arrangement. Sizing lives in layout.css — nothing here writes a style. */
 
-/** One lead card beside a stack of smaller ones. */
+/** One lead card beside a stack of smaller ones. Unused on home now, kept for
+ *  the views that still want a lead. */
 const FEATURE_ITEMS = 7;
 /** One wide art card beside a short list of titled rows. */
 const SPLIT_ITEMS = 5;
@@ -254,7 +281,7 @@ function staticTrack(track, node) {
 
 const note = (text) => h('p.muted', { style: { padding: '20px 0', fontSize: '14px' } }, text);
 
-export function mediaFeature({ id, heading, sub, items = [], viewAll, skeleton = false, rank = false, empty }) {
+export function mediaFeature({ id, heading, sub, items = [], viewAll, skeleton = false, empty }) {
   const lead = h('div.feature-lead', { role: 'listitem' });
   const stack = h('div.feature-stack', { role: 'listitem' });
   const track = h(`div.feature.block-track${skeleton ? '.is-skeleton' : ''}`, { id, role: 'list' }, lead, stack);
@@ -270,7 +297,7 @@ export function mediaFeature({ id, heading, sub, items = [], viewAll, skeleton =
        never pass ~300px, where `large` already covers the device pixels. */
     items.slice(0, FEATURE_ITEMS).forEach((m, i) => {
       (i === 0 ? lead : stack).append(
-        mediaCard(m, { rank: rank ? i + 1 : null, eager: i < 2, size: i === 0 ? 'extraLarge' : 'large' }),
+        mediaCard(m, { eager: i < 2, size: i === 0 ? 'extraLarge' : 'large' }),
       );
     });
   }
@@ -278,8 +305,8 @@ export function mediaFeature({ id, heading, sub, items = [], viewAll, skeleton =
   return h('section.section.feature-wrap', {}, blockHead({ heading, sub, viewAll }), track);
 }
 
-/** A numbered list row for the magazine split: thumb, title, one line of facts. */
-function splitRow(m, n) {
+/** One row of the magazine split: thumb, title, one line of facts. */
+function splitRow(m) {
   const meta = [h('span', {}, formatLabel(m.format))];
   const y = yearOf(m);
   if (y) meta.push(h('span.split-dot'), h('span.tnum', {}, String(y)));
@@ -289,7 +316,6 @@ function splitRow(m, n) {
   return h(
     'a.split-item',
     { href: `#/anime/${m.id}`, role: 'listitem' },
-    h('span.split-num.tnum', {}, String(n)),
     h('div.split-thumb', {}, posterImage(m, {})),
     h(
       'div.split-copy',
@@ -320,7 +346,7 @@ export function mediaSplit({ id, heading, sub, items = [], viewAll, skeleton = f
        art at ~900px wide, so this is the one rail card that cannot afford the
        smaller tier. */
     art.append(mediaCard(head, { eager: true, size: 'extraLarge' }));
-    items.slice(1, SPLIT_ITEMS).forEach((m, i) => list.append(splitRow(m, i + 2)));
+    items.slice(1, SPLIT_ITEMS).forEach((m) => list.append(splitRow(m)));
   }
 
   return h('section.section.split-wrap', {}, blockHead({ heading, sub, viewAll }), track);

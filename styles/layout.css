@@ -3,7 +3,7 @@
    so nothing here restates a card — it only arranges them.
 
    Three rules this file lives by:
-   - It never touches `.card`, `.card-art`, `.card-rank` or `.card-progress` as
+   - It never touches `.card`, `.card-art` or `.card-progress` as
      things in themselves. It only says, via a wrapper class, where a card sits
      and how wide the cell it landed in is. The hover lift, the tilt transform
      and the poster ladder all stay exactly as `components.css` wrote them —
@@ -71,25 +71,6 @@
   }
   .feature-lead .card-meta {
     font-size: 13px;
-  }
-  /* A rank numeral is sized for a poster rail. The same numeral next to a
-     400px lead poster would be small and next to a 200px stacked one would be
-     huge, so both ends come back to the scale of the card they belong to. */
-  .feature-lead .card-rank {
-    font-size: 76px;
-    padding-block-end: 14px;
-  }
-  .feature-stack .card-rank {
-    font-size: 38px;
-    -webkit-text-stroke-width: 1.5px;
-    margin-inline-end: -10px;
-    padding-block-end: 8px;
-  }
-  .feature-lead .card--rank .card-art,
-  .feature-stack .card--rank .card-art {
-    flex: 1 1 0;
-    inline-size: auto;
-    min-inline-size: 0;
   }
 }
 
@@ -173,13 +154,6 @@
   .split-item:hover .split-item-title {
     color: var(--accent-text);
   }
-}
-.split-num {
-  font-family: var(--font-display);
-  font-size: 12.5px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: var(--text-faint);
 }
 .split-thumb {
   position: relative;

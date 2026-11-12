@@ -537,12 +537,14 @@ p {
     --gutter: 32px;
     --tabbar-h: 0px;
   }
+  /* One column: the top bar is the only navigation surface on a desktop, so
+     there is no rail column to reserve and no side area to name. */
   .app-shell {
     grid-template-areas:
-      'side top'
-      'side view'
-      'side foot';
-    grid-template-columns: var(--sidenav-w) minmax(0, 1fr);
+      'top'
+      'view'
+      'foot';
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
   }
   .view {

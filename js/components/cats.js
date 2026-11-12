@@ -1,27 +1,19 @@
 /**
- * The five categories, in one strip.
+ * The category strip: the two catalogues Solvn is open for.
  *
- * A viewer arrives thinking in kinds, not in databases: أفلام, مسلسلات, أنمي,
- * كرتونز, أفلام الأطفال. Behind those five words sit two APIs — TMDB for films
- * and series, AniList for anime and the classic shelves — but a tab that changes
- * the data source while keeping the label is the whole point: the page is allowed
- * to be complicated so the navigation does not have to be.
- *
- * These are links, not buttons that swap content in place, because each category
- * has its own filters worth bookmarking and sending to someone: `#/movies` keeps
- * its year and genre in the URL, and the links here simply carry the viewer to
- * the right place to use them.
+ * Movies and Series are parked in development, so they are not drawn here at
+ * all. A tab that opens nothing is a promise the strip cannot keep, and a "Soon"
+ * chip on every visit is louder than the one short note a film address raises
+ * (components/films-gate.js). Everything drawn is an anchor: each category keeps
+ * its filters in the URL and a tab worth bookmarking has to be a real link.
  */
 
 import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 
 export const CATEGORIES = [
-  { id: 'movie', href: '#/movies?type=movie', icon: 'film', label: 'Movies' },
-  { id: 'tv', href: '#/movies?type=tv', icon: 'tv', label: 'Series' },
   { id: 'anime', href: '#/discover', icon: 'sparkles', label: 'Anime' },
   { id: 'toons', href: '#/toons', icon: 'cat', label: 'Cartoons' },
-  { id: 'kids', href: '#/movies?list=kids', icon: 'popcorn', label: 'Kids Movies' },
 ];
 
 export function categoryTabs(active) {

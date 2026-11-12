@@ -1,0 +1,612 @@
+/* ==========================================================================
+   Spotlight
+   --------------------------------------------------------------------------
+   One immersive band at the top of Home: the artwork, the copy, the palette and
+   the episode strip all belong to whichever title is on screen. The section is
+   full-bleed inside the page gutter, the copy sits on a cinematic scrim, and
+   the controls are glass on top of the picture.
+
+   Colour is local to `.spot`. AniList publishes a dominant cover colour, the
+   component derives the rest of the ramp from it (lib/color.js), and the
+   properties below interpolate, so a slide change is one slow colour drift
+   rather than a jump. Registered custom properties are what make that possible;
+   where a browser does not support them the change is simply instant.
+   ========================================================================== */
+
+@property --spot-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #8b9099;
+}
+@property --spot-bright {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #d5d9df;
+}
+@property --spot-deep {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #4d525a;
+}
+@property --spot-glow {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(120, 130, 145, 0.3);
+}
+@property --spot-wash {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(120, 130, 145, 0.13);
+}
+@property --spot-line {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(190, 198, 210, 0.36);
+}
+
+.home-spot-slot:empty {
+  display: none;
+}
+
+.home-spot-slot {
+  margin-bottom: var(--sp-5);
+}
+
+.spot {
+  --spot-accent: #8b9099;
+  --spot-bright: #d5d9df;
+  --spot-deep: #4d525a;
+  --spot-glow: rgba(120, 130, 145, 0.3);
+  --spot-wash: rgba(120, 130, 145, 0.13);
+  --spot-line: rgba(190, 198, 210, 0.36);
+  position: relative;
+  margin-inline: calc(-1 * var(--gutter));
+  margin-top: calc(-1 * var(--sp-2));
+  color: #fff;
+  transition:
+    --spot-accent 900ms var(--ease),
+    --spot-bright 900ms var(--ease),
+    --spot-deep 900ms var(--ease),
+    --spot-glow 900ms var(--ease),
+    --spot-wash 900ms var(--ease),
+    --spot-line 900ms var(--ease);
+}
+
+/* ---- the stage ---------------------------------------------------------- */
+.spot-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  min-height: clamp(560px, 68vh, 780px);
+  background: #07080a;
+}
+
+.spot-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.spot-shot {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 850ms var(--ease);
+  will-change: opacity;
+}
+
+.spot-shot.is-on {
+  opacity: 1;
+}
+
+.spot-figure {
+  position: absolute;
+  inset: 0;
+}
+
+.spot-figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.spot-figure .spot-art {
+  opacity: 1;
+  /* A slow push while the slide is live: the picture is never still, so the
+     band reads as film rather than as a pasted still. */
+  transform: scale(1.07);
+  transition: transform 7s linear, opacity 600ms var(--ease);
+  filter: saturate(1.14) contrast(1.04) brightness(1.02);
+}
+
+.spot-shot.is-on .spot-figure .spot-art {
+  transform: scale(1);
+}
+
+/* Poster-only fallback: the cover, whole, on the far side of the band, with a
+   blown-up blurred copy of itself behind it for colour and depth. */
+.spot-figure.is-portrait {
+  background: #0a0b0d;
+}
+
+.spot-figure.is-portrait .spot-ambient {
+  position: absolute;
+  inset: -10%;
+  width: 120%;
+  height: 120%;
+  object-fit: cover;
+  opacity: 1;
+  filter: blur(34px) saturate(1.12) brightness(0.52);
+}
+
+.spot-figure.is-portrait .spot-poster {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: clamp(0px, 4vw, 72px);
+  width: auto;
+  max-width: 48%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  opacity: 0.92;
+  filter: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 24%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 24%);
+  box-shadow: 0 30px 80px -50px rgba(0, 0, 0, 0.9);
+}
+
+/* A wash of the title's own colour over its own art — the one place the palette
+   touches the picture. Soft-light keeps it a tint, never a filter. */
+.spot-shot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(200deg, color-mix(in srgb, var(--tint) 26%, transparent), transparent 58%);
+  mix-blend-mode: soft-light;
+}
+
+.spot-figure.is-fallback {
+  background:
+    radial-gradient(120% 100% at 30% 20%, color-mix(in srgb, var(--tint) 40%, transparent), transparent 64%),
+    #0d0e11;
+}
+
+.spot-figure.is-fallback img {
+  display: none;
+}
+
+.spot-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  /* Light enough that the art keeps its colour and its face: the picture is the
+     feature here, and only the type needs a floor to sit on. */
+  background:
+    linear-gradient(
+      180deg,
+      rgba(6, 7, 9, 0.18) 0%,
+      rgba(6, 7, 9, 0.04) 34%,
+      rgba(6, 7, 9, 0.46) 72%,
+      rgba(6, 7, 9, 0.94) 100%
+    ),
+    linear-gradient(90deg, rgba(6, 7, 9, 0.72) 0%, rgba(6, 7, 9, 0.26) 42%, transparent 74%);
+}
+
+.spot-body {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: clamp(20px, 3.6vw, 56px);
+  padding-top: clamp(140px, 22vh, 240px);
+}
+
+/* ---- the copy ----------------------------------------------------------- */
+/* Every slide keeps its copy mounted in the same grid cell. Only the active one
+   is visible and interactive, so the fade is a transition rather than a rebuild
+   (which would restart the images and drop keyboard focus). */
+.spot-copies {
+  display: grid;
+  width: 100%;
+}
+
+.spot-copy {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 620ms var(--ease), transform 620ms var(--ease);
+  pointer-events: none;
+}
+
+.spot-copy.is-on {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.spot-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(32px, 5.4vw, 72px);
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+  color: #fff;
+  max-width: 22ch;
+  text-wrap: balance;
+  text-shadow: 0 10px 44px rgba(0, 0, 0, 0.55);
+}
+
+.spot-desc {
+  max-width: 54ch;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: clamp(13px, 1.2vw, 15px);
+  line-height: 1.62;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.spot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.spot-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 46px;
+  padding: 0 20px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  transition:
+    transform var(--t-fast) var(--ease),
+    background var(--t-med) var(--ease),
+    border-color var(--t-med) var(--ease),
+    box-shadow var(--t-med) var(--ease);
+}
+
+.spot-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.spot-play {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06)),
+    color-mix(in srgb, var(--spot-accent) 62%, transparent);
+  border-color: var(--spot-line);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 18px 40px -22px var(--spot-glow);
+}
+
+.spot-btn:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.spot-play:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 22px 46px -20px var(--spot-glow);
+}
+
+/* ---- the episode strip -------------------------------------------------- */
+.spot-eps {
+  position: relative;
+  padding: var(--sp-6) var(--gutter) var(--sp-7);
+  background: #0b0c0e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.spot-eps-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: var(--sp-4);
+}
+
+.spot-eps-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.spot-eps-title {
+  font-family: var(--font-display);
+  font-size: clamp(17px, 2vw, 22px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.spot-eps-count {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.spot-eps-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+.spot-eps-all:hover {
+  color: #fff;
+}
+
+.spot-eps-all svg {
+  width: 14px;
+  height: 14px;
+}
+
+.spot-eps-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 12px;
+}
+
+.spot-ep {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  text-decoration: none;
+  transition:
+    transform 260ms var(--ease),
+    background var(--t-med),
+    border-color var(--t-med),
+    box-shadow var(--t-med);
+}
+
+.spot-ep:hover,
+.spot-ep:focus-visible {
+  transform: translateY(-3px);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--spot-line);
+  box-shadow:
+    0 18px 34px -24px rgba(0, 0, 0, 1),
+    0 0 26px -16px var(--spot-glow);
+}
+
+.spot-ep-art {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 11px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.spot-ep-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 420ms var(--ease);
+}
+
+.spot-ep:hover .spot-ep-art img {
+  transform: scale(1.05);
+}
+
+.spot-ep-num {
+  position: absolute;
+  top: 8px;
+  inset-inline-start: 8px;
+  padding: 3px 7px;
+  border-radius: 7px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.spot-ep-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  background: rgba(0, 0, 0, 0.28);
+  transition: opacity var(--t-med);
+}
+
+.spot-ep-play svg {
+  width: 26px;
+  height: 26px;
+}
+
+.spot-ep:hover .spot-ep-play,
+.spot-ep:focus-visible .spot-ep-play {
+  opacity: 1;
+}
+
+.spot-ep-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 4px 3px;
+}
+
+.spot-ep-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.spot-ep-meta {
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.spot-eps-empty {
+  padding: var(--sp-4) 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.spot-ep.is-sk {
+  pointer-events: none;
+}
+
+.spot-ep.is-sk .sk {
+  border-radius: 9px;
+}
+
+/* ---- loading ------------------------------------------------------------ */
+.spot-figure.is-portrait .spot-poster {
+  transition: opacity 600ms var(--ease);
+}
+
+.spot-skeleton .spot-hero {
+  background:
+    linear-gradient(100deg, #0d0e11 30%, #16181c 50%, #0d0e11 70%),
+    #0b0c0e;
+  background-size: 220% 100%;
+  animation: spot-shimmer 1.7s linear infinite;
+}
+
+.spot-skeleton .spot-eps {
+  min-height: 210px;
+}
+
+.spot-skeleton .spot-eps-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: var(--sp-4);
+}
+
+@keyframes spot-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+/* ---- responsive --------------------------------------------------------- */
+@media (max-width: 899px) {
+  .spot-hero {
+    min-height: clamp(560px, 82vh, 720px);
+  }
+
+  /* The mobile dock is fixed over the bottom of the screen, so the copy is
+     lifted clear of it rather than ending underneath it. */
+  .spot-body {
+    gap: 11px;
+    padding: 18px 18px calc(168px + env(safe-area-inset-bottom));
+    padding-top: 92px;
+  }
+
+  .spot-title {
+    font-size: clamp(34px, 9vw, 50px);
+    max-width: 18ch;
+  }
+
+  .spot-desc {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .spot-figure.is-portrait .spot-ambient {
+    filter: blur(22px) saturate(1.06) brightness(0.5);
+  }
+
+  .spot-figure.is-portrait .spot-poster {
+    inset-inline-end: 0;
+    max-width: 64%;
+    opacity: 0.78;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
+  }
+
+  .spot-meta {
+    font-size: 11.5px;
+    gap: 6px 8px;
+  }
+
+  .spot-btn {
+    height: 44px;
+    padding: 0 18px;
+    font-size: 13px;
+  }
+
+  .spot-eps {
+    padding: 22px 18px 28px;
+  }
+
+  /* One row of cards you can throw sideways, sitting inside the gutter it
+     bleeds out of, so the first card aligns with the heading. */
+  .spot-eps-list {
+    display: flex;
+    gap: 10px;
+    margin-inline: -18px;
+    padding: 0 18px 6px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .spot-eps-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .spot-ep {
+    flex: 0 0 66%;
+    max-width: 250px;
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 380px) {
+  .spot-ep {
+    flex-basis: 74%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot-shot,
+  .spot-shot img,
+  .spot-copy,
+  .spot-ep,
+  .spot-ep-art img {
+    transition: none;
+  }
+
+}

@@ -377,12 +377,18 @@ export function serverUrl(server, { id, tmdb = '', episode = 1, audio = 'sub', a
  * detail and the viewer chooses a server by number — not by whose brand happens
  * to be on the frame.
  */
+/* Names that belong to somebody else's product. The bar, the source switcher
+   and the failure notes read this function, so the chrome stays Solvn's own
+   whatever a stored entry or a shipped default happens to be called. */
+const FOREIGN = /anigato|megavid|megaplay|anixo|2anime|gogo|zoro|animepahe|hianime/i;
+
 export function serverName(server) {
   const n = String(server?.name || '').trim();
   /* Numbered against the list the operator actually sees in Settings, so an
      unnamed entry never lands on a number that skips one, and a film-only
      template is never numbered from the ladder that excludes it. */
-  return n ? n.slice(0, 28) : t('Solvn Stream {n}', { n: extraServers().indexOf(server) + 1 });
+  if (!n || FOREIGN.test(n)) return t('Solvn Stream {n}', { n: extraServers().indexOf(server) + 1 });
+  return n.slice(0, 28);
 }
 
 /** Add a server; returns null on success or the reason it was refused. */

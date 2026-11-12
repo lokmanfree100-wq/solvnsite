@@ -1,0 +1,396 @@
+/* ==========================================================================
+   Vibrant glass — the theme layer
+   --------------------------------------------------------------------------
+   Loaded last, after every feature sheet, so it can re-light the page without
+   rewriting the 23 files that already carry the site's structure. Nothing here
+   changes a layout: no widths, grid areas or transforms — the one exception is
+   the lit tick that indents a section heading by 13px. The card tilt belongs to
+   lib/tilt.js and .card in components.css, and is deliberately left alone: this
+   file only changes light, colour and glass.
+   ========================================================================== */
+
+/* ---- the room ----------------------------------------------------------
+   No colour field at all: flat charcoal with one trace of white at the top
+   edge so the page is not mathematically flat. Everything that used to be a
+   coloured wash is gone, because the theme is locked to charcoal and glass. */
+body {
+  background:
+    radial-gradient(1100px 620px at 78% -12%, var(--ambient), transparent 62%),
+    var(--bg);
+}
+
+/* ---- type that is allowed to carry colour -----------------------------
+   Headlines and the brand word only. Body copy stays white-on-black, because
+   a gradient behind a paragraph is a reading test, not a design. */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .brand-word,
+  .hero-title {
+    background-image: var(--grad-title);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .brand-word {
+    background-image: var(--grad-brand);
+  }
+}
+
+/* ---- chrome ------------------------------------------------------------
+   The bar is glass over a lit page: a violet hairline that fades in only once
+   the page has scrolled under it, so the top of every view still opens clean. */
+.topbar::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-line) 22%, var(--accent-2-line) 78%, transparent);
+  opacity: 0;
+  transition: opacity var(--t-med) var(--ease);
+  pointer-events: none;
+}
+
+.topbar.is-stuck::after {
+  opacity: 1;
+}
+
+.topbar.is-stuck {
+  box-shadow: var(--inner-hi), 0 18px 44px -30px var(--accent-glow), 0 10px 30px -22px rgba(0, 0, 0, 1);
+}
+
+/* The category strip is a scroller, and on a phone the next chip is cut
+   mid-word at the screen edge. A soft end fade says "there is more this way"
+   instead of leaving a word sliced in half. Mirrored for right-to-left. */
+.cat-tabs {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent);
+}
+
+[dir='rtl'] .cat-tabs {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 34px), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 34px), transparent);
+}
+
+/* The dock is the piece of chrome a phone viewer reads as "glass" first, so it
+   gets a lit inner edge rather than a flat border. */
+.tabbar {
+  box-shadow: var(--inner-hi-strong), 0 24px 60px -34px var(--accent-glow);
+}
+
+/* ---- primary action ---------------------------------------------------
+   The primary action is glass like every other control: a lit pane with white
+   type, separated from the secondary by its stronger rim and shadow rather
+   than by a fill colour. There is no coloured face left anywhere. */
+.btn--primary {
+  --btn-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.07));
+  --btn-fg: #ffffff;
+  --btn-bd: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 14px 32px -18px rgba(0, 0, 0, 1);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+@media (hover: hover) {
+  .btn--primary:hover {
+    filter: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+      0 18px 40px -18px rgba(0, 0, 0, 1),
+      0 0 26px -10px rgba(255, 255, 255, 0.16);
+  }
+}
+
+/* Secondary surface controls pick up the accent edge instead of staying grey. */
+.btn--glass:hover,
+.btn--random:hover {
+  --btn-bd: var(--accent-line);
+}
+
+/* ---- posters ----------------------------------------------------------
+   The specular sheen and the scrim are components.css's; this only warms the
+   halo so a hovered row feels lit by the poster rather than by a shadow. */
+@media (hover: hover) {
+  .card:hover .card-art {
+    box-shadow:
+      var(--inner-hi-strong),
+      0 30px 60px -22px rgba(0, 0, 0, 0.95),
+      0 0 46px -16px var(--accent-glow);
+  }
+}
+
+/* A scored card reads as a rating, not as another glass chip. */
+.card-score {
+  border-color: var(--accent-line);
+  box-shadow: var(--inner-hi-strong), 0 8px 22px -12px var(--accent-glow);
+}
+
+/* ---- small state marks ------------------------------------------------ */
+
+/* The one live thing on a shelf: a rose dot, quiet enough to sit beside type. */
+.card-flag .badge--live,
+.badge--live {
+  color: var(--accent-2-bright);
+  border-color: var(--accent-2-line);
+  background: var(--accent-2-wash);
+}
+
+/* Section headers get a lit tick before them — the cheapest way to give a long
+   page a rhythm without adding a node to every view. */
+.section-head h2 {
+  position: relative;
+  padding-inline-start: 13px;
+}
+
+.section-head h2::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0.28em;
+  bottom: 0.28em;
+  width: 3px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent-2));
+  box-shadow: 0 0 14px -2px var(--accent-glow);
+}
+
+/* ---- focus + selection ------------------------------------------------ */
+
+:focus-visible {
+  outline-color: var(--accent-bright);
+  box-shadow: 0 0 0 4px var(--accent-wash), 0 0 26px -6px var(--accent-glow);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 62%, #000);
+  color: #fff;
+}
+
+/* ---- scrollbars ------------------------------------------------------- */
+* {
+  scrollbar-color: var(--surface-3) transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--accent-deep), var(--surface-3));
+  background-clip: content-box;
+}
+
+@media (hover: hover) {
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+    background-clip: content-box;
+  }
+}
+
+/* ==========================================================================
+   Spotlight, player mark, and the parked-catalogue note.
+   ========================================================================== */
+
+/* The stage height lives in views.css and mobile.css; this layer adds the colour
+   the rotation feeds it. `--hero-tint` is set per slide by components/hero.js, so
+   the room behind the art changes with the title instead of staying one colour
+   behind twelve different banners. */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 100% at 8% 0%,
+      color-mix(in srgb, var(--hero-tint, var(--accent)) 44%, transparent) 0%,
+      transparent 62%
+    ),
+    linear-gradient(
+      200deg,
+      transparent 42%,
+      color-mix(in srgb, var(--hero-tint, var(--accent)) 24%, transparent) 100%
+    );
+  opacity: 0.92;
+}
+
+/* 3D glass on the two calls to action: a lit inner edge, a soft floor shadow and
+   a backdrop blur, so they read as objects floating over the art rather than
+   rectangles pasted onto it. */
+.hero-actions .btn {
+  position: relative;
+  border-radius: var(--r-pill);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  backdrop-filter: blur(18px) saturate(170%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 10px rgba(0, 0, 0, 0.3),
+    0 16px 34px -18px rgba(0, 0, 0, 0.9),
+    0 2px 0 rgba(255, 255, 255, 0.05);
+  transition:
+    transform var(--t-fast) var(--ease),
+    box-shadow var(--t-med) var(--ease),
+    background var(--t-med) var(--ease);
+}
+.hero-actions .btn--glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+@media (hover: hover) {
+  .hero-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -2px 10px rgba(0, 0, 0, 0.28),
+      0 22px 42px -20px rgba(0, 0, 0, 0.95);
+  }
+}
+
+/* ---- the site mark on the picture --------------------------------------- */
+/* Inert to the pointer, clear of every control, and small enough that it reads
+   as a watermark rather than a label. */
+.player-shell {
+  position: relative;
+}
+.player-mark {
+  position: absolute;
+  inset-block-start: 12px;
+  inset-inline-end: 12px;
+  z-index: 6;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(11, 12, 14, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: var(--inner-hi);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ---- the parked half of the catalogue, said once ----------------------- */
+/* One small glass card instead of a page: it is the only place the site now
+   mentions Movies & Series, and it closes for the rest of the session. */
+.films-pop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  animation: films-veil 240ms var(--ease) both;
+}
+.films-pop.is-out {
+  animation: films-veil-out 190ms var(--ease) both;
+}
+.films-pop-card {
+  width: min(360px, 100%);
+  padding: 26px 22px 20px;
+  border-radius: 26px;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(18, 19, 22, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 40px 90px -44px #000;
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  animation: films-card-in 300ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+}
+.films-pop-art {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  color: var(--accent-text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 12px 28px -16px rgba(0, 0, 0, 1);
+}
+.films-pop-art svg {
+  width: 26px;
+  height: 26px;
+}
+.films-pop-kicker {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.films-pop-title {
+  margin-top: 7px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+  color: var(--text);
+}
+.films-pop-body {
+  margin: 9px 0 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.films-pop-ok {
+  width: 100%;
+}
+
+@keyframes films-veil {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes films-veil-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes films-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+
+/* ---- the mark at every size ---------------------------------------------
+   The chip is the same mark on a phone, a desktop panel and a fullscreen
+   canvas: white, translucent, clear of the frame's own controls, and sized
+   against the player rather than the window. */
+.player-shell {
+  container-type: inline-size;
+}
+@supports (width: 1cqw) {
+  .player-mark {
+    inset-block-start: clamp(8px, 1.2cqw, 26px);
+    inset-inline-end: clamp(8px, 1.4cqw, 30px);
+    padding: clamp(3px, 0.55cqw, 8px) clamp(8px, 1.1cqw, 18px);
+    font-size: clamp(9.5px, 1.35cqw, 17px);
+    letter-spacing: 0.1em;
+  }
+}
+.player-shell:fullscreen .player-mark,
+.player-shell:-webkit-full-screen .player-mark {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(8, 9, 11, 0.5);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.55);
+}

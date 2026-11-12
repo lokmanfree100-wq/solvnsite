@@ -81,7 +81,7 @@ function brand() {
       h('span.foot-mark', {}, logoMark(44)),
       h('span.foot-word', {}, 'SOLVN'),
     ),
-    h('p.foot-tagline', {}, t('Solvn — anime, films & series in HD')),
+    h('p.foot-tagline', {}, t('Solvn — anime & cartoons in HD')),
     actions(),
   );
 }

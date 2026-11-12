@@ -233,6 +233,8 @@ const ui = {
   'Server removed': 'تمت إزالة الخادم',
   'Solvn — anime, films & series in HD. One player, no installs, nothing to pay for.':
     'Solvn — أنمي وأفلام ومسلسلات بجودة عالية. مشغّل واحد، بلا تثبيت ولا رسوم.',
+  'Solvn — anime & cartoons in HD. One player, no installs, nothing to pay for.':
+    'Solvn — أنمي ورسوم متحركة بجودة عالية. مشغّل واحد، بلا تثبيت ولا رسوم.',
   'Solvn home': 'الصفحة الرئيسية في Solvn',
   Language: 'اللغة',
   'Later episodes': 'الحلقات التالية',
@@ -746,6 +748,7 @@ const ui = {
   'You already reported that.': 'سبق أن بلغت عن هذا.',
   'Welcome': 'مرحبًا',
   'Welcome to Solvn — anime, films & series in HD': 'مرحبًا بك في Solvn — أنمي وأفلام ومسلسلات بجودة عالية',
+  'Welcome to Solvn — anime & cartoons in HD': 'مرحبًا بك في Solvn — أنمي ورسوم متحركة بجودة عالية',
   'Trending picks and all-time favourites, streaming in crisp HD.':
     'الأعمال الرائجة والمفضلة على الدوام، ببثٍّ عالي الوضوح.',
   'Dismiss this banner': 'إخفاء هذا الشريط',
@@ -2214,6 +2217,7 @@ const ui = {
   'Real site numbers': 'أرقام الموقع الحقيقية',
   'Your name, your picture and your lists are saved on this browser — and only on this browser. The central database of this site has not been switched on yet, so an account cannot follow you to another device.': 'اسمك وصورتك وقوائمك محفوظة في هذا المتصفح — وفي هذا المتصفح فقط. لم تُفعَّل القاعدة المركزية لهذا الموقع بعد، لذلك لا يستطيع حسابك مرافقتك إلى جهاز آخر.',
   'Solvn — anime, films & series in HD': 'Solvn — أنمي وأفلام ومسلسلات بجودة عالية',
+  'Solvn — anime & cartoons in HD': 'Solvn — أنمي ورسوم متحركة بجودة عالية',
   'Opening your profile…': 'جارٍ فتح ملفك…',
   Off: 'إيقاف',
   On: 'تشغيل',

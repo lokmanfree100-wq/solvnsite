@@ -10,19 +10,19 @@
  * All data comes through the /tmdb proxy; the key never reaches the browser.
  */
 
-import { h, icon, scrollMax, scrollPos, scrollInlineBy } from '../lib/dom.js';
-import { go } from '../lib/router.js';
-import { t } from '../lib/i18n.js';
-import { sheet } from '../lib/ui.js';
-import { stillImage } from '../components/media.js';
-import { categoryTabs } from '../components/cats.js';
-import { hero, heroSkeleton, filmPick } from '../components/hero.js';
-import { makeDeduper } from '../lib/dedupe.js';
-import { watched } from '../lib/util.js';
+import { h, icon, scrollMax, scrollPos, scrollInlineBy } from '../../lib/dom.js';
+import { go } from '../../lib/router.js';
+import { t } from '../../lib/i18n.js';
+import { sheet } from '../../lib/ui.js';
+import { stillImage } from '../../components/media.js';
+import { categoryTabs } from '../../components/cats.js';
+import { hero, heroSkeleton, filmPick } from '../../components/hero.js';
+import { makeDeduper } from '../../lib/dedupe.js';
+import { watched } from '../../lib/util.js';
 import {
   api, poster, nameOf, yearOf, rating, genreMap,
   firstTrailer, movieContinueWatching, movieWatchlist, movieProgress, servingOffline,
-} from '../lib/tmdb.js';
+} from '../../lib/tmdb.js';
 
 /* ---- one honest shelf per page ----------------------------------------
    A rail that cannot answer is a rail taken off the page, not a paragraph

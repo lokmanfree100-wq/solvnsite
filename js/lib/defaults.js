@@ -46,6 +46,6 @@
  */
 
 export const DEFAULT_SERVERS = [
-  { name: 'AniGato', url: 'https://anigato.lol/embed/anime/{anilist}/{episode}?audio={audio}&next={next}&accent={accent}', tracks: ['sub', 'dub'] },
-  { name: 'Megavid', url: 'https://megavid.buzz/ani/{anilist}/{episode}/{audio}?color=%23{accent}&autoplay=true', tracks: ['sub', 'dub'] },
+  { name: 'Solvn Stream 1', url: 'https://anigato.lol/embed/anime/{anilist}/{episode}?audio={audio}&next={next}&accent={accent}', tracks: ['sub', 'dub'] },
+  { name: 'Solvn Stream 2', url: 'https://megavid.buzz/ani/{anilist}/{episode}/{audio}?color=%23{accent}&autoplay=true', tracks: ['sub', 'dub'] },
 ];

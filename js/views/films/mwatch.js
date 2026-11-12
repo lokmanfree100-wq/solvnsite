@@ -20,17 +20,17 @@
  * zero while either file engine is playing.
  */
 
-import { h, icon } from '../lib/dom.js';
-import { t } from '../lib/i18n.js';
-import { toast, sheet } from '../lib/ui.js';
-import { errorState } from '../components/media.js';
-import { showPlayAdvisory } from '../components/advisory.js';
-import { createCaptionControl } from '../components/captions.js';
-import { api, nameOf, setMovieProgress } from '../lib/tmdb.js';
-import { findCleanSource, loadReport } from '../lib/cleanroom.js';
-import { createStage, captionControls } from '../lib/playback.js';
-import { proxyUrl } from '../lib/proxy.js';
-import { extraServers as allServers, serverKind, serverUrl, serverName, FRAME_SANDBOX } from '../lib/sources.js';
+import { h, icon } from '../../lib/dom.js';
+import { t } from '../../lib/i18n.js';
+import { toast, sheet } from '../../lib/ui.js';
+import { errorState } from '../../components/media.js';
+import { showPlayAdvisory } from '../../components/advisory.js';
+import { createCaptionControl } from '../../components/captions.js';
+import { api, nameOf, setMovieProgress } from '../../lib/tmdb.js';
+import { findCleanSource, loadReport } from '../../lib/cleanroom.js';
+import { createStage, captionControls } from '../../lib/playback.js';
+import { proxyUrl } from '../../lib/proxy.js';
+import { extraServers as allServers, serverKind, serverUrl, serverName, FRAME_SANDBOX } from '../../lib/sources.js';
 
 /* A whole https address that names a stream file: the only shape a video
    element may be pointed at, whether the address came from the operator's own

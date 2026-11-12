@@ -1,0 +1,762 @@
+/* ==========================================================================
+   Glass 3D — the finishing layer.
+
+   Everything above this sheet is layout and colour; this is material. One
+   recipe, repeated: a translucent face, a lit top edge (the rim catching the
+   light), a dark bottom edge (the thickness of the pane), and a long soft drop
+   shadow so the object sits *above* the page instead of being printed on it.
+
+   It loads last on purpose. These are the same properties the sheets above
+   already set, so equal specificity plus later order is the whole override — no
+   !important, and nothing here needs to know which component it is lighting.
+
+   Backdrop blur is spent where it can be seen: chrome that overlaps scrolling
+   content and the handful of floating panels. A rail of sixty posters gets the
+   rim and the shadow but not its own blur pass — a frosted pane behind an
+   opaque poster is a frame nobody can see, paid for sixty times.
+   ========================================================================== */
+
+/* ---- chrome ------------------------------------------------------------- */
+.topbar,
+.tabbar {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 62%);
+  border-color: var(--line-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 26px 60px -40px rgba(0, 0, 0, 1);
+}
+
+.topbar {
+  -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(170%);
+  backdrop-filter: blur(var(--blur-lg)) saturate(170%);
+}
+
+/* ---- floating surfaces --------------------------------------------------- */
+.panel-card,
+.sheet,
+.party {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 48%),
+    linear-gradient(180deg, rgba(18, 12, 34, 0.72), rgba(7, 5, 15, 0.88));
+  border-color: var(--line-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 34px 80px -46px rgba(0, 0, 0, 1);
+}
+
+/* ---- cards --------------------------------------------------------------- */
+/* A poster in a frame rather than a picture glued to the page. The padding is
+   what makes the frame read: art inset 7px inside a lit pane. */
+.card {
+  padding: 7px;
+  border-radius: var(--r-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.015) 42%, rgba(0, 0, 0, 0.2)),
+    var(--glass);
+  border: 1px solid var(--line);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.42),
+    0 20px 42px -28px rgba(0, 0, 0, 0.95);
+}
+
+.card .card-art {
+  border-radius: calc(var(--r-lg) - 7px);
+}
+
+.card .card-body {
+  padding-inline: 3px;
+}
+
+.sk.card {
+  background: var(--surface-2);
+}
+
+/* ---- buttons ------------------------------------------------------------- */
+.btn {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.02));
+  border-color: var(--line-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.32),
+    0 10px 26px -18px rgba(0, 0, 0, 1);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(150%);
+}
+
+/* The one solid control on the site keeps its bright face: a translucent
+   primary would lose the contrast that makes it read as *the* action. Its ramp
+   is built from the accent rather than hard-coded, so the moment a poster turns
+   the site amber the button turns with it — and the ink stays dark because the
+   top stop is always lifted toward white. */
+.btn--primary {
+  background-image: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--accent-bright) 62%, #fff) 0%,
+    var(--accent-bright) 46%,
+    var(--accent) 100%
+  );
+  border-color: color-mix(in srgb, var(--accent-bright) 62%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -3px 10px rgba(30, 10, 70, 0.35),
+    0 16px 34px -16px var(--accent-glow),
+    0 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* ---- detail: backdrop, glass actions, episode grid ----------------------- */
+/* Taller and more present than a strip behind a heading: the art is the header
+   now, and the accent tint below it is the colour read from that same art. */
+.detail-backdrop {
+  height: min(680px, 86vh);
+}
+
+.detail-backdrop img {
+  opacity: 0.55;
+  filter: saturate(1.32) contrast(1.04);
+}
+
+.detail-backdrop::after {
+  background:
+    radial-gradient(90% 62% at 50% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 72%),
+    linear-gradient(
+      180deg,
+      transparent 30%,
+      color-mix(in srgb, var(--bg) 86%, transparent) 70%,
+      var(--bg) 100%
+    );
+}
+
+/* Transparent buttons over the art: the picture stays visible through them. */
+.detail-actions .btn {
+  background-color: rgba(255, 255, 255, 0.03);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: var(--text);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    inset 0 -2px 10px rgba(0, 0, 0, 0.34),
+    0 18px 40px -24px rgba(0, 0, 0, 1);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
+  backdrop-filter: blur(18px) saturate(165%);
+}
+
+.detail-actions .btn--primary {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-bright) 48%, transparent),
+    color-mix(in srgb, var(--accent) 30%, transparent)
+  );
+  border-color: color-mix(in srgb, var(--accent-bright) 58%, transparent);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -2px 12px rgba(20, 6, 45, 0.4),
+    0 20px 46px -22px var(--accent-glow);
+}
+
+/* ---- episodes as a structured grid -------------------------------------- */
+/* One tile per episode, art on top and the facts under it. A 1000-episode
+   shonen still renders in chunks, but each chunk now reads as a shelf of
+   episodes rather than a column of spreadsheet rows. */
+.detail .ep-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.detail .ep {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'art art art'
+    'num body state';
+  align-items: center;
+  gap: 8px 10px;
+  padding: 9px;
+  border-radius: var(--r-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0) 46%),
+    var(--glass);
+  border: 1px solid var(--line);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 34px -26px rgba(0, 0, 0, 0.95);
+}
+
+.detail .ep-thumb {
+  grid-area: art;
+  width: 100%;
+  border-radius: calc(var(--r-lg) - 6px);
+}
+
+.detail .ep-num {
+  grid-area: num;
+  width: auto;
+  min-width: 24px;
+  text-align: start;
+}
+
+.detail .ep-body {
+  grid-area: body;
+}
+
+.detail .ep-state {
+  grid-area: state;
+}
+
+@media (hover: hover) {
+  .detail .ep:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 560px) {
+  .detail .ep-list {
+    grid-template-columns: 1fr;
+  }
+  .detail .ep-thumb {
+    width: 100%;
+  }
+}
+
+/* ---- accent feedback ---------------------------------------------------- */
+/* When the accent changes under a page — the detail view reading its own poster
+   — the tinted pieces travel to the new colour instead of snapping. */
+.tabbar,
+.btn,
+.hero-chip,
+.badge,
+.tab-btn,
+.ep,
+.panel-card {
+  transition:
+    background-color var(--t-med) var(--ease),
+    border-color var(--t-med) var(--ease),
+    box-shadow var(--t-med) var(--ease),
+    color var(--t-med) var(--ease);
+}
+
+/* ---- an indexed edit -----------------------------------------------------
+   Shelves are numbered the way a magazine numbers its sections: a small
+   accent 01/02 above the heading, clear of the tick and the "View all" link.
+   The counter is CSS only — shelves that are removed for lack of data do not
+   consume a number, so the run never skips. */
+.page-home {
+  counter-reset: shelf 0;
+}
+
+.page-home > .section {
+  counter-increment: shelf;
+}
+
+.page-home .section-head {
+  position: relative;
+}
+
+.page-home .section-head::before {
+  content: counter(shelf, decimal-leading-zero);
+  position: absolute;
+  inset-inline-start: 0;
+  top: calc(-1 * var(--sp-4));
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--accent-text);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+/* ---- poster lift ---------------------------------------------------------
+   The frame brightens and the room behind it takes a little of the accent,
+   which is what makes a rail feel alive without moving the card. */
+@media (hover: hover) {
+  .card:hover {
+    border-color: var(--accent-line);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.42),
+      0 22px 46px -28px rgba(0, 0, 0, 1),
+      0 0 34px -18px var(--accent-glow);
+  }
+}
+
+/* ---- the home grid -------------------------------------------------------
+   Every shelf on the home page is this one grid: the same poster proportion,
+   the same gap, the same number of columns at a given width. No lead card, no
+   banner, no rail that has to be dragged — a two-column grid on a phone that
+   widens by one column at a time until a 1600px monitor holds seven.
+
+   The cards are deliberately small: a compact poster reads as a catalogue, and
+   a catalogue is what a viewer scans. Discover keeps its own looser grid, so
+   the home edit being dense does not make search results dense too. */
+.page-home .home-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 10px;
+}
+
+/* A card in a grid cell takes the cell, not the row's fixed poster width. */
+.page-home .home-grid .card,
+.page-home .home-grid .cw-item,
+.page-home .home-grid .cw-item .card {
+  width: 100%;
+  min-width: 0;
+}
+
+.page-home .home-grid .card-title {
+  font-size: 13px;
+}
+
+.page-home .home-grid .card-meta {
+  font-size: 11.5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* At phone widths a compact poster cannot carry "TV · 2023 · 28 Ep" without
+   cutting "Ep" in half, so the episode count is the fact that goes; the year
+   and the format are the two that identify the title. */
+@media (max-width: 719px) {
+  .page-home .home-grid .card-meta > :nth-child(n + 4) {
+    display: none;
+  }
+}
+
+@media (min-width: 520px) {
+  .page-home .home-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 720px) {
+  .page-home .home-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 20px 14px;
+  }
+}
+
+@media (min-width: 960px) {
+  .page-home .home-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .page-home .home-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1500px) {
+  .page-home .home-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+/* ==========================================================================
+   Charcoal lock — one glass recipe for every control
+   --------------------------------------------------------------------------
+   The theme is charcoal and glass and nothing else. Every button, icon button,
+   navigation bar and floating card is the same frosted pane: white at 6% over
+   whatever is behind it, a 12% white edge, a 16px blur, and a hover that lifts
+   the face to 12% with a soft white glow. These rules sit at the end of the
+   last stylesheet loaded, so they are the final word on a control's face,
+   border and hover whatever a feature sheet said earlier.
+   ========================================================================== */
+
+:root {
+  --glass-face: rgba(255, 255, 255, 0.06);
+  --glass-face-hover: rgba(255, 255, 255, 0.12);
+  --glass-edge: 1px solid rgba(255, 255, 255, 0.12);
+  --glass-blur: 16px;
+}
+
+/* ---- buttons, icon buttons and chips ------------------------------------- */
+.btn,
+.btn--primary,
+.btn--glass,
+.btn--ghost,
+.icon-btn,
+.row-arrow,
+.cw-kill,
+.welcome-close,
+.films-pop-ok,
+.cat-tab,
+.genre-pill,
+.tab,
+.seg-btn {
+  background: var(--glass-face);
+  background-image: none;
+  border: var(--glass-edge);
+  color: var(--text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 10px 26px -20px rgba(0, 0, 0, 1);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+/* A control with only a glyph in it sits in a circle, never in a square. */
+.icon-btn,
+.row-arrow,
+.cw-kill,
+.welcome-close {
+  border-radius: var(--r-pill);
+}
+
+.btn--primary {
+  color: #ffffff;
+}
+
+@media (hover: hover) {
+  .btn:hover,
+  .btn--primary:hover,
+  .btn--glass:hover,
+  .btn--ghost:hover,
+  .icon-btn:hover,
+  .row-arrow:hover,
+  .cw-kill:hover,
+  .welcome-close:hover,
+  .films-pop-ok:hover,
+  .cat-tab:hover,
+  .genre-pill:hover,
+  .tab:hover,
+  .seg-btn:hover {
+    background: var(--glass-face-hover);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+      0 0 26px -10px rgba(255, 255, 255, 0.2),
+      0 16px 32px -22px rgba(0, 0, 0, 1);
+  }
+}
+
+/* ---- chrome, search and floating panels ---------------------------------- */
+.topbar,
+.tabbar,
+.searchbar,
+.search input,
+.films-pop-card,
+.sheet,
+  .panel-card,
+  .dialog {
+  background: var(--glass-face);
+  background-image: none;
+  border: var(--glass-edge);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+}
+
+/* The dock is the one bar that stays deeper than the panes it holds, so the
+   active tab reads as a lit chip inside a dark trough. */
+.tabbar,
+.topbar {
+  background: rgba(18, 19, 22, 0.62);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+@media (hover: hover) {
+  .tabbar a:hover {
+    background: var(--glass-face-hover);
+  }
+}
+
+/* ---- surfaces that are not controls -------------------------------------- */
+.card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.014) 42%, rgba(0, 0, 0, 0.22)),
+    rgba(26, 28, 32, 0.72);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* The large action clusters (title page, banner) set their own face earlier at
+   higher specificity; they take the same six-per-cent pane as every other
+   control, so the primary action is distinguished by its rim and shadow rather
+   than by a brighter fill. */
+.detail-actions .btn,
+.hero-actions .btn,
+button.icon-btn,
+  .topbar .icon-btn,
+  .tabbar .icon-btn {
+  background: var(--glass-face);
+  background-image: none;
+  border-color: rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+/* ==========================================================================
+   Unified top navigation (desktop)
+   --------------------------------------------------------------------------
+   From 1000px up the site has exactly one navigation surface: a centred, pill
+   shaped frosted bar carrying the brand, the six destinations, the search box
+   and the account tools. The side rail and the bottom dock are removed from
+   the layout (not just hidden), and the shell drops to a single column so the
+   content uses the width they used to take.
+
+   Below 1000px none of this applies: the phone keeps its dock, and the bar
+   stays the slim search header it already was.
+   ========================================================================== */
+
+.topnav,
+.nav-more {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'top'
+      'view'
+      'foot';
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .tabbar {
+    display: none !important;
+  }
+
+  .topbar {
+    width: min(100% - 28px, 1280px);
+    margin: 10px auto 0;
+    padding: 7px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    top: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--r-pill);
+    background: rgba(18, 19, 22, 0.62);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 22px 48px -34px rgba(0, 0, 0, 1);
+  }
+
+  .topbar.is-stuck {
+    background: rgba(18, 19, 22, 0.86);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 26px 54px -32px rgba(0, 0, 0, 1);
+  }
+
+  .topbar .brand {
+    display: inline-flex;
+    padding: 0 2px;
+  }
+
+  .topbar .searchbar {
+    width: clamp(180px, 21vw, 300px);
+  }
+
+  .topnav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .topnav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: var(--r-pill);
+    color: var(--text-dim);
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+  }
+
+  .topnav-link svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+
+  .topnav-link .topnav-lock {
+    width: 11px;
+    height: 11px;
+    opacity: 0.75;
+  }
+
+  .topnav-link:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .topnav-link.is-on {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+
+  .topnav-link.is-locked {
+    color: var(--text-faint);
+  }
+
+  .nav-more {
+    display: block;
+    position: relative;
+  }
+
+  .nav-more-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    inset-inline-end: 0;
+    z-index: 60;
+    width: 306px;
+    padding: 12px;
+    border-radius: 20px;
+    background: rgba(18, 19, 22, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 30px 70px -34px rgba(0, 0, 0, 1);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    animation: nav-more-in 160ms var(--ease) both;
+  }
+
+  .nav-more-menu .more-menu {
+    gap: var(--sp-3);
+  }
+
+  .nav-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+@keyframes nav-more-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* ---- bar proportions -----------------------------------------------------
+   The search box is a fixed-width object in the bar, not a flexible one: it is
+   the only thing in the row that must not be squeezed by the destinations.
+   Between 1000 and 1180 the destination labels step aside and the same six
+   links become icon pills, which is what keeps the search box full width and
+   the bar from wrapping on a 1024px laptop. */
+@media (min-width: 1000px) {
+  .topbar .topbar-spacer {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .topbar .searchbar {
+    flex: 0 0 clamp(170px, 20vw, 280px);
+    width: clamp(170px, 20vw, 280px);
+  }
+}
+
+@media (min-width: 1000px) and (max-width: 1179px) {
+  .topnav-link span {
+    display: none;
+  }
+
+  .topnav-link {
+    padding: 0 9px;
+  }
+}
+
+/* ---- the home banner ----------------------------------------------------
+   One premium strip, its own weather: an indigo-to-cyan field with two slow
+   lights behind the copy, a hairline of the same light along the top, and a
+   float gentle enough to notice only if you look. It is the only place on the
+   page that uses colour for its own sake. */
+.welcome {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(120% 160% at 88% -30%, rgba(124, 92, 255, 0.42), transparent 62%),
+    radial-gradient(90% 140% at 4% 130%, rgba(46, 196, 214, 0.28), transparent 58%),
+    linear-gradient(118deg, #171326 0%, #121a28 48%, #0c1016 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 26px 60px -44px rgba(0, 0, 0, 1);
+  animation: welcome-float 11s ease-in-out infinite;
+}
+.welcome::before,
+.welcome::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  filter: blur(26px);
+  pointer-events: none;
+}
+.welcome::before {
+  top: -190px;
+  inset-inline-end: -60px;
+  background: radial-gradient(circle, rgba(140, 108, 255, 0.55), transparent 68%);
+  animation: welcome-drift 16s ease-in-out infinite;
+}
+.welcome::after {
+  bottom: -220px;
+  inset-inline-start: 8%;
+  background: radial-gradient(circle, rgba(64, 208, 220, 0.35), transparent 68%);
+  animation: welcome-drift 21s ease-in-out infinite reverse;
+}
+.welcome-copy {
+  position: relative;
+  z-index: 1;
+}
+.welcome-title {
+  letter-spacing: -0.02em;
+}
+.welcome:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+@keyframes welcome-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes welcome-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-22px, 14px, 0) scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome,
+  .welcome::before,
+  .welcome::after {
+    animation: none;
+  }
+}

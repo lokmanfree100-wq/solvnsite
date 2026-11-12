@@ -115,9 +115,6 @@
     min-height: 46px;
     padding: 13px 16px;
   }
-  .side-link {
-    min-height: 46px;
-  }
   .pill-x {
     height: 36px;
   }
@@ -316,7 +313,7 @@
    `dvh` tracks the visible area; the vh line above stays as the fallback. */
 @media (pointer: coarse), (max-width: 760px) {
   .hero {
-    min-height: clamp(360px, 44dvh, 448px);
+    min-height: clamp(340px, 48dvh, 430px);
   }
 }
 
@@ -340,7 +337,7 @@
      arrows keep their own band at the foot. Nothing trades a tap target for
      room; the prose and the second title are what gave way. */
   .hero {
-    min-height: clamp(222px, 32dvh, 254px);
+    min-height: clamp(300px, 42dvh, 366px);
     border-radius: var(--r-lg);
   }
   .hero-content {
@@ -613,4 +610,58 @@
 .player-frame iframe:-webkit-full-screen {
   width: 100%;
   height: 100%;
+}
+
+/* ---- section headings ---------------------------------------------------
+   A heading, its subtitle and a "View all" link cannot share 390px: the flex
+   row squeezed "Top Rated Masterpieces" into a 118px column of two short lines
+   while the subtitle ran to three. On a narrow screen the link keeps the
+   heading's line and the subtitle takes one of its own, full width. */
+@media (max-width: 560px) {
+  .section-head {
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 2px;
+  }
+  .section-head h2 {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .section-head .sub {
+    flex: 1 1 100%;
+    order: 3;
+  }
+  .section-head .spacer {
+    display: none;
+  }
+}
+
+/* Between the phone bar and the desktop rail there is no side navigation, so
+   the flexible gap that centres the search on a wide screen has nothing to
+   balance and simply eats ~250px of it: at 768px the field was 155px wide and
+   cut its own placeholder. It only belongs where the rail exists. */
+@media (max-width: 999px) {
+  .topbar-spacer {
+    display: none;
+  }
+}
+
+/* ---- the top bar gets a second row -------------------------------------
+   Five controls beside a search field leave the field 113px at 390px wide,
+   which is a 37px window onto the placeholder once its own inner padding is
+   spent. The bar wraps instead: the controls keep the first line, the search
+   takes the second at full width, and nothing has to be dropped. */
+@media (max-width: 480px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: 7px;
+    padding-top: calc(env(safe-area-inset-top) + 7px);
+    padding-bottom: 7px;
+  }
+  .searchbar {
+    order: 10;
+    flex: 1 0 100%;
+    max-width: none;
+  }
 }

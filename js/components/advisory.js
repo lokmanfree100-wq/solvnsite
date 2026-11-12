@@ -48,11 +48,11 @@ export function showPlayAdvisory(mount, before = null) {
     h(
       'div.play-advisory-copy',
       {},
-      h('p.play-advisory-title', {}, t('This player belongs to another site')),
+      h('p.play-advisory-title', {}, t('Partner stream')),
       h(
         'p.play-advisory-body',
         {},
-        t('It may show its own ads inside the picture, but it cannot open new tabs, move this page or download anything.'),
+        t('An ad may appear inside the picture. The frame cannot open tabs, move this page or download files.'),
       ),
     ),
     h('button.btn.btn--primary.btn--sm', { type: 'button', onclick: fade }, icon('play'), t('Agree and continue')),

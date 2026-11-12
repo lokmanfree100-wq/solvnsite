@@ -135,6 +135,9 @@ const I = (d, fill = false) => ({ d: Array.isArray(d) ? d : [d], fill });
 
 export const ICONS = {
   dot: I('M12 12h.01'),
+  /* The three-dot handle. Drawn as three round caps rather than three circles
+     so it inherits the same stroke weight as every other glyph in the bar. */
+  more: I(['M5.5 12h.01', 'M12 12h.01', 'M18.5 12h.01']),
   home: I('M3 10.5 12 3l9 7.5M5.5 9.5V20a1 1 0 0 0 1 1H10v-5.5h4V21h3.5a1 1 0 0 0 1-1V9.5'),
   compass: I(['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z', 'M15.8 8.2 13.9 13.9 8.2 15.8 10.1 10.1l5.7-1.9Z']),
   search: I(['M11 18.5a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15Z', 'M20.5 20.5 16.4 16.4']),

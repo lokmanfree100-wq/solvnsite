@@ -31,10 +31,9 @@ import { ArenaView } from './views/arena.js';
 import { TopView } from './views/top.js';
 import { AdvertiseView } from './views/advertise.js';
 import { AdminView } from './views/admin.js';
-import { MoviesView } from './views/movies.js';
-import { MovieDetailView } from './views/mdetail.js';
-import { MovieWatchView } from './views/mwatch.js';
+import { maybeFilmsGate } from './components/films-gate.js';
 import { restore, pushStats, staticHost, takeRecovery, account } from './lib/account.js';
+import { settings, DEFAULT_ACCENT } from './lib/store.js';
 import { noteSeen } from './lib/cards.js';
 import { verifyCloudSchema } from './lib/cloud.js';
 import { beat, markAway } from './lib/presence.js';
@@ -48,6 +47,14 @@ import { MAINTENANCE_MODE, mountMaintenance } from './lib/maintenance.js';
 function openProfileMail() {
   setTimeout(() => go('/profile?tab=mail'), 0);
   return h('div.p-muted', {}, t('Opening your profile…'));
+}
+
+/* A film address is not a page any more. It forwards home and lets the one
+   short session note say why, so a stale bookmark costs a small popup instead
+   of a wall of text about a catalogue that does not exist yet. */
+function filmAddress() {
+  setTimeout(() => go('/'), 0);
+  return h('div.p-muted', {}, t('Opening Solvn…'));
 }
 
 const ROUTES = [
@@ -75,11 +82,12 @@ const ROUTES = [
   { match: /^\/admin$/, view: AdminView, nav: true },
   { match: /^\/anime\/(\d+)/, view: DetailView, nav: true },
   { match: /^\/watch\/(\d+)/, view: WatchView, nav: false },
-  /* Movies & Series: the TMDB half of the site, played by the same two engines
-     (embed pool / clean room) on the /mwatch page. */
-  { match: /^\/movies$/, view: MoviesView, nav: true },
-  { match: /^\/movie\/(\d+)/, view: MovieDetailView, nav: true },
-  { match: /^\/mwatch\/(\d+)/, view: MovieWatchView, nav: false },
+  /* Movies & Series are parked (lib/locks.js) and have no page at all: an old
+     bookmark or a shared film link lands on Home behind one short note, and no
+     route can reach the film views, their TMDB requests or the /mwatch player. */
+  { match: /^\/movies$/, view: filmAddress, nav: true },
+  { match: /^\/movie\/(\d+)/, view: filmAddress, nav: true },
+  { match: /^\/mwatch\/(\d+)/, view: filmAddress, nav: true },
 ];
 
 const root = () => qs('#view');
@@ -104,6 +112,15 @@ function pulse(path) {
 if (!MAINTENANCE_MODE) setInterval(() => pulse(parse().path), 60_000);
 
 function applyTheme() {
+  /* One-time palette migration. A saved accent is normally the viewer's choice
+     and is never touched; but a redesign has to be seen once, or every returning
+     browser keeps the colour of the layout it had before. Bumping the revision
+     repaints the new default once and then leaves the picker alone again. */
+  if (settings.get('themeRev') !== 3) {
+    settings.set('accent', DEFAULT_ACCENT);
+    settings.set('accentCustom', '');
+    settings.set('themeRev', 3);
+  }
   paintAccent();
   const meta = qs('meta[name="theme-color"]');
   if (meta) {
@@ -209,7 +226,7 @@ function toTop() {
 }
 
 const PAGE_TITLES = {
-  '': 'Solvn — anime, films & series in HD',
+  '': 'Solvn — anime & cartoons in HD',
   discover: 'Discover — Solvn',
   toons: 'Classic & Toons — Solvn',
   search: 'Search — Solvn',
@@ -227,9 +244,9 @@ const PAGE_TITLES = {
   admin: 'Admin — Solvn',
   anime: 'Details — Solvn',
   watch: 'Watch — Solvn',
-  movies: 'Movies & Series — Solvn',
-  movie: 'Details — Solvn',
-  mwatch: 'Watch — Solvn',
+  movies: 'Movies & Series — Coming Soon — Solvn',
+  movie: 'Movies & Series — Coming Soon — Solvn',
+  mwatch: 'Movies & Series — Coming Soon — Solvn',
 };
 const pageTitle = (seg) => t(PAGE_TITLES[seg] || PAGE_TITLES['']);
 
@@ -264,7 +281,7 @@ function syncChrome() {
   const skip = qs('.skip-link');
   if (skip) skip.textContent = t('Skip to content');
   const desc = qs('meta[name="description"]');
-  if (desc) desc.content = t('Solvn — anime, films & series in HD. One player, no installs, nothing to pay for.');
+  if (desc) desc.content = t('Solvn — anime & cartoons in HD. One player, no installs, nothing to pay for.');
   const label = t('Primary navigation');
   for (const id of ['sidenav', 'tabbar']) qs(`#${id}`)?.setAttribute('aria-label', label);
 }
@@ -390,6 +407,9 @@ if (MAINTENANCE_MODE) {
            a sheet under the veil is a sheet nobody sees. A deep link straight into the
            player is the one screen it must not land on: the episode owns that moment. */
         if (path.startsWith('/watch/')) return;
+        /* One short note about the parked half of the catalogue, once a session
+           and once the intro is out of the way. */
+        setTimeout(maybeFilmsGate, Math.max(0, introEnds - Date.now()) + 900);
         setTimeout(askAboutAccount, Math.max(0, introEnds - Date.now()));
       });
   }

@@ -299,30 +299,6 @@ export function ToonsView() {
     ),
     bar,
     shelvesBox,
-    h(
-      'section.panel-card.toons-note',
-      {},
-      h('div.panel-head', {}, icon('info'), h('h3', {}, t('What these shelves can honestly hold'))),
-      h(
-        'div.panel-body',
-        {},
-        h(
-          'p.muted',
-          {},
-          t('Solvn streams what its catalogue actually carries, and that catalogue is AniList — a database of Japanese animation.'),
-          ' ',
-          t('The channel rows are therefore the shows those channels dubbed, not everything they broadcast: it indexes no Cartoon Network, Nickelodeon or Disney television series, and a row of them would be a row of posters that open nothing.'),
-          ' ',
-          t('Every id in a curated shelf was resolved against the live API before it was written down, and no title is ever repeated across two rows.'),
-        ),
-        h(
-          'p.muted',
-          {},
-          t('The language chips along the bottom of a poster say what this installation can put in the player, not what a dub studio once recorded. AniList keeps no dub-availability field for a title, so Solvn promises only what a configured server declares it carries — and an Arabic or French server added in Settings lights those chips on every shelf here.'),
-        ),
-        h('a.link-all', { href: '#/search' }, t('Search the catalogue yourself'), icon('chevronRight')),
-      ),
-    ),
   );
   return wrap;
 }

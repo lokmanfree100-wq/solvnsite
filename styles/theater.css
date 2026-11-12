@@ -16,7 +16,6 @@
     border-color var(--t-med) var(--ease),
     background var(--t-med) var(--ease);
 }
-.sidenav,
 .tabbar,
 .site-foot,
 .watch > :not(.player-shell) {
@@ -24,14 +23,13 @@
 }
 
 html.theater .topbar,
-html.theater .sidenav,
 html.theater .tabbar,
 html.theater .site-foot {
   opacity: 0.28;
 }
 
 /* Everything on the watch page that is not the player recedes; the topbar,
-   sidenav and footer already dim above, and `.player-shell` is excluded here and
+   dock and footer already dim above, and `.player-shell` is excluded here and
    pinned at full strength below, so the eye lands on the frame. */
 html.theater .watch > :not(.player-shell) {
   opacity: 0.42;
@@ -46,8 +44,6 @@ html.theater .player-shell {
    eye is meant to leave alone. */
 html.theater .topbar:hover,
 html.theater .topbar:focus-within,
-html.theater .sidenav:hover,
-html.theater .sidenav:focus-within,
 html.theater .tabbar:hover,
 html.theater .tabbar:focus-within {
   opacity: 0.92;
@@ -73,7 +69,6 @@ html.theater .tabbar:focus-within {
 
 @media (prefers-reduced-motion: reduce) {
   .topbar,
-  .sidenav,
   .tabbar,
   .site-foot,
   .watch > :not(.player-shell) {

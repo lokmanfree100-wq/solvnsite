@@ -8,7 +8,9 @@
 
 import { h, icon, qs, qsa } from './dom.js';
 
-export const MAINTENANCE_MODE = true;
+/* Off while the anime and cartoon catalogue is open. The gate itself is
+   untouched: flip this back to true and the next load returns the overlay. */
+export const MAINTENANCE_MODE = false;
 
 /* The three messages exactly as briefed. The em-dash in the source copy is the
    seam between the headline and the body, so each is split for the layout but
