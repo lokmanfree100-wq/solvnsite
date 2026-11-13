@@ -74,10 +74,10 @@ export async function MovieWatchView(ctx) {
 
   /* ---------- player ---------- */
 
-  const readyArt = h('img.player-ready-art', { alt: '', decoding: 'async' });
   const readySrc = backdrop(d.backdrop_path) || poster(d.poster_path, 'w780');
-  if (readySrc) readyArt.src = readySrc;
-  else readyArt.hidden = true;
+  /* No artwork => no <img> at all: an <img> with an empty src makes the browser
+     request the page URL and log a 404. */
+  const readyArt = readySrc ? h('img.player-ready-art', { src: readySrc, alt: '', decoding: 'async' }) : null;
 
   const loadingText = h('span');
   const ready = h(
