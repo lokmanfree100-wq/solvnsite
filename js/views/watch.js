@@ -1,6 +1,7 @@
 /** Watch: our own player with server failover, episode rail, sub/dub switch, progress. */
 
 import { h, icon, qs } from '../lib/dom.js';
+import { streamableAnimeTitles } from '../lib/sources.js';
 import { detail, episodes as fetchEpisodes } from '../lib/anilist.js';
 import { go, parse } from '../lib/router.js';
 import {
@@ -1074,12 +1075,19 @@ export function WatchView({ params, route, onCleanup }) {
   );
 
   /* ---------------- recommendations ---------------- */
-  function paintRecs() {
+  async function paintRecs() {
     const parts = [];
     const recs = (media.recommendations?.nodes || []).map((n) => n.mediaRecommendation).filter(Boolean).slice(0, 14);
-    if (recs.length) parts.push(mediaRow({ heading: t('Viewers also enjoyed'), items: recs }));
+    if (recs.length) {
+      const show = await streamableAnimeTitles(recs);
+      if (show.length) parts.push(mediaRow({ heading: t('Viewers also enjoyed'), items: show }));
+    }
     const rels = (media.relations?.edges || []).filter((e) => e.node && e.node.format !== 'MUSIC');
-    if (rels.length) parts.push(mediaRow({ heading: t('Related'), items: rels.map((e) => e.node).slice(0, 14) }));
+    if (rels.length) {
+      const map = rels.map((e) => e.node).slice(0, 14);
+      const show = await streamableAnimeTitles(map);
+      if (show.length) parts.push(mediaRow({ heading: t('Related'), items: show }));
+    }
     recsHost.replaceChildren(...parts);
   }
 

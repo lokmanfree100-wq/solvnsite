@@ -1,6 +1,7 @@
 /** Library: locally-stored lists, favourites and in-progress titles. */
 
 import { h, icon } from '../lib/dom.js';
+import { streamableAnimeTitles } from '../lib/sources.js';
 import { go, parse } from '../lib/router.js';
 import {
   LISTS,
@@ -60,13 +61,6 @@ export async function LibraryView() {
 
   const chips = new Map();
 
-  const countFor = (key) =>
-    key === 'all' ? totalListCount()
-    : key === 'favourites' ? favouriteEntries().length
-    : key === 'progress' ? continueWatching(99).length
-    : key === 'history' ? history(99).length
-    : listCount(key);
-
   for (const [key, label] of TABS) {
     const n = h('span', { style: { opacity: 0.65, fontSize: '11.5px' } });
     const chip = h(`button.chip${tab === key ? '.is-active' : ''}`, {
@@ -88,24 +82,49 @@ export async function LibraryView() {
     tabBar.append(chip);
   }
 
-  /** Counts and stat tiles both change when a card is removed. */
-  function paintMeta() {
+  /** Storage counts (unchanged) for the pill badges historically, replaced below by
+   *  watchable counts once the gate is in place. Kept here so nothing else breaks. */
+  function storageCountFor(key) {
+    if (key === 'all') return totalListCount();
+    if (key === 'favourites') return favouriteEntries().length;
+    if (key === 'progress') return continueWatching(99).length;
+    if (key === 'history') return history(99).length;
+    return listCount(key);
+  }
+
+  /** Watchable (streamable) subset count for a library view. Drives both the pill
+   *  badges and the stat tiles so a viewer never sees a number that does not match the
+   *  cards actually on screen. */
+  async function watchableCountFor(key) {
+    let entries;
+    if (key === 'all') entries = LISTS.flatMap((k) => listEntries(k));
+    else if (key === 'favourites') entries = favouriteEntries();
+    else if (key === 'progress') entries = continueWatching(99);
+    else if (key === 'history') entries = history(99);
+    else entries = listEntries(key);
+    const media = entries.map(asMedia);
+    return (await streamableAnimeTitles(media)).length;
+  }
+
+  /** Counts and stat tiles both change when a card is removed. Both now report the
+   *  watchable subset, so the numbers on screen always match the cards. */
+  async function paintMeta() {
     for (const [key, chip] of chips) {
-      const c = countFor(key);
+      const c = await watchableCountFor(key);
       const badge = chip.lastElementChild;
       badge.textContent = c ? String(c) : '';
       badge.hidden = !c;
     }
     stats.replaceChildren(
-      stat(totalListCount(), t('Saved titles'), 'all', tab === 'all'),
-      stat(continueWatching(99).length, t('In progress'), 'progress', tab === 'progress'),
-      stat(favouriteEntries().length, t('Favourites'), 'favourites', tab === 'favourites'),
-      stat(history(99).length, t('Recently viewed'), 'history', tab === 'history'),
+      stat(await watchableCountFor('all'), t('Saved titles'), 'all', tab === 'all'),
+      stat(await watchableCountFor('progress'), t('In progress'), 'progress', tab === 'progress'),
+      stat(await watchableCountFor('favourites'), t('Favourites'), 'favourites', tab === 'favourites'),
+      stat(await watchableCountFor('history'), t('Recently viewed'), 'history', tab === 'history'),
     );
   }
 
-  function render() {
-    paintMeta();
+  async function render() {
+    await paintMeta();
     if (tab === 'favourites') return renderFavourites();
     if (tab === 'progress') return renderProgress();
     if (tab === 'history') return renderHistory();
@@ -140,7 +159,7 @@ export async function LibraryView() {
     return grid;
   }
 
-  function renderList(key) {
+  async function renderList(key) {
     /* A title sits in exactly one list, so "All Saved" is a concatenation, not a
        merge — newest first, whatever shelf it belongs to. */
     const entries =
@@ -158,10 +177,23 @@ export async function LibraryView() {
       );
       return;
     }
+    /* Rule 1: a library card is only painted when the device can stream the title. */
+    const show = await streamableAnimeTitles(entries.map(asMedia));
+    if (!show.length) {
+      body.replaceChildren(
+        emptyState({
+          iconName: 'lock',
+          heading: key === 'all' ? t('No watchable titles in your library') : t('None of the titles in {list} are watchable right now', { list: listLabel(key) }),
+          body: t('Everything you saved is still here. Try a title that streams on this device, or add a streaming server in Settings.'),
+          action: h('a.btn.btn--primary', { href: '#/discover' }, icon('compass'), t('Find something to watch')),
+        }),
+      );
+      return;
+    }
     body.replaceChildren(
       h('p.muted', { style: { fontSize: '13px', marginBottom: 'var(--sp-4)' } },
-        entries.length === 1 ? t('{n} title · saved locally', { n: entries.length }) : t('{n} titles · saved locally', { n: entries.length })),
-      gridWith(entries.map(asMedia), (m) => {
+        show.length === 1 ? t('{n} watchable title · saved locally', { n: show.length }) : t('{n} watchable titles · saved locally', { n: show.length })),
+      gridWith(show, (m) => {
         removeFromLists(m.id);
         toast(t('Removed from your library'), { iconName: 'bookmark' });
         document.dispatchEvent(new CustomEvent('kitsune:nav'));
@@ -169,7 +201,7 @@ export async function LibraryView() {
     );
   }
 
-  function renderFavourites() {
+  async function renderFavourites() {
     const entries = favouriteEntries();
     if (!entries.length) {
       body.replaceChildren(
@@ -182,17 +214,29 @@ export async function LibraryView() {
       );
       return;
     }
+    const show = await streamableAnimeTitles(entries.map(asMedia));
+    if (!show.length) {
+      body.replaceChildren(
+        emptyState({
+          iconName: 'lock',
+          heading: t('No watchable favourites right now'),
+          body: t('Your favourites are still here. Find something that streams on this device, or add a streaming server in Settings.'),
+          action: h('a.btn.btn--primary', { href: '#/discover' }, icon('compass'), t('Browse anime')),
+        }),
+      );
+      return;
+    }
     body.replaceChildren(
       h('p.muted', { style: { fontSize: '13px', marginBottom: 'var(--sp-4)' } },
-        entries.length === 1 ? t('{n} favourite', { n: entries.length }) : t('{n} favourites', { n: entries.length })),
-      gridWith(entries.map(asMedia), (m) => {
+        show.length === 1 ? t('{n} watchable favourite', { n: show.length }) : t('{n} watchable favourites', { n: show.length })),
+      gridWith(show, (m) => {
         toggleFavourite({ id: m.id });
         render();
       }),
     );
   }
 
-  function renderProgress() {
+  async function renderProgress() {
     const entries = continueWatching(60);
     if (!entries.length) {
       body.replaceChildren(
@@ -205,10 +249,22 @@ export async function LibraryView() {
       );
       return;
     }
+    const show = await streamableAnimeTitles(entries.map(asMedia));
+    if (!show.length) {
+      body.replaceChildren(
+        emptyState({
+          iconName: 'lock',
+          heading: t('Nothing watchable in progress'),
+          body: t('Your in-progress titles are still here. Find something that streams on this device.'),
+          action: h('a.btn.btn--primary', { href: '#/' }, icon('home'), t('Back to home')),
+        }),
+      );
+      return;
+    }
     body.replaceChildren(
       h('p.muted', { style: { fontSize: '13px', marginBottom: 'var(--sp-4)' } },
-        t('{n} unfinished · last opened {when}', { n: entries.length, when: relativeTime(entries[0].at) })),
-      gridWith(entries.map(asMedia), (m) => {
+        t('{n} watchable · last opened {when}', { n: show.length, when: relativeTime(entries[0].at) })),
+      gridWith(show, (m) => {
         clearProgress(m.id);
         toast(t('Progress cleared'), { tone: 'ok', iconName: 'check' });
         render();
@@ -216,7 +272,7 @@ export async function LibraryView() {
     );
   }
 
-  function renderHistory() {
+  async function renderHistory() {
     const entries = history(60);
     if (!entries.length) {
       body.replaceChildren(
@@ -224,9 +280,20 @@ export async function LibraryView() {
       );
       return;
     }
+    const show = await streamableAnimeTitles(entries.map(asMedia));
+    if (!show.length) {
+      body.replaceChildren(
+        emptyState({
+          iconName: 'lock',
+          heading: t('Nothing watchable in your history'),
+          body: t('Titles you opened are still in your history. Find something that streams on this device.'),
+        }),
+      );
+      return;
+    }
     body.replaceChildren(
-      h('p.muted', { style: { fontSize: '13px', marginBottom: 'var(--sp-4)' } }, t('{n} recently viewed', { n: entries.length })),
-      gridWith(entries.map(asMedia)),
+      h('p.muted', { style: { fontSize: '13px', marginBottom: 'var(--sp-4)' } }, t('{n} watchable recently viewed', { n: show.length })),
+      gridWith(show),
     );
   }
 
@@ -240,7 +307,7 @@ export async function LibraryView() {
     tabBar,
     body,
   );
-  render();
+  await render();
   return wrap;
 }
 

@@ -2,6 +2,7 @@
 
 import { h, icon, qs } from '../lib/dom.js';
 import { search } from '../lib/anilist.js';
+import { streamableAnimeTitles } from '../lib/sources.js';
 import { go, parse } from '../lib/router.js';
 import { recentSearches, pushQuery, clearQueries, settings } from '../lib/store.js';
 import { title, formatLabel, yearOf, compactNumber, debounce } from '../lib/util.js';
@@ -199,7 +200,7 @@ export async function SearchView() {
       const allow = settings.get('showNsfw');
       const clean = allow ? items : items.filter((m) => !m.isAdult);
       hasNext = Boolean(info.hasNextPage);
-      renderResults(clean, q);
+      await renderResults(clean, q);
     } catch {
       if (mine !== resultReq) return;
       results.replaceChildren(emptyState({ iconName: 'offline', heading: t('Search failed'), body: t('The search did not answer. Give it a second and try again.') }));
@@ -219,7 +220,8 @@ export async function SearchView() {
       const clean = allow ? items : items.filter((m) => !m.isAdult);
       page += 1;
       hasNext = Boolean(info.hasNextPage);
-      results.append(...clean.map((m) => mediaCard(m)));
+      const show = await streamableAnimeTitles(clean);
+      results.append(...show.map((m) => mediaCard(m)));
       paintSummary(lastQ);
       paintPager();
     } catch {
@@ -243,8 +245,12 @@ export async function SearchView() {
     summary.textContent = t('Searching…');
   }
 
-  function renderResults(items, q) {
-    if (!items.length) {
+  async function renderResults(items, q) {
+    /* Rule 1: a search result card is only painted when the device can stream the
+       title. The viewer still sees bones while the check runs; a title that cannot be
+       verified simply never gets a card. */
+    const show = await streamableAnimeTitles(items);
+    if (!show.length) {
       results.className = '';
       results.replaceChildren(
         emptyState({
@@ -258,7 +264,7 @@ export async function SearchView() {
       return;
     }
     results.className = 'grid';
-    results.replaceChildren(...items.map((m, i) => mediaCard(m, { eager: i < 8 })));
+    results.replaceChildren(...show.map((m, i) => mediaCard(m, { eager: i < 8 })));
     paintSummary(q);
     paintPager();
   }

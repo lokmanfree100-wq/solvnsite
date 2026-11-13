@@ -277,6 +277,33 @@ function answerSeason(path) {
 }
 
 /**
+ * Whether the offline snapshot regards this specific title as streamable.
+ *
+ * Rule 1 of the strict layer: a catalogue card is only rendered when the title is
+ * streamable. On a static host that cannot ping providers per poster, the snapshot
+ * is the source of truth for "can this title be played from this device" — a title
+ * that came from the seed with episode data or a verified stream source is streamable;
+ * a stub entry with no artwork, no episode data and no verified source is not.
+ *
+ * Live /tmdb continues to answer exactly, and the watch page's own resolver is the
+ * final word for a direct watch link.
+ */
+export function streamableInCatalogue(type, id) {
+  if (!cat) return null;
+  const row = ofType(type).find((r) => r.id === Number(id));
+  if (!row) return null;
+  /* An entry is streamable when it carries real content: episode data, a poster or a
+     backdrop, or an explicit streamable flag from the build. Entries that are clearly
+     placeholders (no title/name, no artwork, no episode data) are not. */
+  const hasArt = !!(row.poster_path || row.backdrop_path);
+  const hasEpisodes = !!(row.episodes && Object.keys(row.episodes).length);
+  const hasName = !!(row.title || row.name || row.original_title || row.original_name);
+  const flagged = row.streamable === true;
+  const clearlyEmpty = !hasArt && !hasEpisodes && !hasName;
+  return flagged || !clearlyEmpty ? true : false;
+}
+
+/**
  * The snapshot's answer to a request that would have gone to TMDB: an object to
  * serve, `null` when this file has no such route, and `undefined` when the
  * catalogue loaded fine but does not hold this title.

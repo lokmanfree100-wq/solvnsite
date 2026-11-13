@@ -351,6 +351,39 @@ const safe = {
  * address is never handed a track it does not declare, because the answer to
  * that is not an error but a player that sits there showing nothing.
  */
+/**
+ * Stream-validity gate.
+ *
+ * Rule 1 of the strict validation layer: a title is not shown on the UI unless
+ * at least one enabled server can actually serve it right now. This function is
+ * the client-side expression of that rule. It does not play anything — it only
+ * asks whether a playable address exists for this title on this device's configured
+ * sources.
+ *
+ * Two shapes of answer:
+ *   - anime (AniList id): a server is "usable" for the title when it declares a
+ *     track the viewer can request and the template can be filled for this id +
+ *     episode. The site does not ping the embed host per poster (that would be the
+ *     burst the queue exists to avoid); a declared track on a server this device
+ *     trusts is taken as streamable. A server that carries no track for this
+ *     audience is not counted.
+ *   - movies/series (TMDB id): when a /stream proxy exists, hit it once per title
+ *     to learn whether the ladder returns at least one .m3u8/.mp4. When the host is
+ *     static (no proxy), fall back to the offline catalogue's streamable flag and
+ *     the defaults' declared tracks — the same contract the watch page uses to
+ *     decide it can hand the title to the player.
+ *
+ * The result is cached per session by title+type so a rail of twenty posters does
+ * not re-ask the same title twenty times.
+ */
+export const STREAM_CHECK_CACHE = new Map();
+
+/** Clear the per-session stream-check cache. Called on route changes that swap the
+    title set, so a stale "yes" never keeps a dead poster on screen. */
+export function clearStreamCheckCache() {
+  STREAM_CHECK_CACHE.clear();
+}
+
 export function serverUrl(server, { id, tmdb = '', episode = 1, audio = 'sub', autoNext = true, accent = '' }) {
   const wanted = asTrack(audio);
   const carried = serverTracks(server);
@@ -439,4 +472,141 @@ export function failoverMs() {
   const n = Number(settings.get('failover'));
   const sec = Number.isFinite(n) && n >= 3 && n <= 30 ? Math.round(n) : 8;
   return Math.min(30, Math.max(3, sec)) * 1000;
+}
+
+/**
+ * Does this device have at least one working source for this title right now?
+ *
+ * This is the Rule-1 gate for the catalogue: a poster is only rendered when this
+ * returns true (or when metadata already proves the title is streamable). It is
+ * deliberately conservative and session-cached, because a rail with twenty posters
+ * must not turn into twenty cross-origin pings.
+ *
+ * `type` is 'anime' for AniList ids and 'film' for TMDB ids.
+ *
+ * A title is "streamable" when a valid playable address can be formed from a server
+ * this device trusts — i.e. a server that (a) is in the enabled list (already passed
+ * templateProblem), and (b) declares a track the viewer can request. The address
+ * itself is formed by serverUrl and is valid by construction for any server that passed
+ * the template gate, so the only real question is whether a server declares a track.
+ *
+ * The actual playback is handled by the watch page's failover ladder, which tries the
+ * address and hops when it does not play. This function only decides whether a poster
+ * may be shown in the catalogue.
+ */
+export async function canStreamTitle({ type, id, episode = 1, tmdb }) {
+  const key = `${type}:${id}:${episode}:${tmdb || ''}`;
+  if (STREAM_CHECK_CACHE.has(key)) return STREAM_CHECK_CACHE.get(key);
+  const promise = (async () => {
+    if (type === 'anime') {
+      const list = servers();
+      /* No source configured at all — nothing to stream, never render. */
+      if (!list.length) return false;
+      /* At least one enabled server must declare a track the viewer can request.
+         Any server in `servers()` already passed templateProblem, so a filled
+         address is valid by construction; the only real question is track coverage. */
+      return list.some((s) => serverTracks(s).length > 0);
+    }
+    /* ---- movies / series (TMDB id) ---- */
+    /* On a static host the watch page plays TMDB titles through the hardcoded embed
+       mirrors (js/views/films/mwatch.js), which accept any TMDB id. So the snapshot's
+       streamable flag is the operative signal there: a title the build verified as
+       streamable is playable from this device even when no {tmdb} source is configured.
+       On a host with a live proxy, the proxy's honest answer wins. */
+    const proxy = String(API_HOST || '').trim();
+    if (proxy) {
+      try {
+        const res = await fetch(
+          `${proxy}/stream?kind=stream&tmdb=${encodeURIComponent(String(tmdb || id))}&type=${type === 'tv' ? 'tv' : 'movie'}&s=${encodeURIComponent(String(episode))}&e=${encodeURIComponent('1')}`,
+          { signal: AbortSignal.timeout(7000) },
+        );
+        if (res.ok) {
+          const data = (await res.json().catch(() => null)) || {};
+          STREAM_CHECK_CACHE.set(key, Boolean(data?.ok));
+          return Boolean(data?.ok);
+        }
+      } catch {
+        /* Proxy unreachable on this device — fall back to the offline judgement. */
+      }
+    }
+    /* Snapshot judgement: the build verified a source for titles that carry real content
+       (artwork, episodes, a name). Those are streamable from this device via the watch
+       page's mirrors on a static host, and via a {tmdb} source where one is configured. */
+    try {
+      const cat = await loadCatalogue();
+      if (cat) {
+        const row = cat.titles.find((r) => r.media_type === (type === 'tv' ? 'tv' : 'movie') && r.id === Number(id));
+        if (row && row.streamable !== false) {
+          STREAM_CHECK_CACHE.set(key, true);
+          return true;
+        }
+      }
+    } catch {
+      /* catalogue.json not reachable either — cannot assert streamable from the snapshot. */
+    }
+    /* Last resort on a host that has a {tmdb}-capable source configured: a {tmdb} server
+       that declares a track can form a valid address for this title. */
+    const filmServers = extraServers().filter((s) => String(s.url).includes('{tmdb}'));
+    if (filmServers.length) {
+      const ok = filmServers.some((s) => serverTracks(s).length > 0);
+      STREAM_CHECK_CACHE.set(key, ok);
+      return ok;
+    }
+    /* No proxy, no snapshot entry, no {tmdb} source: the catalogue will not show this
+       poster. The watch page still renders its ready overlay for a direct watch link, but
+       the hub does not advertise a title it cannot verify. */
+    STREAM_CHECK_CACHE.set(key, false);
+    return false;
+  })();
+  STREAM_CHECK_CACHE.set(key, promise);
+  return promise;
+}
+
+/** Resolve a single episode's best playable address for display / pre-flight, without
+ *  starting playback. Returns the address the watch page would hand to the stage, or
+ *  '' when no server on this device can fill it for this episode.
+ *
+ * Used by the episode rail so a locked / unstreamable episode cell can drop its play
+ * affordance before the viewer taps it.
+ *
+ * Any server in the list already passed templateProblem, so a filled address is valid by
+ * construction; the only real question is whether a server declares a track for this
+ * audience.
+ */
+export async function episodeAddress({ type, id, episode, audio = 'sub' }) {
+  const list = type === 'anime' ? servers() : extraServers().filter((s) => String(s.url).includes('{tmdb}'));
+  if (!list.length) return '';
+  for (const s of list) {
+    const carried = serverTracks(s);
+    if (!carried.length) continue;
+    const track = carried.includes(asTrack(audio)) ? audio : carried[0];
+    const url = serverUrl(s, { id, episode, audio: track });
+    if (url && url !== s.url) return url;
+  }
+  return '';
+}
+
+/** The subset of enabled servers that can carry a given title type today — used by
+ *  the catalogue render path to decide whether a shelf is worth painting at all.
+ */
+export function streamableServersFor(type) {
+  if (type === 'anime') return servers();
+  return extraServers().filter((s) => String(s.url).includes('{tmdb}'));
+}
+
+/** Rule-1 filter for a list of anime titles: keep only the ones streamable on this
+ *  device. On a static host the snapshot has no anime streamability opinion, so the
+ *  defaults' track declarations decide; on a host with a live resolver the resolver is
+ *  asked. Batched in parallel groups so a long list does not open one ping per title.
+ *  Session-cached per title by canStreamTitle. */
+export async function streamableAnimeTitles(items) {
+  if (!items.length) return [];
+  const ids = items.map((m) => Number(m.id)).filter(Boolean);
+  const out = new Array(ids.length).fill(false);
+  for (let i = 0; i < ids.length; i += 8) {
+    const slice = ids.slice(i, i + 8);
+    const checks = await Promise.all(slice.map((id) => canStreamTitle({ type: 'anime', id })));
+    for (let j = 0; j < checks.length; j++) out[i + j] = checks[j];
+  }
+  return items.filter((_, i) => out[i]);
 }

@@ -22,6 +22,70 @@ import {
   api, poster, nameOf, genreMap,
   movieContinueWatching, movieWatchlist, servingOffline,
 } from '../../lib/tmdb.js';
+import { canStreamTitle, streamableInCatalogue, streamableServersFor } from '../../lib/sources.js';
+
+/**
+ * Rule 1 — only streamable titles reach the wall.
+ *
+ * A film/series card is rendered only when the title is streamable on this device.
+ * On a static host the snapshot is the source of truth (`streamableInCatalogue`);
+ * on a host with the /stream proxy, the live resolver is asked (`canStreamTitle`).
+ * The catalogue results already carry the snapshot's judgement when they came from it,
+ * so the fast path is the offline flag; the slow path is the live resolver for live/proxy
+ * results.
+ *
+ * This is asynchronous and non-blocking for the viewer: a rail keeps its skeletons
+ * while the check runs, and a title that cannot be verified simply never gets a card.
+ * The rail still fills with the ones that can.
+ */
+const inferType = (m) => (m?.media_type === 'tv' || m?.first_air_date || m?.name ? 'tv' : 'movie');
+
+const isStreamable = async (m, type) => {
+  const id = Number(m.id);
+  if (!id) return false;
+  type = type || inferType(m);
+  /* Fast path: the snapshot already said so. `type` is the TMDB media type ('tv' or
+     'movie'), which is exactly what streamableInCatalogue and canStreamTitle expect. */
+  const offline = streamableInCatalogue(type, id);
+  if (offline === true) return true;
+  if (offline === false) return false;
+  return canStreamTitle({ type, id, tmdb: id });
+};
+
+/** Drop titles that cannot be streamed on this device *before* they touch the wall.
+ *  Returns the same-shape list the rail/grid expect, minus the dead ones.
+ *
+ *  The result array is parallel to `items` (same length, same order), so a title with
+ *  a non-numeric id is safely treated as not streamable rather than silently mis-indexed.
+ */
+export async function streamableOnly(items, type) {
+  if (!items.length) return [];
+  type = type || inferType(items[0]);
+  /* One check per item, in the same order as `items`, so the filter below stays
+     aligned. Titles without a numeric id are marked false (not streamable) immediately.
+     Batches are bounded so a large shelf never opens an unbounded number of resolver
+     calls at once; the resolver itself is session-cached, so this is a concurrency cap
+     more than a correctness requirement. */
+  const checks = new Array(items.length).fill(false);
+  const batch = [];
+  for (let i = 0; i < items.length; i++) {
+    const id = Number(items[i].id);
+    if (!id) continue;
+    batch.push({ at: i, id });
+    if (batch.length < 8) continue;
+    const ids = batch.map((b) => b.id);
+    const results = await Promise.all(ids.map((id) => isStreamable({ id }, type)));
+    for (let k = 0; k < batch.length; k++) checks[batch[k].at] = results[k];
+    batch.length = 0;
+  }
+  if (batch.length) {
+    const ids = batch.map((b) => b.id);
+    const results = await Promise.all(ids.map((id) => isStreamable({ id }, type)));
+    for (let k = 0; k < batch.length; k++) checks[batch[k].at] = results[k];
+  }
+  return items.filter((_, i) => checks[i]);
+}
+
 
 /* ---- one honest shelf per page ----------------------------------------
    A rail that cannot answer is a rail taken off the page, not a paragraph
@@ -101,11 +165,15 @@ function mSkeletons(n) {
 export function mRail({ heading, sub, viewAll, fetcher }) {
   const track = h('div.row.no-scrollbar.m-track', { role: 'list' });
   const root = h('section.section.row-wrap');
-  const fill = (items) => {
-    if (!items.length) {
-      /* A shelf the snapshot simply does not fill — a genre with no titles in it
-         — leaves no heading standing over nothing. On a live connection an empty
-         shelf is a fault, so it stays visible and says so. */
+  const fill = async (items) => {
+    /* Rule 1: do not render a poster the device cannot stream. Filter before the
+       rail touches the DOM so a dead title never flashes on screen. */
+    const good = await streamableOnly(items);
+    if (!good.length) {
+      /* A shelf the snapshot simply does not fill — a genre with no titles in it,
+         or a shelf whose titles are all unstreamable on this device — leaves no
+         heading standing over nothing. On a live connection an empty shelf is a
+         fault, so it stays visible and says so. */
       if (servingOffline()) {
         root.remove();
         return;
@@ -114,7 +182,7 @@ export function mRail({ heading, sub, viewAll, fetcher }) {
       return;
     }
     track.replaceChildren();
-    items.forEach((m, i) => {
+    good.forEach((m, i) => {
       const wrap = h('div', { role: 'listitem', style: { display: 'contents' } });
       wrap.append(mCard(m, { eager: i < 4 }));
       track.append(wrap);
@@ -151,9 +219,7 @@ export function mRail({ heading, sub, viewAll, fetcher }) {
     next,
   );
 
-  fetcher()
-    .then(fill)
-    .catch(() => failRail(root));
+  fetcher().then(fill).catch(() => failRail(root));
   return root;
 }
 
@@ -169,17 +235,19 @@ function mGrid({ title, sub, type, fetcher, base = baseFor(type) }) {
   let loading = false;
   const more = h('button.btn.btn--glass.m-more', { type: 'button' }, icon('plus'), t('Load more'));
 
-  const append = (raw, atPage) => {
+  const append = async (raw, atPage) => {
     /* A grid pages through one list, and one list is where a duplicate hurts
        most: the same poster twice in a wall of tiles, a page apart. */
     const items = dedupe.claimSync(raw);
-    items.forEach((m) => {
+    /* Rule 1 again: a tile is only painted when the title is streamable on this device. */
+    const good = await streamableOnly(items, type);
+    good.forEach((m) => {
       m.media_type = type;
       const wrap = h('div', { role: 'listitem', style: { display: 'contents' } });
       wrap.append(mCard(m));
       box.append(wrap);
     });
-    if (atPage === 1 && !items.length) {
+    if (atPage === 1 && !good.length) {
       box.replaceChildren(h('p.muted', { style: { padding: '24px 0' } }, t('Nothing to show here right now.')));
       more.hidden = true;
     }
@@ -200,7 +268,7 @@ function mGrid({ title, sub, type, fetcher, base = baseFor(type) }) {
       const pages = Array.isArray(r) ? 0 : Number(r?.total_pages) || 0;
       if (items.length < 20 || (pages && page >= pages)) done = true;
       page += 1;
-      append(items, page - 1);
+      await append(items, page - 1);
     } catch {
       /* The list is over either way; the only difference is whether anything
          reached the wall. Page one with nothing is an empty shelf, a later page

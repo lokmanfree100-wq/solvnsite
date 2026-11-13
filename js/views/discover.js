@@ -2,6 +2,7 @@
 
 import { h, icon, qs } from '../lib/dom.js';
 import { browse, genres, DEFAULT_GENRES } from '../lib/anilist.js';
+import { canStreamTitle, streamableAnimeTitles, streamableInCatalogue } from '../lib/sources.js';
 import { go, parse } from '../lib/router.js';
 import { settings } from '../lib/store.js';
 import { SORTS, recentSeasons, seasonName, formatLabel, statusLabel, totalLabel, watched, title, yearOf } from '../lib/util.js';
@@ -228,13 +229,19 @@ export async function DiscoverView(ctx) {
     }
   }
 
-  function render() {
+  async function render() {
+    /* Snapshot the current item list synchronously so a newer fetchPage does not
+       mutate the list under a still-awaiting filter. */
+    const snapshot = items.slice();
     grid.replaceChildren();
-    if (!items.length) {
+    /* Rule 1: do not paint a poster the device cannot stream. The viewer still sees
+       skeletons while the check runs; a title that cannot be verified simply never gets a card. */
+    const show = await streamableAnimeTitles(snapshot);
+    if (!show.length) {
       grid.replaceChildren(
         emptyState({
-          heading: t('No titles match those filters'),
-          body: t('Try widening the season, removing a genre, or lowering the score threshold.'),
+          heading: t('No streamable titles match those filters'),
+          body: t('Try widening the season, removing a genre, or lowering the score threshold — or add a streaming server in Settings.'),
           action: h('button.btn.btn--primary', { onclick: resetAll }, icon('refresh'), t('Clear filters')),
         }),
       );
@@ -242,8 +249,8 @@ export async function DiscoverView(ctx) {
       count.textContent = '';
       return;
     }
-    items.forEach((m, i) => grid.append(catalogueCard(m, i < 8)));
-    count.textContent = totalLabel(total, items.length);
+    show.forEach((m, i) => grid.append(catalogueCard(m, i < 8)));
+    count.textContent = totalLabel(total, show.length);
     moreBtn.classList.toggle('hide', !hasNext);
     moreBtn.replaceChildren(icon('chevronDown'), t('Load more'));
     /* The sentinel is usually already in view on the first page — a short grid

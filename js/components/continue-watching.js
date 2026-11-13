@@ -10,9 +10,14 @@
  * the saved episode with the saved audio track, instead to the title page. Each
  * one also carries a way to take itself off the row, because a show you are not
  * going to finish should not hold the top of the home page forever.
- */
+ *
+ * Rule 1: a continue-watching card is only painted when the device can stream the
+ * title. The row still reads as a Continue watching rail — a title that cannot be
+ * verified simply never gets a card, so the viewer is not invited to click a poster
+ * that cannot be played. */
 
 import { h, icon, scrollMax, scrollPos, scrollInlineBy } from '../lib/dom.js';
+import { streamableAnimeTitles } from '../lib/sources.js';
 import { clearProgress } from '../lib/store.js';
 import { stillImage } from './media.js';
 import { t } from '../lib/i18n.js';
@@ -57,10 +62,26 @@ function card(e, onRemove, { eager = false } = {}) {
  * One rail of saved progress, or nothing at all. `entries` come from
  * `continueWatching()` in the caller, already handed through the page's dedupe
  * queue so a title in this row never shows up again further down.
- */
-export function continueRail(entries, { grid = false } = {}) {
+ *
+ * The rail is built only from the watchable subset, so the Continue watching heading
+ * never stands over a dead poster. */
+export async function continueRail(entries, { grid = false } = {}) {
   const items = (entries || []).filter((e) => e?.id && e.at);
   if (!items.length) return null;
+  /* Rule 1 gate: keep only in-progress titles the device can stream. */
+  const media = items.map((e) => ({
+    id: e.id,
+    title: { romaji: e.title },
+    coverImage: { large: e.cover },
+    format: e.format,
+    episodes: e.episodes ?? e.total,
+    seasonYear: e.seasonYear,
+    status: 'FINISHED',
+  }));
+  const watchable = await streamableAnimeTitles(media);
+  if (!watchable.length) return null;
+  const ids = new Set(watchable.map((m) => m.id));
+  const show = items.filter((e) => ids.has(e.id));
 
   const track = h(`div.${grid ? 'grid home-grid' : 'row.no-scrollbar'}`, {
     role: 'list',
@@ -111,7 +132,7 @@ export function continueRail(entries, { grid = false } = {}) {
     toast(t('Removed from Continue watching'), { tone: 'ok', iconName: 'check' });
   };
 
-  items.forEach((e, i) => {
+  show.forEach((e, i) => {
     const node = card(e, remove, { eager: i < 4 });
     node.dataset.id = String(e.id);
     track.append(node);

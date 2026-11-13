@@ -1,6 +1,7 @@
 /** Detail: full metadata, episode browser, cast, relations, recommendations. */
 
 import { h, icon, qs } from '../lib/dom.js';
+import { streamableAnimeTitles } from '../lib/sources.js';
 import { detail, episodes as fetchEpisodes } from '../lib/anilist.js';
 import {
   settings,
@@ -178,14 +179,14 @@ export async function DetailView({ params, onCleanup }) {
     recs: () => recsPanel(media),
   };
 
-  function selectTab(key) {
+  async function selectTab(key) {
     currentTab = key;
     [...tabsEl.children].forEach((b) => {
       const on = b.dataset.key === key;
       b.classList.toggle('is-active', on);
       b.setAttribute('aria-selected', String(on));
     });
-    panel.replaceChildren(renderers[key]());
+    panel.replaceChildren(await renderers[key]());
   }
 
   TABS.forEach(([key, label, n]) => {
@@ -344,12 +345,23 @@ function relationsPanel(media) {
   ));
 }
 
-function recsPanel(media) {
+async function recsPanel(media) {
   const nodes = (media.recommendations?.nodes || []).map((n) => n.mediaRecommendation).filter(Boolean);
   if (!nodes.length) return emptyState({ iconName: 'sparkles', heading: t('No recommendations'), body: t('Viewers have not suggested anything for this title yet.') });
+  /* Rule 1: a recommendation card is only painted when the device can stream the title.
+     The viewer keeps the current panel while the check runs — a title that cannot be
+     verified simply never gets a card, and the panel still reads as a recommendations
+     strip. */
+  const show = await streamableAnimeTitles(nodes);
+  if (!show.length) {
+    return h('div', { style: { marginTop: 'var(--sp-5)' } },
+      h('p.muted', { style: { fontSize: '13px', marginBottom: 'var(--sp-4)' } }, t('Chosen by other viewers of this title.')),
+      h('p.muted', { style: { fontSize: '13px' } }, t('None of these are watchable on this device right now.')),
+    );
+  }
   return h('div', { style: { marginTop: 'var(--sp-5)' } },
     h('p.muted', { style: { fontSize: '13px', marginBottom: 'var(--sp-4)' } }, t('Chosen by other viewers of this title.')),
-    h('div.grid', {}, ...nodes.map((m, i) => mediaCard(m, { eager: i < 6 }))),
+    h('div.grid', {}, ...show.map((m, i) => mediaCard(m, { eager: i < 6 }))),
   );
 }
 

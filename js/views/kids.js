@@ -11,6 +11,22 @@ import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet } from '../lib/ui.js';
 import { categoryTabs } from '../components/cats.js';
+import { canStreamTitle, streamableInCatalogue } from '../lib/sources.js';
+
+/** Rule 1 for the kids grid: a cartoon card is only shown when the device can stream
+ *  it. The seven shipped shows are in data/catalogue.json with episode data, so they
+ *  pass the offline check; a show that is not streamable on this device is hidden rather
+ *  than shown as a dead poster. */
+const isKidsStreamable = (show) => {
+  const id = Number(show.id);
+  if (!id) return false;
+  const offline = streamableInCatalogue('tv', id);
+  if (offline === true) return true;
+  if (offline === false) return false;
+  /* Kids shows are TV series; pass the TMDB media type so canStreamTitle looks up
+     the right catalogue entry and asks the proxy with type=tv. */
+  return canStreamTitle({ type: 'tv', id, tmdb: id });
+};
 
 const POSTER = (path) => `https://image.tmdb.org/t/p/w500${path}`;
 
@@ -247,7 +263,14 @@ export function KidsView() {
       ),
     );
     const list = SHOWS.filter((show) => !shelf || show.shelf.includes(shelf));
-    grid.replaceChildren(...list.map(card));
+    const watchable = list.filter(isKidsStreamable);
+    if (!watchable.length) {
+      grid.replaceChildren(
+        h('p.muted', { style: { padding: '24px 0', textAlign: 'center' } }, t('No streamable cartoons on this device right now.')),
+      );
+      return;
+    }
+    grid.replaceChildren(...watchable.map(card));
   }
 
   paint();

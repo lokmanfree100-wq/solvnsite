@@ -9,6 +9,31 @@ import { categoryTabs } from '../components/cats.js';
 import { continueRail } from '../components/continue-watching.js';
 import { cinematicShowcase } from '../components/cinematic-showcase.js';
 import { t } from '../lib/i18n.js';
+import { streamableInCatalogue } from '../lib/catalogue.js';
+import { canStreamTitle } from '../lib/sources.js';
+
+/** Rule 1 for the home catalogue rows: only streamable titles are handed to the rail.
+ *  Continue-watching is local progress and is excluded from the gate. */
+const isAnimeStreamable = async (m) => {
+  const id = Number(m.id);
+  if (!id) return false;
+  const offline = streamableInCatalogue('anime', id);
+  if (offline === true) return true;
+  if (offline === false) return false;
+  return canStreamTitle({ type: 'anime', id });
+};
+
+const streamableFilter = async (items) => {
+  if (!items.length) return [];
+  const ids = items.map((m) => Number(m.id)).filter(Boolean);
+  const out = new Array(ids.length).fill(false);
+  for (let i = 0; i < ids.length; i += 8) {
+    const slice = ids.slice(i, i + 8);
+    const checks = await Promise.all(slice.map((id) => isAnimeStreamable({ id })));
+    for (let j = 0; j < checks.length; j++) out[i + j] = checks[j];
+  }
+  return items.filter((_, i) => out[i]);
+};
 
 /** Interleave ranked lists so one query cannot fill a whole rail by itself. */
 function blend(lists, keyOf = (m) => m.id) {
@@ -55,20 +80,31 @@ export async function HomeView(ctx) {
     return visible(await dedupe.claim(blend(parts)));
   };
 
+  /** Catalogue rows only: streamability-gated variant of `fetch`. The rail still
+     skeletons while the check runs. */
+  const fetchCatalogue = (loads) => async () => {
+    const parts = await Promise.all(loads.map((f) => Promise.resolve(f()).then(itemsOf).catch(() => [])));
+    const blended = visible(await dedupe.claim(blend(parts)));
+    return streamableFilter(blended);
+  };
+
   /* Exactly five full-width rows. Each row is the same rail: a poster, a title
      and one line of facts, scrollable sideways. Continue-watching is the first
      when this browser has progress — and then the last row makes way, so the
      page always lands on five, never four and never six. */
   const row = (heading, sub, loads, extra = {}) =>
     lazyRow({ heading, sub, load: fetch(loads), ...extra });
+  const rowCatalogue = (heading, sub, loads, extra = {}) =>
+    lazyRow({ heading, sub, load: fetchCatalogue(loads), ...extra });
 
   /* One resumed title is a note, not a row: a rail with a single poster in it
      reads as a broken shelf. The history row appears once there is enough of
      it to scroll. */
   const resumed = continueWatching(20);
+  const cwRail = resumed.length >= 3 ? await continueRail(dedupe.claimSync(resumed)) : null;
   const rows = [
-    resumed.length >= 3 ? continueRail(dedupe.claimSync(resumed)) : null,
-    row(
+    cwRail,
+    rowCatalogue(
       t('Trending Now'),
       t('What everyone is watching right now.'),
       [
@@ -77,7 +113,7 @@ export async function HomeView(ctx) {
       ],
       { viewAll: '#/discover?sort=TRENDING_DESC' },
     ),
-    row(
+    rowCatalogue(
       t('Popular This Season'),
       t('The season everyone is talking about.'),
       [
@@ -86,13 +122,13 @@ export async function HomeView(ctx) {
       ],
       { viewAll: `#/discover?sort=POPULARITY_DESC&year=${year}` },
     ),
-    row(
+    rowCatalogue(
       t('Top Rated Masterpieces'),
       t('The best-scoring completed series, in order.'),
       [() => browse({ sort: ['SCORE_DESC'], status: 'FINISHED', minimumScore: 80, perPage: 24 })],
       { viewAll: '#/discover?sort=SCORE_DESC&status=FINISHED' },
     ),
-    row(
+    rowCatalogue(
       t('New & Upcoming'),
       t('Fresh airdates and the next big premieres.'),
       [
@@ -101,7 +137,7 @@ export async function HomeView(ctx) {
       ],
       { viewAll: '#/discover?sort=START_DATE_DESC' },
     ),
-    row(
+    rowCatalogue(
       t('Hidden Gems & Sci-Fi'),
       t('Praised by few, and futures worth the detour.'),
       [hiddenGems, () => browse({ genre: 'Sci-Fi', sort: ['SCORE_DESC'], perPage: 16 })],
