@@ -11,7 +11,8 @@ import { h, icon } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { sheet } from '../lib/ui.js';
 import { categoryTabs } from '../components/cats.js';
-import { canStreamTitle, streamableInCatalogue } from '../lib/sources.js';
+import { canStreamTitle } from '../lib/sources.js';
+import { streamableInCatalogue } from '../lib/catalogue.js';
 
 /** Rule 1 for the kids grid: a cartoon card is only shown when the device can stream
  *  it. The seven shipped shows are in data/catalogue.json with episode data, so they

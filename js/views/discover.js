@@ -2,7 +2,8 @@
 
 import { h, icon, qs } from '../lib/dom.js';
 import { browse, genres, DEFAULT_GENRES } from '../lib/anilist.js';
-import { canStreamTitle, streamableAnimeTitles, streamableInCatalogue } from '../lib/sources.js';
+import { streamableAnimeTitles } from '../lib/sources.js';
+import { streamableInCatalogue } from '../lib/catalogue.js';
 import { go, parse } from '../lib/router.js';
 import { settings } from '../lib/store.js';
 import { SORTS, recentSeasons, seasonName, formatLabel, statusLabel, totalLabel, watched, title, yearOf } from '../lib/util.js';

@@ -22,7 +22,8 @@ import {
   api, poster, nameOf, genreMap,
   movieContinueWatching, movieWatchlist, servingOffline,
 } from '../../lib/tmdb.js';
-import { canStreamTitle, streamableInCatalogue, streamableServersFor } from '../../lib/sources.js';
+import { canStreamTitle } from '../../lib/sources.js';
+import { streamableInCatalogue } from '../../lib/catalogue.js';
 
 /**
  * Rule 1 — only streamable titles reach the wall.
