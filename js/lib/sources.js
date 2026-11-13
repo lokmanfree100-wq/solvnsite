@@ -141,15 +141,11 @@ const PLACEHOLDERS = ['anilist', 'tmdb', 'episode', 'audio', 'next', 'accent'];
 const MAX_URL = 500;
 
 /* ---- hosts Solvn will not play from, whoever pastes them ----------------
-   Empty today. The protection that used to live here — banning AniGato for the
-   pop-unders its page served — is now enforced by the browser for every host
-   through FRAME_SANDBOX above: no frame may open a tab, move this page or put a
-   file on the device, so a pop-under cannot escape whichever host paints it.
-   AniGato is therefore framed under that lock in lib/defaults.js, with the
-   advisory warning that its own (adult) adverts still draw inside the picture.
-   Drop a domain in here to refuse it outright anyway: the gate below skips it in
-   both halves, so a banned host stays banned even from inside the repo. */
-const BLOCKED_HOSTS = [];
+   External embed hosts that carried redirects, adverts and watermarks are
+   blocked outright so a stored or pasted entry can never revive them. The gate
+   below skips them in both halves, so a banned host stays banned even from
+   inside the repo. */
+const BLOCKED_HOSTS = ['anigato.lol', 'megavid.buzz', '1337embed.wtf'];
 
 /** The host an address points at, or '' when it is not a whole https address. */
 function hostOf(url) {
@@ -184,16 +180,8 @@ export const isMediaUrl = (url) => HLS_URL.test(String(url || '')) || FILE_URL.t
 export const serverKind = (server) => (isMediaUrl(server?.url) ? 'media' : 'embed');
 
 /* ---- the sweep that keeps a banned host off a device --------------------
-   An earlier build seeded AniGato's embed on every fresh device. AniGato now
-   ships in lib/defaults.js under the strict lock, so it is no longer pruned;
-   this sweep still removes any stored source whose host is added to
-   BLOCKED_HOSTS later, so a ban reaches devices that already saved the address,
-   not just new visits.
-
-   What ships today is named in lib/defaults.js and carries the advisory, the
-   sandbox and the failover ladder with it. A deployment that empties that list
-   gets an honest "no source" and the route to Settings, not a stranger framed to
-   fill the silence. */
+   Removes any stored source whose host is in BLOCKED_HOSTS, so a ban reaches
+   devices that already saved the address, not just new visits. */
 function pruneBlockedSources() {
   const stored = settings.get('servers');
   if (!Array.isArray(stored)) return;

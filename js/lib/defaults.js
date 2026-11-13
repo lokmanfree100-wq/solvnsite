@@ -22,17 +22,11 @@
  * exactly the pop-up and tab-hijack vector members reported. A source that
  * demands the lock be dropped is not a source this site ships.
  *
- * AniGato ships here under that same lock. Its page is the one that served the
- * pop-unders members reported, so it is framed with nothing but scripts, its own
- * origin and forms: the browser refuses its window.open and its top-level anchors
- * before they run, so the pop-under cannot leave the box. What the lock cannot do
- * is repaint the inside of somebody else's player — an advert drawn inside their
- * box is still drawn there, and AniGato's run adult. The advisory above the
- * picture says so in one line before playback and the viewer chooses to continue.
- * Megavid stays as the ladder's second turn: it plays inside the lock too and
- * carries the episode when AniGato is silent. Zero adverts of any kind would mean
- * playing a file in Solvn's own <video>, which needs a stream address the site
- * controls — the shape `views/mwatch.js` uses for its direct engine.
+ * External embed hosts (AniGato, Megavid, etc.) are no longer shipped: they
+ * carried redirects, adverts and watermarks that could not be filtered from
+ * outside the frame. Solvn now plays direct media addresses (.m3u8/.mp4/.webm)
+ * in its own <video>, with zero third-party page on screen. Operators add their
+ * own direct or clean internal streaming URLs via Settings or this file.
  *
  * Placeholders: {anilist} {episode} {audio} {next} {accent} for anime, and
  * {tmdb} — which the movies page reads for itself and which `servers()` filters
@@ -45,7 +39,8 @@
  * third-party page on screen; anything else is framed.
  */
 
-export const DEFAULT_SERVERS = [
-  { name: 'Solvn Stream 1', url: 'https://anigato.lol/embed/anime/{anilist}/{episode}?audio={audio}&next={next}&accent={accent}', tracks: ['sub', 'dub'] },
-  { name: 'Solvn Stream 2', url: 'https://megavid.buzz/ani/{anilist}/{episode}/{audio}?color=%23{accent}&autoplay=true', tracks: ['sub', 'dub'] },
-];
+/* No external embed sources ship by default. Solvn plays direct media addresses
+   (.m3u8/.mp4/.webm) in its own player; operators add their own direct or clean
+   internal streaming URLs here or via Settings. External embed hosts such as
+   AniGato/Megavid are intentionally omitted to avoid redirects, ads and watermarks. */
+export const DEFAULT_SERVERS = [];

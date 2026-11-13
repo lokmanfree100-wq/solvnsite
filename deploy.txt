@@ -175,11 +175,11 @@ both watch pages say so in a three-second note before the picture starts, with a
 frame still cannot do is navigate on its own with no press (`allow-top-navigation`
 is refused) or start a download onto their device (`allow-downloads` is refused).
 Whatever it draws inside its own frame, including its advertising, belongs to it
-and Solvn cannot filter it from outside. The default list points anime at
-AniGato; the film watch page mounts AniGato's movie/series embed directly under
-the same frame lock. Entries here pass the same gate as a typed one — https only,
-placeholders checked, blocked hosts refused — and appear in Settings as a locked
-"Site default" row.
+and Solvn cannot filter it from outside. The default list ships no external embed hosts; Solvn plays direct media
+addresses (.m3u8/.mp4/.webm) in its own player, and operators add their own
+direct or clean internal streaming URLs via Settings or lib/defaults.js. Entries
+here pass the same gate as a typed one — https only, placeholders checked,
+blocked hosts refused — and appear in Settings as a locked "Site default" row.
 
 After uploading, open the site once and press Ctrl+F5 so the old copies held in
 your browser are replaced by these files.
