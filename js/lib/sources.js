@@ -589,6 +589,9 @@ export function streamableServersFor(type) {
  *  Session-cached per title by canStreamTitle. */
 export async function streamableAnimeTitles(items) {
   if (!items.length) return [];
+  /* No stream server configured on this device: the strict filter would hide every
+     title. Show them all instead and let the watch page resolve playback. */
+  if (!servers().length) return items;
   const ids = items.map((m) => Number(m.id)).filter(Boolean);
   const out = new Array(ids.length).fill(false);
   for (let i = 0; i < ids.length; i += 8) {

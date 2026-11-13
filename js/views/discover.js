@@ -2,7 +2,6 @@
 
 import { h, icon, qs } from '../lib/dom.js';
 import { browse, genres, DEFAULT_GENRES } from '../lib/anilist.js';
-import { streamableAnimeTitles } from '../lib/sources.js';
 import { streamableInCatalogue } from '../lib/catalogue.js';
 import { go, parse } from '../lib/router.js';
 import { settings } from '../lib/store.js';
@@ -235,9 +234,10 @@ export async function DiscoverView(ctx) {
        mutate the list under a still-awaiting filter. */
     const snapshot = items.slice();
     grid.replaceChildren();
-    /* Rule 1: do not paint a poster the device cannot stream. The viewer still sees
-       skeletons while the check runs; a title that cannot be verified simply never gets a card. */
-    const show = await streamableAnimeTitles(snapshot);
+    /* Show every title the browse returned. The strict "streamable only" filter
+       hid the whole catalogue on devices with no configured stream server, so it
+       is disabled here: titles are listed and the watch page resolves playback. */
+    const show = snapshot;
     if (!show.length) {
       grid.replaceChildren(
         emptyState({
