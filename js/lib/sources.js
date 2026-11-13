@@ -145,7 +145,14 @@ const MAX_URL = 500;
    blocked outright so a stored or pasted entry can never revive them. The gate
    below skips them in both halves, so a banned host stays banned even from
    inside the repo. */
-const BLOCKED_HOSTS = ['anigato.lol', 'megavid.buzz', '1337embed.wtf'];
+const BLOCKED_HOSTS = [
+  'anigato.lol', 'megavid.buzz', '1337embed.wtf',
+  'anixo.buzz', 'xxiku.com', 'player.xxiku.com',
+  'vidhawk.buzz', 'voidverse.me', 'player.voidverse.me',
+  'megaplay.buzz', 'supaplay.fun', 'vidnest.fun',
+  'vidrift.net', 'embed.vidrift.net', 'anitaku.to',
+  'zokoanime.video', 'animepahe.ru', 'gogoanime',
+];
 
 /** The host an address points at, or '' when it is not a whole https address. */
 function hostOf(url) {
@@ -401,7 +408,7 @@ export function serverUrl(server, { id, tmdb = '', episode = 1, audio = 'sub', a
 /* Names that belong to somebody else's product. The bar, the source switcher
    and the failure notes read this function, so the chrome stays Solvn's own
    whatever a stored entry or a shipped default happens to be called. */
-const FOREIGN = /anigato|megavid|megaplay|anixo|2anime|gogo|zoro|animepahe|hianime/i;
+const FOREIGN = /anigato|megavid|megaplay|anixo|2anime|gogo|zoro|animepahe|hianime|xxiku|vidhawk|voidverse|supaplay|vidnest|vidrift|anitaku|zokoanime/i;
 
 export function serverName(server) {
   const n = String(server?.name || '').trim();
