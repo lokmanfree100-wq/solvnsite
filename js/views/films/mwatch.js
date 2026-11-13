@@ -1,10 +1,10 @@
 /**
  * Movies & Series watch page (`/mwatch/:id`, `/swatch/:id?s=&e=`).
  *
- * Two mirrors of the stream partner's embed, addressed by TMDB id. The ready
- * poster waits for a click, the iframe stays in a locked frame, and the source
- * chip switches mirrors without leaving the page. The fullscreen button
- * promotes the shell around it so the SOLVN mark stays in the top layer.
+ * Plays a title's direct video address in Solvn's own <video> element. The ready
+ * poster waits for a click, then the direct source mounts with native controls.
+ * The fullscreen button promotes the shell around it so the SOLVN mark stays in
+ * the top layer.
  */
 
 import { h, icon } from '../../lib/dom.js';
@@ -64,7 +64,6 @@ export async function MovieWatchView(ctx) {
 
   /* ---------- source + safety ---------- */
   const chip = h('span.m-safety', { role: 'status' });
-  let streamStarted = false;
   const sourceRow = h(
     'div.m-mode-row',
     {},
@@ -213,9 +212,7 @@ export async function MovieWatchView(ctx) {
   const clearFail = () => player.querySelector('.m-fail')?.remove();
 
   function dropFrame() {
-    clearTimeout(loadTimer);
     clearTimeout(hideTimer);
-    loadTimer = 0;
     hideTimer = 0;
     loaded = false;
     if (frame) {
@@ -246,7 +243,6 @@ export async function MovieWatchView(ctx) {
   }
 
   let frame = null;
-  let loadTimer = 0;
   let hideTimer = 0;
   let loaded = false;
 
@@ -262,7 +258,6 @@ export async function MovieWatchView(ctx) {
     frame.addEventListener('loadeddata', () => {
       if (loaded) return;
       loaded = true;
-      clearTimeout(loadTimer);
       setMovieProgress({ type, id, title, posterPath: d.poster_path, season, episode });
       hideTimer = setTimeout(() => {
         loading.classList.add('hide');
@@ -277,7 +272,6 @@ export async function MovieWatchView(ctx) {
   }
 
   function startStream() {
-    streamStarted = true;
     ready.hidden = true;
     clearFail();
     loading.classList.remove('hide');
@@ -349,7 +343,6 @@ export async function MovieWatchView(ctx) {
 
   cleanup(() => {
     dropFrame();
-    clearTimeout(loadTimer);
   });
 
   return shell;
