@@ -1,9 +1,10 @@
 /**
  * Movies & Series watch page (`/mwatch/:id`, `/swatch/:id?s=&e=`).
  *
- * One stream source: AniGato's embed, addressed by TMDB id. The ready poster
- * waits for a click, the iframe stays in a locked frame, and the fullscreen
- * button promotes the shell around it so the SOLVN mark stays in the top layer.
+ * Two mirrors of the stream partner's embed, addressed by TMDB id. The ready
+ * poster waits for a click, the iframe stays in a locked frame, and the source
+ * chip switches mirrors without leaving the page. The fullscreen button
+ * promotes the shell around it so the SOLVN mark stays in the top layer.
  */
 
 import { h, icon } from '../../lib/dom.js';
@@ -14,11 +15,18 @@ import { api, backdrop, poster, nameOf, setMovieProgress } from '../../lib/tmdb.
 import { mRail } from './movies.js';
 import { FRAME_SANDBOX } from '../../lib/sources.js';
 
-const STREAM_HOST = 'anigato.lol';
-const streamUrl = (type, id, season, episode) =>
+/* Two addresses for the same player. The second is the same service on its
+   alternate host, so one DNS or edge failure does not leave the film with no
+   picture; the source chip beside the player switches between them by hand when
+   the first page paints but never starts its video. */
+const STREAM_SERVERS = [
+  { name: 'Solvn Stream 1', host: 'anigato.lol' },
+  { name: 'Solvn Stream 2', host: '1337embed.wtf' },
+];
+const streamUrl = (server, type, id, season, episode) =>
   type === 'tv'
-    ? `https://${STREAM_HOST}/embed/series/${id}/${season}/${episode}`
-    : `https://${STREAM_HOST}/embed/movie/${id}`;
+    ? `https://${server.host}/embed/series/${id}/${season}/${episode}`
+    : `https://${server.host}/embed/movie/${id}`;
 
 export async function MovieWatchView(ctx) {
   const { query } = ctx.route;
@@ -64,18 +72,37 @@ export async function MovieWatchView(ctx) {
 
   /* ---------- source + safety ---------- */
   const chip = h('span.m-safety', { role: 'status' });
+  let sourceIndex = 0;
+  let streamStarted = false;
+  const sourceName = h('span', {}, STREAM_SERVERS[sourceIndex].name);
+  const sourceSwitch = h(
+    'button.m-safety.m-source-switch',
+    {
+      type: 'button',
+      'aria-label': t('Switch stream server'),
+      title: t('Switch stream server'),
+      onclick: () => switchSource(),
+    },
+    icon('shuffle'),
+    sourceName,
+  );
   const sourceRow = h(
     'div.m-mode-row',
     {},
     h('span.badge', {}, icon('play'), t('Solvn Player')),
     chip,
+    sourceSwitch,
   );
   shell.append(sourceRow);
 
   /* ---------- player ---------- */
-  const pre = h('link', { rel: 'preconnect', href: `https://${STREAM_HOST}`, crossorigin: 'anonymous' });
-  document.head.append(pre);
-  cleanup(() => pre.remove());
+  const preconnects = STREAM_SERVERS.map((server) => h('link', {
+    rel: 'preconnect',
+    href: `https://${server.host}`,
+    crossorigin: 'anonymous',
+  }));
+  document.head.append(...preconnects);
+  cleanup(() => preconnects.forEach((link) => link.remove()));
 
   const readyArt = h('img.player-ready-art', { alt: '', decoding: 'async' });
   const readySrc = backdrop(d.backdrop_path) || poster(d.poster_path, 'w780');
@@ -245,8 +272,16 @@ export async function MovieWatchView(ctx) {
         {},
         h('button.btn.btn--primary.btn--sm', {
           type: 'button',
-          onclick: () => startStream(),
+          onclick: () => {
+            sourceIndex = 0;
+            paintSource();
+            startStream();
+          },
         }, icon('refresh'), t('Re-check & retry')),
+        h('button.btn.btn--glass.btn--sm', {
+          type: 'button',
+          onclick: () => switchSource(),
+        }, icon('shuffle'), t('Try another server')),
         h('button.btn.btn--glass.btn--sm', {
           type: 'button',
           onclick: () => loading.classList.add('hide'),
@@ -256,12 +291,23 @@ export async function MovieWatchView(ctx) {
     loading.append(box);
   }
 
+  function paintSource() {
+    sourceName.textContent = STREAM_SERVERS[sourceIndex].name;
+  }
+
+  /** Move to the next mirror and, if a frame is already on screen, reload it. */
+  function switchSource() {
+    sourceIndex = (sourceIndex + 1) % STREAM_SERVERS.length;
+    paintSource();
+    if (streamStarted) startStream();
+  }
+
   function mountFrame() {
     dropFrame();
     frame = h('iframe', {
-      src: streamUrl(type, id, season, episode),
+      src: streamUrl(STREAM_SERVERS[sourceIndex], type, id, season, episode),
       sandbox: FRAME_SANDBOX,
-      allow: 'autoplay; encrypted-media; picture-in-picture',
+      allow: 'autoplay; fullscreen; encrypted-media; picture-in-picture',
       referrerpolicy: 'origin',
       title: `${title} player`,
     });
@@ -283,12 +329,24 @@ export async function MovieWatchView(ctx) {
   }
 
   function startStream() {
+    streamStarted = true;
     ready.hidden = true;
     clearFail();
     loading.classList.remove('hide');
     loadingText.textContent = t('Preparing your stream…');
     mountFrame();
-    loadTimer = setTimeout(showFail, 16000);
+    loadTimer = setTimeout(() => {
+      /* A frame that has not even fired `load` has not painted, so this is the
+         one failure a cross-origin player can report without being readable:
+         move to the other mirror before asking the viewer to retry. */
+      if (sourceIndex + 1 < STREAM_SERVERS.length) {
+        sourceIndex += 1;
+        paintSource();
+        startStream();
+        return;
+      }
+      showFail();
+    }, 14000);
   }
 
   function paintMeta() {
@@ -313,7 +371,7 @@ export async function MovieWatchView(ctx) {
     'div.m-safety-panel',
     {},
     h('p.m-safety-about', {}, t('Solvn Player: the stream runs in a locked frame owned by our stream partner. The browser refuses it new tabs, movement of this page and downloads, so anything asking to install or update something is drawn inside that frame and cannot leave it.')),
-    h('div.m-safety-list', {}, h('span.m-safety-origin', {}, STREAM_HOST, h('b', {}, t('player')))),
+    h('div.m-safety-list', {}, ...STREAM_SERVERS.map((server) => h('span.m-safety-origin', {}, server.host, h('b', {}, t('player'))))),
   );
   shell.append(safetyPanel);
 

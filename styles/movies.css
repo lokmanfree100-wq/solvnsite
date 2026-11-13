@@ -516,6 +516,16 @@
   width: 14px;
   height: 14px;
 }
+.m-source-switch {
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  appearance: none;
+}
+.m-source-switch:hover {
+  color: var(--text);
+  border-color: var(--accent-line);
+}
 
 .m-safety-panel {
   border: 1px solid var(--hairline);

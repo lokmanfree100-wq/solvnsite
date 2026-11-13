@@ -603,8 +603,12 @@ export function WatchView({ params, route, onCleanup }) {
       paintBar();
       return;
     }
-    const head = picked && all.includes(picked) ? picked : all[0];
-    startRun([head, ...all.filter((s) => s !== head)], true);
+    /* `picked` came out of the sheet's own copy of the pool, and `servers()`
+       builds a fresh object for every entry on every call. Compare the stable id
+       instead of the object, or choosing the second row silently rebuilds the
+       ladder around the first one and duplicates it in the process. */
+    const head = (picked && all.find((s) => s.id === picked.id)) || all[0];
+    startRun([head, ...all.filter((s) => s.id !== head.id)], true);
     serverIdx = 0;
     if (started) play();
     else paintReady();
@@ -686,7 +690,10 @@ export function WatchView({ params, route, onCleanup }) {
       const all = servers();
       if (all.length) {
         const onScreen = pool[serverIdx] || pool[0];
-        startRun([onScreen, ...all.filter((s) => s !== onScreen)], true);
+        /* Match by id, not identity: `all` is a fresh list and its objects are
+           not the ones the current ladder was built from. */
+        const first = all.find((s) => s.id === onScreen?.id) || all[0];
+        startRun([first, ...all.filter((s) => s.id !== first.id)], true);
         serverIdx = 0;
       } else {
         startRun();
