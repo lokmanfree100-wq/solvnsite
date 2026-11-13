@@ -66,7 +66,11 @@ export async function tmdb(path, params = {}) {
 }
 
 /* ---- artwork --------------------------------------------------------- */
-export const img = (p, size) => (p ? `https://image.tmdb.org/t/p/${size}${p}` : null);
+/* Catalogue snapshots can also carry a full artwork URL (the Cinemeta seed
+   does). A path is still prefixed with TMDB's CDN; an absolute URL and a local
+   /assets path are already complete and must not be prefixed twice. */
+export const img = (p, size) =>
+  p ? (/^https?:\/\//.test(p) || p.startsWith('/assets/') ? p : `https://image.tmdb.org/t/p/${size}${p}`) : null;
 export const poster = (p, size = 'w342') => img(p, size) || '';
 export const backdrop = (p, size = 'w1280') => img(p, size);
 
@@ -181,6 +185,7 @@ export function setMovieProgress({ type, id, title, posterPath, season = 1, epis
     seconds,
     duration: Number(duration) || prev.duration || 0,
     at: Date.now(),
+    plays: (Number(prev.plays) || 0) + 1,
   };
   const trimmed = Object.fromEntries(
     Object.entries(map)

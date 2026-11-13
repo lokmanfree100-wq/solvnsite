@@ -80,6 +80,14 @@ const DEFAULT_SETTINGS = {
   scheduleView: 'list', // list | calendar on the airing schedule
   showNsfw: false,
   reduceBackdrop: false,
+  blurWatched: false,
+  titleAlign: 'start',
+  subtitleLang: 'auto',
+  subtitleSize: 100,
+  subtitlePosition: 88,
+  subtitleColor: '#ffffff',
+  subtitleBg: '#000000',
+  subtitleBgOpacity: 62,
   discordHook: '', // optional Discord webhook for a status line
   discordShare: false, // post it as each episode starts
   servers: [], // extra streaming servers the ladder may try, see lib/sources.js
@@ -265,6 +273,7 @@ export function setProgress(media, episode, opts = {}) {
     episode,
     audio: opts.audio || prev.audio || 'sub',
     at: Date.now(),
+    plays: (Number(prev.plays) || 0) + 1,
     seconds: opts.seconds ?? prev.seconds ?? 0,
     duration: opts.duration ?? prev.duration ?? 0,
     mins,

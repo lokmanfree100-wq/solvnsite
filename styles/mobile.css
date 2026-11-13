@@ -140,8 +140,7 @@
 
   /* Small glyphs and inline text links stay visually compact; their hit area
      is padded out with an invisible pseudo-element instead of the box. */
-  .hero-dots button,
-  .hero-chip,
+  .detail-chip,
   .swatch {
     position: relative;
   }
@@ -156,7 +155,7 @@
     padding-inline: 8px;
     margin-inline: -8px;
   }
-  .hero-chip::after {
+  .detail-chip::after {
     content: '';
     position: absolute;
     inset: -10px -3px;
@@ -307,21 +306,10 @@
   }
 }
 
-/* ---- dynamic viewport units ---------------------------------------------- */
-/* Mobile Safari and Chrome report `vh` against the *largest* viewport, so with
-   the address bar showing, anything sized in vh is partly hidden behind it.
-   `dvh` tracks the visible area; the vh line above stays as the fallback. */
-@media (pointer: coarse), (max-width: 760px) {
-  .hero {
-    min-height: clamp(340px, 48dvh, 430px);
-  }
-}
-
 /* ---- compact scale on a phone --------------------------------------------
-   The banner, the chrome and the headings are laid out for a desktop first, and
-   a phone pays for that in scroll distance. Everything here shrinks the
-   container and the type — never the tap target: 44px is the touch minimum, so
-   the spotlight arrows stay 44 and the space around them is what gives way. */
+   The chrome and the headings are laid out for a desktop first, and a phone
+   pays for that in scroll distance. Everything here shrinks the container and
+   the type — never the tap target. */
 @media (max-width: 768px) {
   :root {
     --topbar-h: 54px;
@@ -331,92 +319,13 @@
     --gutter: 14px;
   }
 
-  /* Better than half the height it used to be. The card is facts only now, so
-     the frame is sized from the card: a 48px corner poster, two lines of title,
-     one line of meta, one row of genres, one row of buttons — and the 44px
-     arrows keep their own band at the foot. Nothing trades a tap target for
-     room; the prose and the second title are what gave way. */
-  .hero {
-    min-height: clamp(300px, 42dvh, 366px);
-    border-radius: var(--r-lg);
-  }
-  .hero-content {
-    max-width: 100%;
-    padding: 12px 12px 52px;
-    gap: 8px;
-  }
-  .hero-head {
-    gap: 11px;
-  }
-  .hero-thumb {
-    width: 48px;
-    border-radius: var(--r-sm);
-  }
-  .hero-heading {
+  .detail-genres {
     gap: 5px;
-    padding-top: 0;
   }
-  .hero-title {
-    font-size: clamp(17px, 4.9vw, 21px);
-    line-height: 1.14;
-  }
-  .hero-meta {
-    font-size: 11px;
-    gap: 6px;
-    line-height: 1.4;
-  }
-  .hero-score svg {
-    width: 11px;
-    height: 11px;
-  }
-  /* Three chips that never wrap: a long genre name in Arabic or French would
-     otherwise push a second row into a frame that has no room for one, so the
-     strip swipes sideways the way the category tabs above it already do. */
-  .hero-genres {
-    flex-wrap: nowrap;
-    gap: 5px;
-    width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-    overscroll-behavior-x: contain;
-  }
-  .hero-genres::-webkit-scrollbar {
-    display: none;
-  }
-  .hero-chip {
-    flex: none;
+  .detail-chip {
     height: 24px;
     padding: 0 10px;
     font-size: 10.5px;
-  }
-  .hero-actions {
-    gap: 8px;
-    margin-top: 0;
-    width: 100%;
-  }
-  .hero-scrim {
-    background:
-      linear-gradient(180deg, rgba(3, 4, 7, 0.42) 0%, rgba(3, 4, 7, 0.66) 44%, rgba(2, 3, 5, 0.97) 100%);
-  }
-  /* One tidy line at the bottom: the dots read from the far side, the arrows
-     hold the other, and neither reaches over the other. */
-  .hero-foot {
-    position: absolute;
-    inset-inline-start: 14px;
-    bottom: 17px;
-    z-index: 4;
-  }
-  .hero-dots {
-    margin-top: 0;
-    gap: 8px;
-  }
-  .hero-dots button::after {
-    inset: -16px -4px;
-  }
-  .hero-controls {
-    inset-inline-end: 10px;
-    bottom: 6px;
-    gap: 6px;
   }
 
   .page-head h1 {
@@ -431,35 +340,6 @@
   }
   .section-head .sub {
     font-size: 12px;
-  }
-
-  /* Two buttons that share a line and split it evenly read as a pair of
-     controls; two of different widths read as a layout that gave up. 38px keeps
-     a thumb-sized target and leaves the band below it clear for the arrows. */
-  .hero-actions > .btn {
-    flex: 1 1 0;
-    min-width: 0;
-    height: 38px;
-    padding: 0 12px;
-    font-size: 13px;
-    gap: 6px;
-    justify-content: center;
-  }
-  .hero-actions > .btn svg {
-    width: 15px;
-    height: 15px;
-  }
-  /* A third button — the hub's trailer — becomes a circle beside the pair
-     instead of a third of the line: "Start watching" needs the room more, and
-     the play head says what it does without the word. */
-  .hero-actions > .hero-trailer {
-    flex: 0 0 38px;
-    width: 38px;
-    padding: 0;
-    border-radius: 50%;
-  }
-  .hero-actions > .hero-trailer span {
-    display: none;
   }
 
   .page-head {
@@ -520,21 +400,6 @@
     width: 20px;
     height: 20px;
   }
-  /* A dozen dots and two 44px arrows cannot share 292px at full size, so the
-     dots give up 2px each and the tap area follows the new pitch exactly. */
-  .hero-dots {
-    gap: 6px;
-  }
-  .hero-dots button {
-    width: 6px;
-    height: 6px;
-  }
-  .hero-dots button::after {
-    inset: -16px -3px;
-  }
-  .hero-dots button[aria-selected='true'] {
-    width: 16px;
-  }
 }
 
 /* ---- top bar with the surprise-me button -------------------------------- */
@@ -565,8 +430,11 @@
   }
 }
 @media (max-width: 560px) {
-  .brand-word {
-    display: none;
+  /* The wordmark stays: it is the logo now, so the bubble tightens rather than
+     disappearing and leaving an unlabelled blank on the first screen. */
+  .brand-bubble--nav {
+    font-size: 16px;
+    padding: 0.5em 0.95em 0.5em 0.8em;
   }
   .btn--lang {
     gap: 5px;

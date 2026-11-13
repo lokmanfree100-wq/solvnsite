@@ -953,7 +953,7 @@ const ui = {
   'Those languages are what the player switcher, the badges on the cards and the failover ladder will offer. Solvn cannot read from the catalogue which titles were re-voiced — it asks its servers instead, and never promises a track they have not declared.':
     'هذه اللغات هي ما يوفّره مبدّل الصوت في المشغّل، والشارات على البطاقات، وسلّم التبديل عند العطل. لا يستطيع Solvn أن يقرأ من الفهرس أيّ الأعمال دُبلاجت، بل يسأل خوادمه، ولا يَعِد بمسار لم تصرّح به.',
 
-  /* views/toons.js: مركز الكلاسيكيات. */
+  /* views/kids.js: مركز رسوم الأطفال. */
   'Classic & Toons': 'الكلاسيكيات والكرتون',
   'CLASSIC & TOONS': 'الكلاسيكيات والكرتون',
   'Classic & Toons — Solvn': 'الكلاسيكيات والكرتون — Solvn',

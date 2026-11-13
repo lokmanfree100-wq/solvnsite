@@ -11,7 +11,7 @@
  * the entry title. Anything not covered by that list becomes a numbered
  * placeholder derived from the title's episode count.
  */
-export function buildEpisodes(media, streamed = []) {
+export function buildEpisodes(media, streamed = [], stills = null) {
   const list = (streamed || []).map((s) => ({ s, n: episodeNumber(s) }));
   // Position is only trustworthy as a number when nothing in the list is
   // numbered: AniList does return curated episodes out of order (One Piece's
@@ -30,13 +30,33 @@ export function buildEpisodes(media, streamed = []) {
     });
   });
 
-  const total = resolveEpisodeCount(media);
+  let total = resolveEpisodeCount(media);
+  /* When the catalogue gave no count, the still provider's episode records are
+     the best evidence of how many rows exist. */
+  if (!Number(media?.episodes) && stills?.size) total = Math.max(total, Math.min(stills.size, 2000));
   const out = [];
   for (let n = 1; n <= total; n++) {
-    out.push(byNum.get(n) || { number: n, title: null, thumb: null, desc: null });
+    const base = byNum.get(n);
+    const still = stills?.get?.(n) || null;
+    out.push(base
+      ? {
+          ...base,
+          title: base.title || still?.title || null,
+          thumb: base.thumb || still?.thumb || null,
+          desc: base.desc || still?.desc || null,
+          duration: base.duration || still?.duration || null,
+        }
+      : {
+          number: n,
+          title: still?.title || null,
+          thumb: still?.thumb || null,
+          desc: still?.desc || null,
+          duration: still?.duration || null,
+        });
   }
-  // Surface curated episodes that fall outside the reported count.
-  for (const [n, v] of byNum) if (n > total) out.push(v);
+  /* A streamingEpisodes entry above the declared count belongs to another
+     season/release, not to this title's run. Dropping it is what keeps a
+     25-episode entry from growing a phantom 66-episode rail. */
   return out.sort((a, b) => a.number - b.number);
 }
 
@@ -84,8 +104,12 @@ export function resolveEpisodeCount(media) {
   const airing = Number(media.nextAiringEpisode?.episode) || 0;
   const streamed = Number(media.streamingEpisodes?.length) || 0;
 
-  const total = Math.max(planned, airing ? airing - 1 : 0, streamed);
-  if (total) return total;
+  /* A declared episode count is the run. Streaming entries can point at a later
+     season (Re:ZERO's 25-episode entry advertises 66), and counting those made
+     the rail invent episodes that do not belong to the title. */
+  if (planned) return planned;
+  if (airing) return Math.max(1, airing - 1);
+  if (streamed) return streamed;
   return 12;
 }
 

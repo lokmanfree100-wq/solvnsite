@@ -45,7 +45,7 @@ export function loadCatalogue() {
     loading = fetch(SEED_URL, { cache: 'default' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
-        cat = j && Array.isArray(j.titles) ? j : null;
+        cat = j && Array.isArray(j.titles) ? { ...j, titles: dedupeRows(j.titles) } : null;
         return cat;
       })
       .catch(() => {
@@ -102,9 +102,30 @@ const byRating = (a, b) => b.vote_count * b.vote_average - a.vote_count * a.vote
 
 const relOf = (r) => r.release_date || r.first_air_date || '';
 
-const ofType = (type) => (cat ? cat.titles.filter((r) => r.media_type === type) : []);
+const episodeCount = (r) => Object.values(r?.episodes || {}).reduce((n, eps) => n + (Array.isArray(eps) ? eps.length : 0), 0);
 
-const findRow = (type, id) => (cat ? cat.titles.find((r) => r.id === Number(id) && r.media_type === type) : null);
+/* A snapshot rebuilt from more than one source can carry the same TMDB id
+   twice. Deduplicate once at load, preferring the copy with episode data; every
+   later lookup can then be a plain filter. */
+function dedupeRows(rows) {
+  const out = [];
+  const at = new Map();
+  for (const row of rows) {
+    if (!row) continue;
+    const key = `${row.media_type}:${row.id}`;
+    if (!at.has(key)) {
+      at.set(key, out.length);
+      out.push(row);
+      continue;
+    }
+    const index = at.get(key);
+    if (episodeCount(row) > episodeCount(out[index])) out[index] = row;
+  }
+  return out;
+}
+
+const ofType = (type) => (cat ? cat.titles.filter((r) => r.media_type === type) : []);
+const findRow = (type, id) => ofType(type).find((r) => r.id === Number(id)) || null;
 
 const norm = (s) =>
   String(s || '')
@@ -118,6 +139,19 @@ const norm = (s) =>
 const shelfAnswer = (kind, params) => {
   const page = Number(params.page) || 1;
   const list = (cat.shelves[kind] || []).map(cardOf);
+  /* A snapshot can grow without a hand-edited shelf entry for every new title
+     (the Cinemeta seed is appended). The two browse shelves show the whole
+     film library, best-supported first, so a new row is reachable from the hub
+     instead of only from a direct detail URL. */
+  if (kind === 'popularMovies' || kind === 'topMovies') {
+    const seen = new Set(list.map((r) => r.id));
+    list.push(
+      ...ofType('movie')
+        .filter((r) => !seen.has(r.id))
+        .sort(byRating)
+        .map(cardOf),
+    );
+  }
   return {
     page,
     total_pages: 1,
@@ -202,8 +236,7 @@ function answerDiscover(path, params) {
      the best-supported titles first. Sorting by a number the snapshot never
      stored would be a guess dressed up as data. */
   const cmp = sorts[String(params.sort_by || '')] || ((a, b) => byRating(a, b));
-  const all = ofType(type)
-    .filter((r) => r.media_type === type)
+  let all = ofType(type)
     .filter((r) => !wanted.length || r.genres.some((g) => wanted.includes(g.id)))
     .filter((r) => !year || relOf(r).slice(0, 4) === year)
     .sort((a, b) => {
@@ -211,6 +244,13 @@ function answerDiscover(path, params) {
       const sb = b.genres.filter((g) => wanted.includes(g.id)).length;
       return sb - sa || cmp(a, b);
     });
+  /* The snapshot is a bounded shelf, not TMDB's whole table. If a requested
+     genre or year has no entry in it, returning zero leaves the hub looking
+     broken ("Nothing to show here"). Fall back to the nearest catalogue rows
+     rather than blanking the page; live /tmdb continues to answer exactly. */
+  if (!all.length && (wanted.length || year)) {
+    all = ofType(type).sort((a, b) => byRating(a, b));
+  }
   return { page, total_pages: 1, total_results: all.length, results: page === 1 ? all.map(cardOf) : [] };
 }
 

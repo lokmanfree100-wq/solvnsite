@@ -175,32 +175,11 @@ both watch pages say so in a three-second note before the picture starts, with a
 frame still cannot do is navigate on its own with no press (`allow-top-navigation`
 is refused) or start a download onto their device (`allow-downloads` is refused).
 Whatever it draws inside its own frame, including its advertising, belongs to it
-and Solvn cannot filter it from outside. That is why this list ships empty
-and why AniGato is blocked in code: the choice of host is the choice of what your
-visitors see, and nobody should make it for you. Entries here pass the same gate
-as a typed one — https only, placeholders checked, blocked hosts refused — and
-appear in Settings as a locked "Site default" row.
+and Solvn cannot filter it from outside. The default list points anime at
+AniGato; the film watch page mounts AniGato's movie/series embed directly under
+the same frame lock. Entries here pass the same gate as a typed one — https only,
+placeholders checked, blocked hosts refused — and appear in Settings as a locked
+"Site default" row.
 
 After uploading, open the site once and press Ctrl+F5 so the old copies held in
 your browser are replaced by these files.
-
-------------------------------------------------------------------------------
-SOLVN CAT (the anime assistant)
-------------------------------------------------------------------------------
-The cat in the top bar talks to /api/chat, which is the Netlify Function in
-netlify/functions/chat.mjs (redirected in netlify.toml). The browser never holds
-a key: the function reads OPENAI_API_KEY from the Netlify environment (mark it
-Secret), asks AniList for real catalogue entries, and only lets the model pick
-from those entries. Nothing else in the site is involved.
-
-  1. Netlify ▸ Site configuration ▸ Environment variables ▸ add
-     OPENAI_API_KEY = your model key. Tick "Secret".
-     Optional, for an OpenAI-compatible provider:
-       OPENAI_BASE_URL = https://api.z.ai/api/paas/v4   (one example)
-       OPENAI_MODEL    = glm-4-flash
-     Leave OPENAI_BASE_URL/OPENAI_MODEL unset for OpenAI's gpt-4o-mini.
-  2. Redeploy. If the site itself is still served by GitHub Pages, point
-     js/lib/proxy.js at the Netlify address (export const API_HOST = '...') so
-     /api/chat resolves; GitHub Pages cannot run the function on its own.
-  3. Without the key the panel opens and explains it is not configured yet.
-     It never invents a recommendation as a fallback.

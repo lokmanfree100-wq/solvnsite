@@ -1,61 +1,14 @@
 /* ==========================================================================
    Movies & Series section (TMDB catalogue).
-   Cards, rows and the hero reuse the site's own .card / .row / .hero classes;
-   this file only adds what is TMDB-specific.
+   Cards and rows reuse the site's own .card / .row classes; this file only adds
+   what is film-specific.
    ========================================================================== */
-
-:root {
-  --m-star: #f0b429;
-}
 
 .page-movies {
   padding-bottom: var(--sp-8);
 }
 
-/* ---- type switcher + local search ------------------------------------- */
-
-.m-seg {
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-pill);
-  background: var(--glass);
-  margin: 0 var(--gutter) var(--sp-3);
-}
-
-.m-seg-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: var(--r-pill);
-  background: transparent;
-  color: var(--text-dim);
-  font: inherit;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background var(--t-med), color var(--t-med);
-}
-.m-seg-btn svg {
-  width: 16px;
-  height: 16px;
-}
-.m-seg-btn.is-active {
-  background: var(--accent-wash);
-  color: var(--text);
-}
-.m-seg-btn.is-active svg {
-  color: var(--accent);
-}
-@media (hover: hover) {
-  .m-seg-btn:not(.is-active):hover {
-    color: var(--text);
-  }
-}
+/* ---- local search ------------------------------------------------------ */
 
 .m-searchbar {
   position: relative;
@@ -152,16 +105,20 @@
 }
 .m-main {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-5);
   min-width: 0;
 }
 .m-side {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-5);
+  min-width: 0;
   position: sticky;
   top: calc(var(--topbar-h, 64px) + var(--sp-3));
 }
 .m-panel {
+  min-width: 0;
   border: 1px solid var(--hairline);
   border-radius: var(--r-md);
   background: var(--glass);
@@ -273,16 +230,6 @@
 }
 .m-detail-sub .sep {
   color: var(--text-faint);
-}
-.m-detail-sub .star {
-  color: var(--m-star);
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.m-detail-sub .star svg {
-  width: 14px;
-  height: 14px;
 }
 .m-detail-actions {
   display: flex;
@@ -404,13 +351,6 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.m-ep-score {
-  margin-inline-start: auto;
-  flex: none;
-  color: var(--text-dim);
-  font-size: 13px;
-  white-space: nowrap;
-}
 
 /* cast strip */
 .m-cast {
@@ -474,10 +414,16 @@
 
 .mwatch-shell {
   display: grid;
+  /* A horizontal rail has a wide min-content size; without an explicit track the
+     grid would widen to it and push the player off a phone screen. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-3);
   max-width: 1280px;
   margin-inline: auto;
   padding: 0 var(--gutter);
+}
+.mwatch-shell > * {
+  min-width: 0;
 }
 .mwatch-top {
   display: flex;
@@ -498,38 +444,6 @@
   color: var(--text-dim);
   font-size: 13px;
 }
-.mwatch-servers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.m-server {
-  height: 30px;
-  padding: 0 12px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--hairline);
-  background: var(--glass);
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background var(--t-med), color var(--t-med), border-color var(--t-med);
-}
-.m-server.is-active {
-  background: var(--accent-wash);
-  border-color: transparent;
-  color: var(--text);
-}
-.m-server.is-ok {
-  border-color: color-mix(in srgb, var(--success) 45%, transparent);
-}
-.m-server.is-down {
-  opacity: 0.55;
-  text-decoration: line-through;
-}
-
-/* segmented engine switch — same shape as the hub switcher */
 .m-mode-row {
   display: flex;
   flex-wrap: wrap;
@@ -545,16 +459,12 @@
   background: #000;
   border: 1px solid var(--hairline);
 }
-.m-player iframe,
-.m-player video {
+.m-player iframe {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   border: 0;
-}
-.m-player video {
-  background: #000;
 }
 .m-player-loading {
   position: absolute;
@@ -574,31 +484,6 @@
   pointer-events: none;
 }
 
-/* ---- the file's own switches ----------------------------------------------
-   Resolution and captions can only be chosen on a file this site plays itself,
-   so the row holds nothing at all while a framed page is up — and an empty row
-   takes no space rather than showing two buttons with no answers behind them. */
-
-.m-player-tools {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--sp-3);
-  margin-top: var(--sp-3);
-}
-.m-player-tools.is-empty {
-  display: none;
-}
-.m-tools-note {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-faint);
-}
-/* The player bar's chips go icon-only on a phone; these two are new to the film
-   page and their words are the whole point — which track, which resolution. */
-.m-player-tools .q-chip span {
-  display: inline;
-}
 .m-spinner {
   width: 34px;
   height: 34px;
@@ -631,10 +516,6 @@
   width: 14px;
   height: 14px;
 }
-.m-safety.is-clean {
-  color: var(--success);
-  border-color: color-mix(in srgb, var(--success) 40%, transparent);
-}
 
 .m-safety-panel {
   border: 1px solid var(--hairline);
@@ -646,13 +527,6 @@
   font-size: 13px;
   line-height: 1.55;
   color: var(--text-dim);
-}
-.m-safety-about code {
-  color: var(--text);
-  background: var(--surface-2);
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-size: 12px;
 }
 .m-safety-list {
   display: flex;
@@ -712,6 +586,212 @@
   gap: 1px;
   pointer-events: none;
 }
+
+/* ---- SOLVN player chrome -----------------------------------------------
+   The brand bar sits above the picture, and the transparent mark is drawn by
+   our document over the frame. When the film shell goes fullscreen both travel
+   into the browser's top layer with the iframe, so the mark survives the mode
+   change. It ignores pointer events and stays clear of the bottom controls. */
+.m-player-shell {
+  display: grid;
+  gap: 10px;
+}
+.m-player-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.m-player-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.m-player-brand .brand-bubble {
+  flex: none;
+  animation: none;
+}
+.brand-bubble--player {
+  font-size: 15px;
+  padding: 0.42em 0.95em 0.42em 0.8em;
+}
+.mpb-sub {
+  color: var(--text-faint);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.m-player-fs {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  background: var(--glass);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.m-player-fs svg {
+  width: 15px;
+  height: 15px;
+}
+@media (hover: hover) {
+  .m-player-fs:hover {
+    color: var(--text);
+    border-color: var(--accent-line);
+    background: var(--accent-wash);
+  }
+}
+
+.m-solvn-mark {
+  position: absolute;
+  right: clamp(10px, 2.2cqw, 28px);
+  bottom: clamp(48px, 12%, 84px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 0.9vw, 12px);
+  opacity: 0.4;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 0 16px rgba(145, 190, 255, 0.55));
+}
+.m-solvn-mark .logo {
+  width: clamp(28px, 4vw, 54px);
+  height: auto;
+  border-radius: 50%;
+  box-shadow: 0 0 22px rgba(145, 190, 255, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+.m-solvn-word {
+  font-family: var(--font-display);
+  font-size: clamp(17px, 2.4vw, 32px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(145, 190, 255, 0.8), 0 0 28px rgba(120, 165, 255, 0.42);
+}
+
+/* The shell is what we ask the browser to fullscreen, not the cross-origin
+   frame. The brand bar and the mark are its descendants and therefore remain
+   on the fullscreen top layer; the frame keeps its own aspect ratio inside. */
+.m-player-shell:fullscreen,
+.m-player-shell:-webkit-full-screen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  border-radius: 0;
+}
+/* The fallback viewport mode. It is entered only when the browser has no
+   element-fullscreen API (iPhone Safari) or refuses the request; the shell is
+   fixed to the visual viewport so the mark and brand bar stay on screen. */
+.m-player-shell.is-faux-fs {
+  position: fixed;
+  inset: auto;
+  top: 0;
+  left: 50%;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: #000;
+  border-radius: 0;
+  transform: translateX(-50%);
+}
+body.m-faux-fs {
+  overflow: hidden;
+}
+/* The watch page's entrance animation leaves a transform on its wrapper, and a
+   transformed ancestor becomes the containing block for position: fixed. Clear
+   it for the fallback so the shell really covers the viewport, edge to edge. */
+body.m-faux-fs .mwatch-shell {
+  transform: none !important;
+}
+
+/* Both fullscreen modes share the same child layout. */
+.m-player-shell:fullscreen .m-player-head,
+.m-player-shell:-webkit-full-screen .m-player-head,
+.m-player-shell.is-faux-fs .m-player-head {
+  flex: none;
+  padding: 10px clamp(14px, 2vw, 26px);
+  background: #050607;
+  border-bottom: 1px solid var(--hairline);
+}
+.m-player-shell:fullscreen .m-player,
+.m-player-shell:-webkit-full-screen .m-player,
+.m-player-shell.is-faux-fs .m-player {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+}
+.m-player-shell:fullscreen .m-solvn-mark,
+.m-player-shell:-webkit-full-screen .m-solvn-mark,
+.m-player-shell.is-faux-fs .m-solvn-mark {
+  right: clamp(16px, 2.5vw, 40px);
+  bottom: clamp(82px, 12vh, 132px);
+  opacity: 0.52;
+}
+.m-player-shell:fullscreen .m-solvn-word,
+.m-player-shell:-webkit-full-screen .m-solvn-word,
+.m-player-shell.is-faux-fs .m-solvn-word {
+  font-size: clamp(24px, 2.8vw, 46px);
+}
+.m-player-shell:fullscreen .m-solvn-mark .logo,
+.m-player-shell:-webkit-full-screen .m-solvn-mark .logo,
+.m-player-shell.is-faux-fs .m-solvn-mark .logo {
+  width: clamp(40px, 4.6vw, 72px);
+}
+
+@media (max-width: 700px) {
+  .m-player-shell {
+    gap: 8px;
+  }
+  .m-player-head {
+    gap: 8px;
+  }
+  .m-player-brand {
+    gap: 8px;
+  }
+  .brand-bubble--player {
+    font-size: 13px;
+    padding: 0.38em 0.85em 0.38em 0.7em;
+  }
+  .mpb-sub {
+    display: none;
+  }
+  .m-player-fs {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 11.5px;
+  }
+  .m-solvn-mark {
+    right: 8px;
+    bottom: clamp(42px, 12%, 62px);
+    gap: 5px;
+    opacity: 0.36;
+  }
+  .m-solvn-mark .logo {
+    width: 26px;
+  }
+  .m-solvn-word {
+    font-size: 13px;
+    letter-spacing: 0.14em;
+  }
+}
 /* `display: grid` above beats the `hidden` attribute, and this chip is a claim
    about who is playing — it must actually disappear over a third-party frame. */
 .player-brand[hidden] {
@@ -751,9 +831,10 @@
     width: 108px;
   }
   .m-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .m-side {
     position: static;
+    min-width: 0;
   }
 }

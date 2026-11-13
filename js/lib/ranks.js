@@ -522,56 +522,16 @@ export async function bannerFromImageFile(file) {
    profile.css, so a name outside the list renders nothing and the server
    refuses it. Labels reach t() through the extractor's indirect list.
    Every band on the shelf is free: nothing has to be won to wear one, so the
-   picker is a wardrobe rather than a ladder. Forty-six of them, in
-   the order the shelf shows them: the founding twenty-four, the eighteen soft
-   neon bands, then the four showcase pieces — inferno, rose, thunder and tide. */
+   picker is a wardrobe rather than a ladder. Six of them, in the order the
+   shelf shows them: Deep Neon Cyber, Obsidian Aura, Astral Nebula, Matrix Code,
+   Electric Storm and Glitch Wave. */
 export const BANNER_THEMES = [
-  ['aurora', 'Aurora'],
-  ['neon', 'Neon grid'],
-  ['ocean', 'Deep sea'],
-  ['ember', 'Ember'],
-  ['matrix', 'Code rain'],
-  ['violet', 'Nebula'],
-  ['spectrum', 'Spectrum'],
-  ['gold', 'Gold leaf'],
-  ['sakura', 'Cherry blossom'],
-  ['storm', 'Storm front'],
-  ['sunset', 'Sunset'],
-  ['glacier', 'Glacier'],
-  ['lava', 'Lava field'],
-  ['forest', 'Deep forest'],
-  ['retro', 'Retro sun'],
-  ['glitch', 'Glitch'],
-  ['cyber', 'Cyber line'],
-  ['toxic', 'Toxic'],
-  ['ink', 'Ink wash'],
-  ['chrome', 'Chrome'],
-  ['cosmos', 'Cosmos'],
-  ['eclipse', 'Eclipse'],
-  ['fireworks', 'Fireworks'],
-  ['bubbles', 'Bubbles'],
-  ['mint', 'Mint mist'],
-  ['lilac', 'Lilac haze'],
-  ['peach', 'Peach glow'],
-  ['ice', 'Ice bloom'],
-  ['mango', 'Mango tide'],
-  ['lotus', 'Lotus pink'],
-  ['polar', 'Polar night'],
-  ['siren', 'Siren teal'],
-  ['dusk', 'Dusk violet'],
-  ['cotton', 'Cotton candy'],
-  ['honey', 'Honeycomb'],
-  ['ripple', 'Neon ripple'],
-  ['pulse', 'Heartbeat'],
-  ['veil', 'Silk veil'],
-  ['beam', 'Light beam'],
-  ['horizon', 'Neon horizon'],
-  ['koi', 'Koi pond'],
-  ['crystal', 'Crystal grid'],
-  ['inferno', 'Inferno gold'],
-  ['rose', 'Rose glow'],
-  ['thunder', 'Thunder strike'],
-  ['tide', 'Ocean tide'],
+  ['neon-cyber', 'Deep Neon Cyber'],
+  ['obsidian', 'Obsidian Aura'],
+  ['astral', 'Astral Nebula'],
+  ['matrix-code', 'Matrix Code'],
+  ['electric', 'Electric Storm'],
+  ['glitch-wave', 'Glitch Wave'],
 ];
 
 export const BANNER_KEYS = BANNER_THEMES.map(([key]) => key);
@@ -579,62 +539,22 @@ export const BANNER_KEYS = BANNER_THEMES.map(([key]) => key);
 /**
  * The animation each band is drawn with.
  *
- * Motion is shared: thirteen archetypes cover all forty-six keys, and the theme
- * block in profile.css supplies only the palette. That keeps the stylesheet a
- * colour table rather than forty-six bespoke animations, and it means every
- * archetype is written once with the same rule — transform and opacity only,
- * so the compositor keeps the whole shelf at frame rate.
+ * Each key names one motion archetype; the theme block in profile.css supplies
+ * only the palette. That keeps the stylesheet a colour table rather than six
+ * bespoke animations, and every archetype is written once with the same rule —
+ * transform and opacity only, so the compositor keeps the whole shelf at frame
+ * rate.
  *
  * `lightning` is the one archetype that also adds a child node: a jagged bolt
  * cannot be drawn with two pseudo-elements alone.
  */
 export const BANNER_MOTION = {
-  aurora: 'drift',
-  neon: 'grid',
-  ocean: 'waves',
-  ember: 'rise',
-  matrix: 'rain',
-  violet: 'spin',
-  spectrum: 'sweep',
-  gold: 'sweep',
-  sakura: 'fall',
-  storm: 'lightning',
-  sunset: 'drift',
-  glacier: 'waves',
-  lava: 'rise',
-  forest: 'drift',
-  retro: 'grid',
-  glitch: 'glitch',
-  cyber: 'scan',
-  toxic: 'lift',
-  ink: 'drift',
-  chrome: 'sweep',
-  cosmos: 'spin',
-  eclipse: 'spin',
-  fireworks: 'burst',
-  bubbles: 'lift',
-  mint: 'drift',
-  lilac: 'drift',
-  peach: 'drift',
-  ice: 'waves',
-  mango: 'waves',
-  lotus: 'ripple',
-  polar: 'drift',
-  siren: 'waves',
-  dusk: 'drift',
-  cotton: 'drift',
-  honey: 'sweep',
-  ripple: 'ripple',
-  pulse: 'pulse',
-  veil: 'sweep',
-  beam: 'sweep',
-  horizon: 'grid',
-  koi: 'waves',
-  crystal: 'scan',
-  inferno: 'rise',
-  rose: 'pulse',
-  thunder: 'lightning',
-  tide: 'waves',
+  'neon-cyber': 'scan',
+  obsidian: 'drift',
+  astral: 'spin',
+  'matrix-code': 'rain',
+  electric: 'lightning',
+  'glitch-wave': 'glitch',
 };
 
 export const bannerMotion = (key) => BANNER_MOTION[key] || 'drift';
@@ -652,52 +572,12 @@ export const bannerMotion = (key) => BANNER_MOTION[key] || 'drift';
  * pixels before it is stored.
  */
 export const BANNER_HUES = {
-  aurora: 158,
-  neon: 186,
-  ocean: 201,
-  ember: 25,
-  matrix: 144,
-  violet: 257,
-  spectrum: 186,
-  gold: 43,
-  sakura: 330,
-  storm: 222,
-  sunset: 14,
-  glacier: 190,
-  lava: 14,
-  forest: 146,
-  retro: 334,
-  glitch: 184,
-  cyber: 192,
-  toxic: 83,
-  ink: 234,
-  chrome: 226,
-  cosmos: 251,
-  eclipse: 35,
-  fireworks: 312,
-  bubbles: 191,
-  mint: 161,
-  lilac: 262,
-  peach: 21,
-  ice: 194,
-  mango: 42,
-  lotus: 331,
-  polar: 153,
-  siren: 172,
-  dusk: 257,
-  cotton: 319,
-  honey: 43,
-  ripple: 184,
-  pulse: 339,
-  veil: 229,
-  beam: 221,
-  horizon: 186,
-  koi: 22,
-  crystal: 196,
-  inferno: 42,
-  rose: 334,
-  thunder: 229,
-  tide: 194,
+  'neon-cyber': 192,
+  obsidian: 222,
+  astral: 258,
+  'matrix-code': 145,
+  electric: 224,
+  'glitch-wave': 184,
 };
 
 /**
@@ -714,6 +594,9 @@ export function bannerTint(banner) {
   if (BANNER_KEYS.includes(banner.theme)) {
     return { hue: BANNER_HUES[banner.theme], strength: 1 };
   }
+  /* A band saved before the six-piece collection still lights the profile;
+     the wardrobe no longer offers its key, so it wears Obsidian's light. */
+  if (banner.theme) return { hue: BANNER_HUES.obsidian, strength: 1 };
   if (!banner.photo && !banner.file && !banner.url) return null;
   const hue = Number(banner.hue);
   return Number.isFinite(hue) && hue >= 0 && hue < 360 ? { hue, strength: 0.85 } : null;

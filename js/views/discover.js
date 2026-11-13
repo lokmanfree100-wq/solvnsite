@@ -50,6 +50,7 @@ const write = (state) => {
 };
 
 export async function DiscoverView(ctx) {
+  const animeOnly = ctx?.route?.path === '/anime';
   const state = read();
   const wrap = h('div.page-discover');
 
@@ -308,13 +309,15 @@ export async function DiscoverView(ctx) {
   wrap.append(
     categoryTabs('anime'),
     h('header.page-head', {},
-      h('div.eyebrow', {}, t('DISCOVER')),
-      h('h1.display', {}, t('Browse the catalogue')),
-      h('p', {}, t('Filter every title we track — sort by trend, score or season, then narrow down by genre and format.')),
+      h('div.eyebrow', {}, animeOnly ? t('ANIME') : t('DISCOVER')),
+      h('h1.display', {}, animeOnly ? t('Browse anime') : t('Browse the catalogue')),
+      h('p', {}, animeOnly
+        ? t('Every series, film and special in the anime catalogue — sort it, filter it, and open any title to watch.')
+        : t('Filter every title we track — sort by trend, score or season, then narrow down by genre and format.')),
       h(
         'div.rowline',
         { style: { marginTop: 'var(--sp-4)' } },
-        h('a.btn.btn--sm', { href: '#/toons' }, icon('tv'), h('span', {}, t('Classic & Toons'))),
+        h('a.btn.btn--sm', { href: '#/kids' }, icon('tv'), h('span', {}, t('Kids'))),
       ),
     ),
     filterBar,

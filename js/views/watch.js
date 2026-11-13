@@ -24,6 +24,7 @@ import { isSignedIn, tellDiscord } from '../lib/account.js';
 import { followTitle } from '../lib/notices.js';
 import { title, formatLabel, yearOf, statusLabel, listLabel, STATUS_TONE, plainDescription, countdown, scoreLabel, clamp, watched } from '../lib/util.js';
 import { buildEpisodes, episodeCountIsGuess, resolveEpisodeCount } from '../lib/embed.js';
+import { episodeStills } from '../lib/episode-stills.js';
 import { asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isMediaUrl, isTrack, markServer, serverKind, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
 import { createStage } from '../lib/playback.js';
 import { accentValue } from '../lib/accent.js';
@@ -210,13 +211,59 @@ export function WatchView({ params, route, onCleanup }) {
      advert cannot open a tab or take the viewer anywhere. */
   const stageTitle = () => `${title(media)} — ${t('Episode {n}', { n: ep })} (${trackName(audio)})`;
   let stage = null;
+  let started = false;
   /* Solvn's mark is drawn here, on the player box, rather than asked of whatever
      is inside it: it cannot be covered, removed or hidden by a source, it scales
      with the player instead of the screen, and it rides into full screen because
      the shell it lives in is what goes there. */
+  /* The first frame is a poster, not a request. Nothing reaches a provider
+     until this button is pressed, so opening an episode is instant and no
+     stream starts behind the viewer's back. */
+  const readyArt = h('img.player-ready-art', { alt: '', decoding: 'async' });
+  const readyTitle = h('h2.player-ready-title', {});
+  const readyMeta = h('p.player-ready-meta', {});
+  const readyPlay = h('button.player-ready-play', {
+    type: 'button',
+    onclick: () => play(),
+  }, icon('play'), h('span', {}, t('Play now')));
+  const ready = h(
+    'div.player-ready',
+    {},
+    readyArt,
+    h('div.player-ready-shade'),
+    h(
+      'div.player-ready-copy',
+      {},
+      h('span.player-ready-kicker', {}, t('READY TO STREAM')),
+      readyTitle,
+      readyMeta,
+      readyPlay,
+    ),
+  );
+
+  function paintReady() {
+    const art = media.bannerImage || media.coverImage?.extraLarge || media.coverImage?.large;
+    if (art) {
+      readyArt.src = art;
+      readyArt.hidden = false;
+    } else {
+      readyArt.removeAttribute('src');
+      readyArt.hidden = true;
+    }
+    readyTitle.textContent = title(media);
+    readyMeta.textContent = `${isMovie ? t('Film') : t('Episode {n}', { n: ep })} · ${trackName(audio)}`;
+  }
+
+  function showReady() {
+    paintReady();
+    ready.hidden = false;
+    boot.classList.add('is-gone');
+    bootSpin.classList.add('hide');
+  }
+
   /* One mark only: `.player-mark` in the shell, which is also what fullscreen
      promotes. A second chip inside the frame used to sit underneath it. */
-  const frameBox = h('div.player-frame', {}, boot);
+  const frameBox = h('div.player-frame', {}, ready, boot);
 
   /* Set once the page is assembled: the note about a foreign player mounts just
      above the picture, and nothing may reach it before the page exists. */
@@ -341,6 +388,7 @@ export function WatchView({ params, route, onCleanup }) {
   function showUnconfigured() {
     clearTimeout(watchdog);
     watchdog = null;
+    ready.hidden = true;
     dropStage();
     bootSpin.classList.add('hide');
     boot.classList.remove('is-gone');
@@ -359,6 +407,7 @@ export function WatchView({ params, route, onCleanup }) {
   function showLocked() {
     clearTimeout(watchdog);
     watchdog = null;
+    ready.hidden = true;
     /* A stage that was already pointed at this episode before the catalogue
        answered is taken out of the box: leaving it loaded would keep the other
        site's error page — and anything still playing out of it — behind our own
@@ -456,6 +505,8 @@ export function WatchView({ params, route, onCleanup }) {
     const next = nextUnaired();
     if (next && ep >= next) return showLocked();
     if (!pool.length) return showUnconfigured();
+    started = true;
+    ready.hidden = true;
     boot.classList.remove('is-gone');
     bootSpin.classList.remove('hide');
     bootLast.forEach((b) => b.classList.add('hide'));
@@ -555,7 +606,8 @@ export function WatchView({ params, route, onCleanup }) {
     const head = picked && all.includes(picked) ? picked : all[0];
     startRun([head, ...all.filter((s) => s !== head)], true);
     serverIdx = 0;
-    play();
+    if (started) play();
+    else paintReady();
     paintBar();
   }
 
@@ -928,7 +980,6 @@ export function WatchView({ params, route, onCleanup }) {
   const blockOf = (n) => clamp(Math.floor((n - 1) / WINDOW) * WINDOW, 0, maxStart());
   let start = blockOf(ep);
 
-  const railHeading = h('h3.grow', {}, t('Episodes'));
   const rail = h('div');
   const railRange = h('span.badge');
   const railPrev = h('button.icon-btn', { 'aria-label': t('Earlier episodes'), onclick: () => { start = clamp(start - WINDOW, 0, maxStart()); paintRail(); } }, icon('chevronLeft', { cls: 'flip' }));
@@ -936,13 +987,11 @@ export function WatchView({ params, route, onCleanup }) {
 
   function paintRail() {
     if (!eps.length) {
-      railHeading.textContent = t('Episodes');
       railRange.textContent = '…';
       railPrev.hidden = railNext.hidden = true;
       rail.replaceChildren(h('div.panel-body', {}, h('p.muted', {}, t('Loading episodes…'))));
       return;
     }
-    railHeading.textContent = isMovie ? t('Film') : t('Episodes');
     /* Only the arrows move the window; a repaint keeps the viewer where they
        scrolled to, so the block is clamped rather than re-derived from `ep`. */
     start = clamp(start, 0, maxStart());
@@ -1009,7 +1058,6 @@ export function WatchView({ params, route, onCleanup }) {
   const railCard = h('div.panel-card', {},
     h('div.panel-head', {},
       icon('list'),
-      railHeading,
       railPrev,
       railRange,
       railNext,
@@ -1089,10 +1137,27 @@ export function WatchView({ params, route, onCleanup }) {
   syncTitle();
   window.scrollTo({ top: 0 });
 
-  /* ---------------- start the ladder ---------------- */
+  /* ---------------- start on a paused poster ---------------- */
   startRun();
-  play();
-  onCleanup(() => clearTimeout(watchdog));
+  /* Warm DNS/TLS for the configured providers without opening a stream. The
+     first actual request is still the viewer's Play press. */
+  const warmed = [];
+  const seenOrigins = new Set();
+  for (const source of pool) {
+    try {
+      const origin = new URL(serverUrl(source, { id, episode: ep, audio, autoNext: false, accent: accentValue() })).origin;
+      if (seenOrigins.has(origin)) continue;
+      seenOrigins.add(origin);
+      const link = h('link', { rel: 'preconnect', href: origin, crossorigin: 'anonymous' });
+      document.head.append(link);
+      warmed.push(link);
+    } catch { /* a malformed source is handled by the ladder, not here */ }
+  }
+  showReady();
+  onCleanup(() => {
+    clearTimeout(watchdog);
+    warmed.forEach((link) => link.remove());
+  });
   /* Leaving for another route stops the picture properly: a video kept alive out
      of the DOM goes on playing in the dark, and an hls.js instance holds its
      buffers, workers and listeners with it. */
@@ -1120,12 +1185,18 @@ export function WatchView({ params, route, onCleanup }) {
     paintRail();
     paintRecs();
     paintBar();
+    if (!started) paintReady();
     syncTitle();
     /* The catalogue answers after the player is already on the page, so this is
        the moment a locked episode can be discovered mid-flight. */
     const next = nextUnaired();
     if (next && ep >= next) showLocked();
-    else if (ep !== asked) play(); // the link asked for an episode that does not exist
+    else if (ep !== asked) {
+      /* A corrected episode link still waits for the viewer. Only a session
+         that already pressed play reloads on its own. */
+      if (started) play();
+      else showReady();
+    }
   }
 
   async function hydrate() {
@@ -1187,7 +1258,8 @@ export function WatchView({ params, route, onCleanup }) {
        built for the other one. */
     setTrack(nextAudio);
     startRun();
-    play();
+    if (started) play();
+    else showReady();
     paintBar();
   }
 
@@ -1215,10 +1287,10 @@ function announce(media, ep, audio) {
 
 async function loadEpisodes(media) {
   try {
-    const m = await fetchEpisodes(media.id);
+    const [m, stills] = await Promise.all([fetchEpisodes(media.id).catch(() => null), episodeStills(media.id)]);
     // Keep the detail payload's stills when the episode query answers empty.
     const streamed = m?.streamingEpisodes?.length ? m.streamingEpisodes : media.streamingEpisodes || [];
-    return buildEpisodes({ ...media, ...(m || {}) }, streamed);
+    return buildEpisodes({ ...media, ...(m || {}) }, streamed, stills);
   } catch {
     return buildEpisodes(media, media.streamingEpisodes || []);
   }

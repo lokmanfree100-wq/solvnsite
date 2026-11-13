@@ -12,7 +12,7 @@ import { sheet, toast } from '../lib/ui.js';
 import { account, isStaff, adminUsers, adminAnalytics, adminPatchUser, adminReports, adminPatchReport, adminComments, removeComment, adminGift } from '../lib/account.js';
 import { cloudConfig, cloudActive, cloudApi, cloudDirectLogin, cloudSignOut } from '../lib/cloud.js';
 import { BADGES, rankOf } from '../lib/ranks.js';
-import { statsLocked, setStatsLock } from '../lib/store.js';
+import { progressMap, statsLocked, setStatsLock } from '../lib/store.js';
 import { avatar, say, statTile } from '../components/account.js';
 import { emptyState, errorState } from '../components/media.js';
 import { intlDate, relativeTime } from '../lib/util.js';
@@ -923,6 +923,7 @@ export async function AdminView({ onCleanup } = {}) {
 
   const totals = h('div.metric-grid');
   const analyticsBox = h('section.ad-analytics.glass');
+  const opsBox = h('section.ad-ops.glass');
   const centralBox = h('section.ad-central-stats.glass');
   const studio = h('section.ad-studio.glass');
   const pulseBox = h('section.ad-pulse.glass');
@@ -987,6 +988,144 @@ export async function AdminView({ onCleanup } = {}) {
         {},
         t('Counted on this device, by this browser, from the visits it has itself seen. The panel below is the one that counts everybody.'),
       ),
+    );
+  }
+
+  /* ---- live operations ------------------------------------------------------ */
+  const OPS_LOG_KEY = 'kitsune:opslog';
+  const storageBytes = () => {
+    try {
+      let bytes = 0;
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i) || '';
+        bytes += (key.length + (localStorage.getItem(key) || '').length) * 2;
+      }
+      return bytes;
+    } catch {
+      return 0;
+    }
+  };
+  const opsLog = () => {
+    try {
+      const rows = JSON.parse(localStorage.getItem(OPS_LOG_KEY) || '[]');
+      return Array.isArray(rows) ? rows : [];
+    } catch {
+      return [];
+    }
+  };
+  const writeOpsLog = (row) => {
+    try {
+      const rows = [row, ...opsLog()].slice(0, 30);
+      localStorage.setItem(OPS_LOG_KEY, JSON.stringify(rows));
+      return rows;
+    } catch {
+      return [row];
+    }
+  };
+
+  function paintOps() {
+    const users = data?.[0] || {};
+    const local = users.analytics || {};
+    const signedIn = presence().filter((row) => row.online).length;
+    const activeVisitors = Math.max(Number(local.browsers) || 0, signedIn);
+    const members = Number(users.totals?.members) || 0;
+    const streams = Object.values(progressMap())
+      .filter((row) => row && row.title)
+      .sort((a, b) => (Number(b.plays) || 0) - (Number(a.plays) || 0) || (b.at || 0) - (a.at || 0))
+      .slice(0, 6);
+    const nav = performance.getEntriesByType?.('navigation')?.[0];
+    const heap = performance.memory?.usedJSHeapSize;
+    const heapMb = Number(heap) ? Math.round((Number(heap) / 1048576) * 10) / 10 : null;
+    const storageKb = Math.round(storageBytes() / 1024);
+    const cores = Number(navigator.hardwareConcurrency) || null;
+    const deviceMemory = Number(navigator.deviceMemory) || null;
+    const connection = navigator.connection?.effectiveType || (navigator.onLine ? 'online' : 'offline');
+    const domNodes = document.getElementsByTagName('*').length;
+    const sample = { at: Date.now(), activeVisitors, members, heapMb, storageKb, domNodes };
+    const log = writeOpsLog(sample);
+    const metric = (label, value) =>
+      h('div.ad-op-metric', {}, h('span', {}, t(label)), h('b.tnum', {}, String(value)));
+
+    opsBox.replaceChildren(
+      h(
+        'div.ad-ops-head',
+        {},
+        h('h2.panel-title', {}, icon('bolt'), t('Live operations')),
+        h('span.ad-live-pill', {}, h('i'), t('{n} active now', { n: activeVisitors })),
+      ),
+      h(
+        'div.metric-grid',
+        {},
+        statTile({ iconName: 'eye', value: String(activeVisitors), label: t('Active visitors') }),
+        statTile({ iconName: 'users', value: String(members), label: t('Registered users') }),
+        statTile({ iconName: 'film', value: String(streams.reduce((n, row) => n + (Number(row.plays) || 0), 0)), label: t('Stream opens') }),
+        statTile({ iconName: 'globe', value: navigator.onLine ? t('Healthy') : t('Offline'), label: t('Connection health') }),
+      ),
+      h(
+        'div.ad-ops-grid',
+        {},
+        h(
+          'div.ad-ops-panel',
+          {},
+          h('h3.ad-sub', {}, icon('film'), t('Most watched media')),
+          streams.length
+            ? h(
+                'div.ad-table',
+                { role: 'table', 'aria-label': t('Most watched media') },
+                h(
+                  'div.ad-tr.is-head',
+                  { role: 'row' },
+                  h('span', { role: 'columnheader' }, t('Title')),
+                  h('span', { role: 'columnheader' }, t('Opens')),
+                  h('span', { role: 'columnheader' }, t('Last watched')),
+                ),
+                ...streams.map((row) =>
+                  h(
+                    'div.ad-tr',
+                    { role: 'row' },
+                    h('span.ad-page', { role: 'cell', title: row.title }, row.title),
+                    h('span.tnum', { role: 'cell' }, String(Number(row.plays) || 0)),
+                    h('span.ad-when.tnum', { role: 'cell' }, relativeTime(Number(row.at) || 0)),
+                  ),
+                ),
+              )
+            : h('p.ad-pulse-note.faint', {}, t('No stream has been opened on this device yet.')),
+        ),
+        h(
+          'div.ad-ops-panel',
+          {},
+          h('h3.ad-sub', {}, icon('monitor'), t('System health')),
+          h(
+            'div.ad-op-grid',
+            {},
+            metric('Status', navigator.onLine ? t('Online') : t('Offline')),
+            metric('CPU cores', cores || '—'),
+            metric('Device memory', deviceMemory ? `${deviceMemory} GB` : t('Not exposed')),
+            metric('JS heap', heapMb == null ? t('Not exposed') : `${heapMb} MB`),
+            metric('Local storage', `${storageKb} KB`),
+            metric('DOM nodes', domNodes),
+            metric('Network', connection),
+            metric('Navigation', nav?.duration ? `${Math.round(nav.duration)} ms` : '—'),
+          ),
+        ),
+      ),
+      h('h3.ad-sub', {}, icon('history'), t('Health log')),
+      h(
+        'div.ad-ops-log',
+        {},
+        ...log.slice(0, 6).map((row) =>
+          h(
+            'div.ad-op-log-row',
+            {},
+            h('span.tnum', {}, new Date(Number(row.at) || 0).toLocaleTimeString()),
+            h('span', {}, t('{n} active', { n: Number(row.activeVisitors) || 0 })),
+            h('span', {}, row.heapMb == null ? t('heap n/a') : `${row.heapMb} MB`),
+            h('span', {}, `${Number(row.storageKb) || 0} KB`),
+            h('span', {}, `${Number(row.domNodes) || 0} ${t('nodes')}`),
+          ),
+        ),
+      ),
+      h('p.ad-pulse-note.faint', {}, t('Measured in this browser: presence stamps, stream opens saved by the player, and the browser Performance API. The log is a rolling local sample, not a server probe.')),
     );
   }
 
@@ -1194,6 +1333,7 @@ export async function AdminView({ onCleanup } = {}) {
     paintHold();
 
     paintAnalytics(users);
+    paintOps();
     paintStudio(users);
 
     roster.replaceChildren(
@@ -1223,10 +1363,14 @@ export async function AdminView({ onCleanup } = {}) {
     paintCentral();
   }
 
-  wrap.append(head, totals, analyticsBox, centralBox, studio, pulseBox, hold, central, roster, adPanel(), reportBox, commentBox);
+  wrap.append(head, totals, opsBox, analyticsBox, centralBox, studio, pulseBox, hold, central, roster, adPanel(), reportBox, commentBox);
   paintHold();
   await fill();
   const pulseTimer = setInterval(paintPulse, 15_000);
-  onCleanup?.(() => clearInterval(pulseTimer));
+  const opsTimer = setInterval(paintOps, 6_000);
+  onCleanup?.(() => {
+    clearInterval(pulseTimer);
+    clearInterval(opsTimer);
+  });
   return wrap;
 }

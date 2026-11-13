@@ -206,156 +206,189 @@ p {
 }
 
 /* ---- startup intro ---------------------------------------------------
-   3.5 seconds on true black. The cat art fades up out of a slight
-   perspective tilt, settles into a slow float, takes one pass of light
-   across the frame, and then the veil lifts. The artwork already carries its
-   own eye-glow, so nothing here paints colour: the only light in this scene
-   is white. `pointer-events` stays off so a tap during the intro reaches the
-   page underneath, and app.js lifts the node out of the DOM when it ends. */
+   1.5 seconds on true black: a halftone dot matrix lit by two diagonal
+   waves of warm white and cool slate, with the `solvn` wordmark rising out
+   of depth in the middle. The dots and waves are painted entirely in CSS, so
+   the first frame costs no image request. `pointer-events` stays off so a
+   tap during the intro reaches the page underneath, and app.js lifts the
+   node when the animation is done. */
 .splash {
   position: fixed;
   inset: 0;
   z-index: 200;
   display: grid;
   place-items: center;
+  overflow: hidden;
   pointer-events: none;
-  background: var(--void);
-  animation: splash-veil 3.5s var(--ease) both;
+  background: #020304;
+  animation: splash-veil 1.5s var(--ease) both;
 }
-.splash-mark {
-  display: grid;
-  place-items: center;
-  gap: var(--sp-5);
-}
-.splash-stage {
-  position: relative;
-  /* The frame is square and the art's own background is only almost black, so
-     a radial mask feathers its edges into the veil and no box outline shows. */
-  -webkit-mask-image: radial-gradient(closest-side, #000 56%, transparent 98%);
-  mask-image: radial-gradient(closest-side, #000 56%, transparent 98%);
-  animation: cat-rise 1.5s var(--ease) both;
-}
-.splash-cat {
-  width: clamp(190px, 36vmin, 330px);
-  height: auto;
-  aspect-ratio: 1;
-  object-fit: cover;
-  animation: cat-float 3.2s ease-in-out 1.2s infinite;
-  will-change: transform;
-}
-/* One cinematic light sweep, not a coloured gradient: a soft white band that
-   crosses the frame once and leaves. */
-.splash-stage::after {
+/* The matrix: one dot per cell, brightest where the diagonal light crosses
+   it, fading into the corners. */
+.splash::before {
   content: '';
   position: absolute;
-  inset: -18% -30%;
-  background: linear-gradient(
-    104deg,
-    transparent 34%,
-    rgba(255, 255, 255, 0.05) 44%,
-    rgba(255, 255, 255, 0.16) 50%,
-    rgba(255, 255, 255, 0.05) 56%,
-    transparent 66%
+  inset: -12%;
+  background-image: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.52) 0 1px,
+    rgba(255, 255, 255, 0.12) 1.15px,
+    transparent 1.75px
   );
+  background-size: 8px 8px;
+  opacity: 0.72;
+  -webkit-mask-image:
+    radial-gradient(ellipse 70% 72% at 48% 52%, #000 8%, rgba(0, 0, 0, 0.84) 48%, transparent 88%),
+    linear-gradient(112deg, transparent 13%, #000 38%, rgba(0, 0, 0, 0.34) 58%, #000 78%, transparent 94%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    radial-gradient(ellipse 70% 72% at 48% 52%, #000 8%, rgba(0, 0, 0, 0.84) 48%, transparent 88%),
+    linear-gradient(112deg, transparent 13%, #000 38%, rgba(0, 0, 0, 0.34) 58%, #000 78%, transparent 94%);
+  mask-composite: intersect;
+  animation: splash-dot-drift 1.5s ease-out both;
+}
+/* Warm white from the lower left, cool slate from the upper right, and one
+   broad diagonal band passing between them. */
+.splash::after {
+  content: '';
+  position: absolute;
+  inset: -28%;
+  background:
+    radial-gradient(46% 64% at 16% 78%, rgba(255, 244, 221, 0.34), transparent 72%),
+    radial-gradient(52% 68% at 84% 18%, rgba(148, 176, 219, 0.38), transparent 74%),
+    linear-gradient(
+      112deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.06) 33%,
+      rgba(255, 255, 255, 0.18) 44%,
+      transparent 54%,
+      rgba(173, 199, 235, 0.15) 69%,
+      transparent 83%
+    );
   mix-blend-mode: screen;
-  opacity: 0;
-  animation: light-pass 1.5s ease-in-out 1.35s both;
+  filter: blur(2px);
+  transform: rotate(-8deg) scale(1.08);
+  animation: splash-wave 1.5s var(--ease) both;
 }
-.splash-word {
-  font-family: var(--font-display);
-  font-size: clamp(19px, 4.2vw, 30px);
-  font-weight: 800;
-  letter-spacing: 0.34em;
-  text-indent: 0.34em;
-  text-transform: uppercase;
-  color: var(--text);
-  /* Tracking is the whole effect of a title settling, and this is one short
-     line inside a fixed overlay — the reflow is bounded and it never repeats. */
-  animation: word-land 1s var(--ease) 1.75s both;
+.splash-mark {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  animation: splash-mark-in 0.9s var(--ease) both;
 }
-.splash-sub {
-  font-family: var(--font-body);
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  text-indent: 0.2em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  animation: word-land 0.9s var(--ease) 2.1s both;
+.splash .splash-lockup {
+  font-size: clamp(58px, 14vw, 178px);
+  letter-spacing: -0.075em;
+  filter: drop-shadow(0 0 34px rgba(235, 243, 255, 0.12));
+  animation: splash-depth 1.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.splash-lockup .brand-word {
+  color: #fff;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.4),
+    0 18px 52px rgba(128, 157, 197, 0.22);
+}
+.splash-lockup .brand-stars {
+  top: -0.04em;
+  inset-inline-end: -0.18em;
+  width: 1.25em;
+  height: 1.2em;
+  font-size: clamp(18px, 2.4vw, 28px);
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.55));
+}
+.splash-lockup .brand-star--lead {
+  width: 0.72em;
+  height: 0.72em;
+  right: 0.12em;
+}
+.splash-lockup .brand-star--tail {
+  width: 0.42em;
+  height: 0.42em;
+  top: 0.42em;
 }
 @keyframes splash-veil {
   0%,
-  78% {
+  74% {
     opacity: 1;
   }
   100% {
     opacity: 0;
   }
 }
-@keyframes cat-rise {
+@keyframes splash-dot-drift {
   from {
     opacity: 0;
-    transform: perspective(900px) rotateX(9deg) scale(0.93);
+    transform: scale(1.08) translate3d(-1.5%, 1%, 0);
   }
-  55% {
+  45% {
+    opacity: 0.72;
+  }
+  to {
+    opacity: 0.72;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+@keyframes splash-wave {
+  from {
+    opacity: 0;
+    transform: rotate(-8deg) scale(1.08) translate3d(-8%, 4%, 0);
+  }
+  35% {
     opacity: 1;
   }
   to {
-    opacity: 1;
-    transform: perspective(900px) rotateX(0deg) scale(1);
+    opacity: 0.82;
+    transform: rotate(-8deg) scale(1.08) translate3d(4%, -2%, 0);
   }
 }
-@keyframes cat-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-7px);
-  }
-}
-@keyframes light-pass {
+@keyframes splash-mark-in {
   from {
     opacity: 0;
-    transform: translateX(-58%);
-  }
-  30% {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-    transform: translateX(58%);
-  }
-}
-@keyframes word-land {
-  from {
-    opacity: 0;
-    letter-spacing: 0.62em;
-    transform: translateY(7px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
+@keyframes splash-depth {
+  0% {
+    opacity: 0;
+    transform: perspective(900px) translateZ(-150px) scale(0.84);
+    filter: blur(12px);
+  }
+  42% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  70% {
+    transform: perspective(900px) translateZ(18px) scale(1.035);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(900px) translateZ(0) scale(1);
+    filter: blur(0);
+  }
+}
 /* A startup flourish is exactly what asks to be skipped, so it is: the frame
-   appears already settled, the float and the sweep are dropped, and JS lifts
-   the node a beat later. */
+   appears settled with the wordmark already in place, and JS lifts the node
+   a beat later. */
 @media (prefers-reduced-motion: reduce) {
   .splash {
-    animation: splash-veil 0.9s var(--ease) both;
+    animation: splash-veil 0.55s var(--ease) both;
   }
-  .splash-stage,
-  .splash-cat,
-  .splash-stage::after,
-  .splash-word,
-  .splash-sub {
+  .splash::before,
+  .splash::after,
+  .splash-mark,
+  .splash-lockup {
     animation: none;
   }
-  .splash-stage::after {
-    display: none;
+  .splash::after {
+    opacity: 0.7;
   }
-  .splash-word,
-  .splash-sub {
+  .splash-mark,
+  .splash-lockup {
     opacity: 1;
   }
 }
@@ -579,7 +612,6 @@ html[dir='rtl'] :is(
   .stat .l,
   .now-playing .np-1,
   .page-head h1,
-  .hero-title,
   .detail-title,
   .card-title,
   .section-head h2

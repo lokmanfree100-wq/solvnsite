@@ -57,10 +57,8 @@
   --accent-2-wash: rgba(255, 255, 255, 0.06);
   --accent-2-line: rgba(255, 255, 255, 0.22);
 
-  /* Ready-made ramps, for the few places that should read as a gradient rather
-     than a fill: the brand word, a hero headline, the locked page's title. */
-  --grad-brand: linear-gradient(102deg, #ffffff 0%, #f3f4f6 46%, var(--accent-text) 100%);
-  --grad-title: linear-gradient(96deg, #ffffff 6%, #f3f4f6 40%, var(--accent-text) 70%, var(--accent-2-bright) 100%);
+  /* The wordmark is crisp white in its own glass capsule; no type ramp remains
+     for a gradient to tint it. */
 
   /* There is no coloured light field: the page is flat charcoal, and the only
      ambience left is a trace of white so the top edge is not mathematically

@@ -19,7 +19,7 @@
 import { h, icon, qs } from '../lib/dom.js';
 import { t } from '../lib/i18n.js';
 import { settings } from '../lib/store.js';
-import { logoMark } from '../lib/brand.js';
+import { brandBubble } from '../lib/brand.js';
 import { cloudActive } from '../lib/cloud.js';
 import { staticHost } from '../lib/account.js';
 import { adSlot } from './sponsor.js';
@@ -78,8 +78,7 @@ function brand() {
     h(
       'a.foot-logo',
       { href: '#/', 'aria-label': t('Solvn home') },
-      h('span.foot-mark', {}, logoMark(44)),
-      h('span.foot-word', {}, 'SOLVN'),
+      brandBubble({ variant: 'brand-bubble--foot' }),
     ),
     h('p.foot-tagline', {}, t('Solvn — anime & cartoons in HD')),
     actions(),

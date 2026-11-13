@@ -7,7 +7,7 @@ import { randomAnime } from '../lib/anilist.js';
 import { sheet, toast } from '../lib/ui.js';
 import { sfx } from '../lib/sounds.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
-import { logoMark } from '../lib/brand.js';
+import { brandBubble } from '../lib/brand.js';
 import { accountChip } from './account.js';
 import { inboxUsable } from '../lib/dms.js';
 import { tradeUsable } from '../lib/trades.js';
@@ -19,39 +19,35 @@ import { noticeBell, disposeBell } from './notices.js';
 /* God mode has no entry point in the interface: /admin is reached by URL, by
    the one account the server recognises, and its gate is server-side. */
 
-/* Five places a phone viewer returns to, then More. Anime and Cartoons are the
-   catalogue now, so the dock carries Cartoons where Movies used to sit: a locked
-   tab would spend a thumb-sized slot on a page that cannot open. The category
-   strip still names Movies and Series, marked "Soon" (lib/locks.js). */
+/* The five content doors, in the order a viewer expects them. Library, Profile,
+   Kids Cartoons and everything else live in More so the dock stays about
+   discovery rather than account management. */
 export const NAV = [
   { id: 'home', label: 'Home', path: '/', icon: 'home' },
-  { id: 'toons', label: 'Cartoons', path: '/toons', icon: 'cat' },
+  { id: 'movies', label: 'Movies', path: '/movies', icon: 'film' },
+  { id: 'series', label: 'Series', path: '/series', icon: 'film' },
+  { id: 'anime', label: 'Anime', path: '/anime', icon: 'sparkles' },
   { id: 'discover', label: 'Discover', path: '/discover', icon: 'compass' },
-  { id: 'library', label: 'Library', path: '/library', icon: 'library' },
-  { id: 'profile', label: 'Profile', path: '/profile', icon: 'user' },
 ];
 
-/* The desktop top bar. Same destinations as the dock, in the order a viewer
-   scans them, plus the parked film catalogue: its address is live and raises
-   the one-time note, so it is a real link with a lock on it rather than a
-   disabled chip. Everything that does not fit lives behind the three dots. */
+/* The desktop bar mirrors the dock. The overflow menu carries the secondary
+   shelves and account doors, including Library and Profile. */
 export const TOP_LINKS = [
   { id: 'home', label: 'Home', path: '/', icon: 'home' },
+  { id: 'movies', label: 'Movies', path: '/movies', icon: 'film' },
+  { id: 'series', label: 'Series', path: '/series', icon: 'film' },
+  { id: 'anime', label: 'Anime', path: '/anime', icon: 'sparkles' },
   { id: 'discover', label: 'Discover', path: '/discover', icon: 'compass' },
-  { id: 'toons', label: 'Cartoons', path: '/toons', icon: 'cat' },
-  { id: 'library', label: 'Library', path: '/library', icon: 'library' },
-  { id: 'movies', label: 'Movies', path: '/movies', icon: 'film', locked: true },
-  { id: 'profile', label: 'Profile', path: '/profile', icon: 'user' },
 ];
 
 /** Which tab (if any) a route belongs to. */
 function tabFor(path) {
   if (path === '/') return 'home';
   if (path.startsWith('/search') || path.startsWith('/top')) return 'discover';
-  if (path.startsWith('/anime') || path.startsWith('/watch')) return null;
-  /* The parked catalogues have no dock tab: their pages are a status page, not a
-     place to come back to. */
-  if (path.startsWith('/movies') || path.startsWith('/movie') || path.startsWith('/mwatch')) return null;
+  if (path.startsWith('/watch')) return null;
+  if (path === '/anime' || path.startsWith('/anime/')) return 'anime';
+  if (path.startsWith('/movies') || path.startsWith('/movie') || path.startsWith('/mwatch')) return 'movies';
+  if (path.startsWith('/series') || path.startsWith('/swatch')) return 'series';
   const seg = path.split('/')[1];
   if (seg === 'settings' || seg === 'updates' || seg === 'packs' || seg === 'messages' || seg === 'mailbox' || seg === 'trades' || seg === 'arena') return 'profile';
   return NAV.some((n) => n.id === seg) ? seg : null;
@@ -61,8 +57,7 @@ function brand() {
   return h(
     'a.brand',
     { href: '#/', 'aria-label': t('Solvn home') },
-    h('span.brand-mark', {}, logoMark()),
-    h('span.brand-word', {}, 'Solvn'),
+    brandBubble({ variant: 'brand-bubble--nav' }),
   );
 }
 
@@ -199,8 +194,7 @@ function moreSheet() {
         group(t('Browse'), [
           row(api, { href: '/search', iconName: 'search', label: t('Search anime'), on: onPath('/search') }),
           row(api, { href: '/updates', iconName: 'calendarStar', label: t('Airing schedule'), on: onPath('/updates') }),
-          row(api, { href: '/toons', iconName: 'tv', label: t('Classic & Toons'), on: onPath('/toons') }),
-          row(api, { href: '/discover', iconName: 'compass', label: t('Discover'), on: onPath('/discover') }),
+          row(api, { href: '/kids', iconName: 'tv', label: t('Kids Cartoons'), on: onPath('/kids') }),
         ]),
         group(t('Library'), [
           row(api, { href: '/library', iconName: 'library', label: t('Everything'), on: onPath('/library') && !query.tab }),
@@ -289,12 +283,13 @@ function moreButton() {
       h(
         'div.more-menu',
         {},
-        /* The bar already carries Home, Discover, Cartoons, Library, Movies and
-           Profile, so the menu holds only what it cannot: schedule, binder,
-           community and the account doors that are settings-shaped. */
+        /* The bar already carries every open catalogue, so the menu holds the
+           schedule, binder, Kids Cartoons, community and the settings-shaped
+           account doors. */
         group(t('Browse'), [
           row('/updates', 'calendarStar', t('Airing schedule'), on('/updates')),
           row('/packs', 'sparkles', t('Card binder'), on('/packs')),
+          row('/kids', 'cat', t('Kids Cartoons'), on('/kids')),
         ]),
         community.length ? group(t('Community'), community) : null,
         group(
@@ -434,11 +429,10 @@ export function renderNav() {
     ...TOP_LINKS.map((l) => {
       const on = tab === l.id || path === l.path;
       return h(
-        `a.topnav-link${on ? '.is-on' : ''}${l.locked ? '.is-locked' : ''}`,
-        { href: `#${l.path}`, 'aria-current': on ? 'page' : null, 'aria-label': t(l.label) },
+        `a.topnav-link${on ? '.is-on' : ''}`,
+        { href: `#${l.path}`, 'aria-current': on ? 'page' : null, 'aria-label': t(l.aria || l.label), title: t(l.aria || l.label) },
         icon(l.icon),
         h('span', {}, t(l.label)),
-        l.locked ? icon('lock', { cls: 'topnav-lock' }) : null,
       );
     }),
   );

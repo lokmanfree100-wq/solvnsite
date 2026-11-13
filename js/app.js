@@ -6,7 +6,6 @@ import { paintAccent } from './lib/accent.js';
 import { apiDown, retryNow } from './lib/anilist.js';
 import { t } from './lib/i18n.js';
 import { renderNav, setTopbarStuck, focusSearch } from './components/nav.js';
-import { mountCat } from './components/cat.js';
 import { renderFooter, footerVisible } from './components/footer.js';
 import { errorState } from './components/media.js';
 import { closeSheets } from './lib/ui.js';
@@ -14,9 +13,21 @@ import { initTilt } from './lib/tilt.js';
 import { installInterfaceSounds } from './lib/sounds.js';
 import './lib/core.js';
 
+/* Two preferences change the live document rather than a single page: the
+   watched-episode blur and the hero title alignment. Keep them on <html> so a
+   view mounted later inherits the same answer without a second copy. */
+const applyInterfacePreferences = () => {
+  document.documentElement.dataset.blurWatched = String(Boolean(settings.get('blurWatched')));
+  document.documentElement.dataset.titleAlign = String(settings.get('titleAlign') || 'start');
+};
+applyInterfacePreferences();
+onSettings((key) => {
+  if (key === 'blurWatched' || key === 'titleAlign' || key === '*') applyInterfacePreferences();
+});
+
 import { HomeView } from './views/home.js';
 import { DiscoverView } from './views/discover.js';
-import { ToonsView } from './views/toons.js';
+import { KidsView } from './views/kids.js';
 import { SearchView } from './views/search.js';
 import { DetailView } from './views/detail.js';
 import { WatchView } from './views/watch.js';
@@ -32,9 +43,11 @@ import { ArenaView } from './views/arena.js';
 import { TopView } from './views/top.js';
 import { AdvertiseView } from './views/advertise.js';
 import { AdminView } from './views/admin.js';
-import { maybeFilmsGate } from './components/films-gate.js';
+import { MoviesView, SeriesView } from './views/films/movies.js';
+import { MovieDetailView } from './views/films/mdetail.js';
+import { MovieWatchView } from './views/films/mwatch.js';
 import { restore, pushStats, staticHost, takeRecovery, account } from './lib/account.js';
-import { settings, DEFAULT_ACCENT } from './lib/store.js';
+import { settings, onSettings, DEFAULT_ACCENT } from './lib/store.js';
 import { noteSeen } from './lib/cards.js';
 import { verifyCloudSchema } from './lib/cloud.js';
 import { beat, markAway } from './lib/presence.js';
@@ -50,18 +63,23 @@ function openProfileMail() {
   return h('div.p-muted', {}, t('Opening your profile…'));
 }
 
-/* A film address is not a page any more. It forwards home and lets the one
-   short session note say why, so a stale bookmark costs a small popup instead
-   of a wall of text about a catalogue that does not exist yet. */
-function filmAddress() {
-  setTimeout(() => go('/'), 0);
-  return h('div.p-muted', {}, t('Opening Solvn…'));
-}
+/* Series detail and watch are the same views as film detail and watch, with the
+   type fixed by the route rather than read from a query string. */
+const asSeries = (view) => (ctx) =>
+  view({
+    ...ctx,
+    route: { ...ctx.route, query: { ...ctx.route.query, type: 'tv' } },
+  });
+const SeriesDetailView = asSeries(MovieDetailView);
+const SeriesWatchView = asSeries(MovieWatchView);
 
 const ROUTES = [
   { match: /^\/$/, view: HomeView, nav: true },
   { match: /^\/discover$/, view: DiscoverView, nav: true },
-  { match: /^\/toons$/, view: ToonsView, nav: true },
+  /* The Anime door: the catalogue grid without the film/series split. */
+  { match: /^\/anime$/, view: DiscoverView, nav: true },
+  { match: /^\/toons$/, view: KidsView, nav: true },
+  { match: /^\/kids$/, view: KidsView, nav: true },
   { match: /^\/search$/, view: SearchView, nav: true },
   { match: /^\/library$/, view: LibraryView, nav: true },
   { match: /^\/updates$/, view: UpdatesView, nav: true },
@@ -83,12 +101,12 @@ const ROUTES = [
   { match: /^\/admin$/, view: AdminView, nav: true },
   { match: /^\/anime\/(\d+)/, view: DetailView, nav: true },
   { match: /^\/watch\/(\d+)/, view: WatchView, nav: false },
-  /* Movies & Series are parked (lib/locks.js) and have no page at all: an old
-     bookmark or a shared film link lands on Home behind one short note, and no
-     route can reach the film views, their TMDB requests or the /mwatch player. */
-  { match: /^\/movies$/, view: filmAddress, nav: true },
-  { match: /^\/movie\/(\d+)/, view: filmAddress, nav: true },
-  { match: /^\/mwatch\/(\d+)/, view: filmAddress, nav: true },
+  { match: /^\/movies$/, view: MoviesView, nav: true },
+  { match: /^\/series$/, view: SeriesView, nav: true },
+  { match: /^\/movie\/(\d+)/, view: MovieDetailView, nav: true },
+  { match: /^\/series\/(\d+)/, view: SeriesDetailView, nav: true },
+  { match: /^\/mwatch\/(\d+)/, view: MovieWatchView, nav: false },
+  { match: /^\/swatch\/(\d+)/, view: SeriesWatchView, nav: false },
 ];
 
 const root = () => qs('#view');
@@ -186,7 +204,7 @@ async function mount(route) {
   }
 
   /* AniList ids are numbers; a member id is an opaque string. */
-  const idMatch = route.path.match(/^\/(anime|watch|profile|movie|mwatch)\/([^/?#]+)/);
+  const idMatch = route.path.match(/^\/(anime|watch|profile|movie|mwatch|series|swatch)\/([^/?#]+)/);
   const ctx = {
     route,
     params: idMatch ? { id: idMatch[1] === 'profile' ? idMatch[2] : Number(idMatch[2]) } : {},
@@ -211,7 +229,7 @@ async function mount(route) {
 }
 
 /**
- * Home always starts at the very top, spotlight flush under the header — no
+ * Home always starts at the very top, showcase flush under the header — no
  * remembered offset, no banner pushing the fold down. A short hop is animated;
  * a long one is not, because sliding past a pageful of stale rows to reach the
  * top reads as a glitch, not as motion.
@@ -229,7 +247,7 @@ function toTop() {
 const PAGE_TITLES = {
   '': 'Solvn — anime & cartoons in HD',
   discover: 'Discover — Solvn',
-  toons: 'Classic & Toons — Solvn',
+  toons: 'Kids Cartoons — Solvn',
   search: 'Search — Solvn',
   library: 'Your Library — Solvn',
   updates: 'Airing Schedule — Solvn',
@@ -243,11 +261,14 @@ const PAGE_TITLES = {
   arena: 'Arena — Solvn',
   settings: 'Settings — Solvn',
   admin: 'Admin — Solvn',
-  anime: 'Details — Solvn',
+  anime: 'Anime — Solvn',
   watch: 'Watch — Solvn',
-  movies: 'Movies & Series — Coming Soon — Solvn',
-  movie: 'Movies & Series — Coming Soon — Solvn',
-  mwatch: 'Movies & Series — Coming Soon — Solvn',
+  movies: 'Movies — Solvn',
+  series: 'TV Series — Solvn',
+  movie: 'Details — Solvn',
+  mwatch: 'Watch — Solvn',
+  swatch: 'Watch — Solvn',
+  kids: 'Kids Cartoons — Solvn',
 };
 const pageTitle = (seg) => t(PAGE_TITLES[seg] || PAGE_TITLES['']);
 
@@ -300,14 +321,15 @@ if (MAINTENANCE_MODE) {
   installInterfaceSounds();
   initTilt();
 
-  /* The intro animates itself in CSS over 3.5s; JS only lifts the dead node out
-     once the veil has finished fading. Under reduced motion the whole thing is a
-     short fade, so the node goes early rather than holding a still frame.
+  /* The intro animates itself in CSS over 1.5s; JS lifts the dead node a frame
+     after the veil has finished fading. Under reduced motion the whole thing is
+     a short fade, so the node goes early rather than holding a still frame.
      `introMs` is also when the interface is worth talking to: the veil sits at
-     full opacity until ~78% of the animation and is layered above every sheet, so
-     anything opened before it lifts is spent behind a black screen. */
+     full opacity until the last quarter of the animation and is layered above
+     every sheet, so anything opened before it lifts is spent behind a black
+     screen. */
   const splash = qs('#splash');
-  const introMs = splash ? (matchMedia('(prefers-reduced-motion: reduce)').matches ? 900 : 3600) : 0;
+  const introMs = splash ? (matchMedia('(prefers-reduced-motion: reduce)').matches ? 650 : 1600) : 0;
   const introEnds = Date.now() + introMs;
   if (splash) {
     setTimeout(() => splash.remove(), introMs);
@@ -370,9 +392,6 @@ if (MAINTENANCE_MODE) {
   });
 
   if (!leaving) {
-    /* The mascot floats outside every view and outside the bar itself. It is
-       mounted once, before the first route, so the welcome flight is seen. */
-    mountCat();
     startRouter();
 
     /* The page never waits on the session: the chip repaints itself when the answer
@@ -410,10 +429,7 @@ if (MAINTENANCE_MODE) {
            a signup form over their own profile. It waits for the intro as well, since
            a sheet under the veil is a sheet nobody sees. A deep link straight into the
            player is the one screen it must not land on: the episode owns that moment. */
-        if (path.startsWith('/watch/')) return;
-        /* One short note about the parked half of the catalogue, once a session
-           and once the intro is out of the way. */
-        setTimeout(maybeFilmsGate, Math.max(0, introEnds - Date.now()) + 900);
+        if (path.startsWith('/watch/') || /^\/(movies|series|movie|mwatch|swatch)(\/|$)/.test(path)) return;
         setTimeout(askAboutAccount, Math.max(0, introEnds - Date.now()));
       });
   }

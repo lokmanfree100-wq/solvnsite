@@ -983,7 +983,7 @@ const ui = {
   'Those languages are what the player switcher, the badges on the cards and the failover ladder will offer. Solvn cannot read from the catalogue which titles were re-voiced — it asks its servers instead, and never promises a track they have not declared.':
     'Ces langues alimentent le sélecteur audio du lecteur, les badges des cartes et l’échelle de bascule. Solvn ne peut pas lire dans le catalogue quelles œuvres ont été redoublées : il interroge ses serveurs, et ne promet jamais une piste qu’ils n’ont pas déclarée.',
 
-  /* views/toons.js: the retro hub. */
+  /* views/kids.js: the kids cartoons hub. */
   'Classic & Toons': 'Classiques & Dessins',
   'CLASSIC & TOONS': 'CLASSIQUES & DESSINS',
   'Classic & Toons — Solvn': 'Classiques & Dessins — Solvn',

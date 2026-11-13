@@ -13,12 +13,12 @@ import { toast } from '../../lib/ui.js';
 import { errorState, stillImage } from '../../components/media.js';
 import { mCard, mRail, openTrailer } from './movies.js';
 import {
-  api, poster, backdrop, img, nameOf, yearOf, rating, runtimeText, seasonsLabel, fmtDate,
+  api, poster, backdrop, img, nameOf, yearOf, runtimeText, seasonsLabel, fmtDate,
   firstTrailer, toggleMovieWatchlist, inMovieWatchlist,
 } from '../../lib/tmdb.js';
 
 const watchHref = (type, id, s = 1, e = 1) =>
-  type === 'tv' ? `#/mwatch/${id}?type=tv&s=${s}&e=${e}` : `#/mwatch/${id}?type=movie`;
+  type === 'tv' ? `#/swatch/${id}?s=${s}&e=${e}` : `#/mwatch/${id}`;
 
 const money = (v) =>
   v >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${Math.round(v / 1e6)}M`;
@@ -133,8 +133,6 @@ export async function MovieDetailView(ctx) {
         h(
           'div.m-detail-sub',
           {},
-          h('span.star.tnum', {}, icon('star'), rating(d.vote_average)),
-          yearOf(d) ? h('span.sep', {}, '·') : null,
           yearOf(d) ? h('span.tnum', {}, String(yearOf(d))) : null,
           type === 'movie' && d.runtime ? h('span.sep', {}, '·') : null,
           type === 'movie' && d.runtime ? h('span', {}, runtimeText(d.runtime)) : null,
@@ -193,7 +191,7 @@ export async function MovieDetailView(ctx) {
   /* series: season tabs + episodes */
   if (type === 'tv' && (d.seasons || []).length) {
     const seasons = d.seasons.filter((s) => s.season_number > 0);
-    const panel = h('div.m-panel', {}, h('h3', {}, t('Episodes')), h('div.m-season-tabs'), h('div.m-ep-list'));
+    const panel = h('div.m-panel', {}, h('div.m-season-tabs'), h('div.m-ep-list'));
     const tabs = panel.querySelector('.m-season-tabs');
     const list = panel.querySelector('.m-ep-list');
 
@@ -221,14 +219,12 @@ export async function MovieDetailView(ctx) {
               }) || slotPh(),
               h('span.m-ep-play', {}, h('span', {}, icon('play'))),
             ),
-            h(
-              'span.m-ep-info',
+            h('span.m-ep-info',
               {},
               h('span.m-ep-name', {}, `${ep.episode_number}. ${ep.name || t('Untitled episode')}`),
               h('span.m-ep-date', {}, `${fmtDate(ep.air_date)}${ep.runtime ? ` · ${ep.runtime}m` : ''}`),
               h('span.m-ep-overview', {}, ep.overview || t('No description available.')),
             ),
-            h('span.m-ep-score.tnum', {}, icon('star'), ` ${rating(ep.vote_average)}`),
           ),
         );
       }
@@ -251,7 +247,10 @@ export async function MovieDetailView(ctx) {
   }
 
   /* cast */
-  const cast = ((d.credits || {}).cast || []).slice(0, 14);
+  /* A cast row without a portrait is a row of empty plates; the Cinemeta
+     additions carry names but no headshots, so only entries with artwork are
+     drawn. */
+  const cast = ((d.credits || {}).cast || []).filter((c) => c.profile_path).slice(0, 14);
   if (cast.length) {
     mcol.append(
       h(

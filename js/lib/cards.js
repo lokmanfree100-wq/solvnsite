@@ -57,7 +57,7 @@ export const RARITIES = [
   { lv: 8, id: 'very-rare', label: 'Very Rare', weight: 2400, a: '#ff4fa3', b: '#a81f63', glow: '#ff4fa3' },
   { lv: 9, id: 'elite', label: 'Elite', weight: 1700, a: '#ff3b5c', b: '#a3122c', glow: '#ff3b5c' },
   { lv: 10, id: 'epic', label: 'Epic', weight: 1150, a: '#ff7b3d', b: '#a83c08', glow: '#ff7b3d' },
-  { lv: 11, id: 'legendary', label: 'Legendary', weight: 750, a: '#ffc247', b: '#a86a05', glow: '#ffc247' },
+  { lv: 11, id: 'legendary', label: 'Legendary', weight: 750, a: '#d8ecff', b: '#4f6f8f', glow: '#a9e0ff' },
   { lv: 12, id: 'mystic', label: 'Mystic', weight: 480, a: '#22e0f5', b: '#0b6f82', glow: '#22e0f5' },
   { lv: 13, id: 'prismatic', label: 'Prismatic', weight: 300, a: '#2ee6a6', b: '#0b6e52', glow: '#2ee6a6', sheen: true },
   { lv: 14, id: 'celestial', label: 'Celestial', weight: 120, a: '#a85cff', b: '#4a12a0', glow: '#a85cff', sheen: true },
@@ -394,9 +394,23 @@ export async function loadPool() {
           found.push(card);
         }
       }
-      if (!found.length) found = await bundledPool();
+      const bundled = await bundledPool();
+      /* The live AniList roster is anime-only. The panel's Western and cinema
+         cards live in the bundled file under reserved ids, so they join the live
+         pool instead of waiting for an offline day to be seen. Names are still
+         deduped, and a live entry always wins its own likeness. */
+      const western = bundled.filter((card) => Number(card?.id) >= 900000);
+      for (const card of western) {
+        if (!card || seen.has(card.id)) continue;
+        const key = nameKey(card.name);
+        if (key && names.has(key)) continue;
+        seen.add(card.id);
+        if (key) names.add(key);
+        found.push(card);
+      }
       /* Nothing live and nothing bundled is not a crash: the binder says so and
          the pull is never attempted. */
+      if (!found.length) found = bundled;
       pool = found;
       return found;
     })().catch(() => {

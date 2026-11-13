@@ -24,188 +24,13 @@
   margin-bottom: 8px;
 }
 
-/* ==========================================================================
-   Hero spotlight
-   Facts only: the poster in the corner, the title, the year, the kind, the score
-   and three genres. The stage is sized from that card, not from the viewport —
-   the phone rules live in mobile.css, which loads after this file.
-   ========================================================================== */
-
-.hero-wrap {
-  position: relative;
-  margin-top: var(--sp-4);
-}
-
-.hero {
-  position: relative;
-  border-radius: var(--r-xl);
-  overflow: hidden;
-  min-height: clamp(430px, 54vh, 600px);
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  box-shadow: var(--sh-3);
-  isolation: isolate;
-}
-
-.hero-slide {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  opacity: 0;
-  /* Crossfade plus a short push: the incoming frame slides into place from the
-     reading side while the outgoing one slides the same way and fades. Only
-     `transform` and `opacity` move, so the stage never reflows. */
-  transform: translateX(2.2%);
-  transition: opacity var(--t-slow) var(--ease), transform var(--t-slow) var(--ease);
-}
-[dir='rtl'] .hero-slide {
-  transform: translateX(-2.2%);
-}
-.hero-slide.is-in {
-  opacity: 1;
-  transform: none;
-}
-.hero-slide.is-instant {
-  transition: none;
-}
-
-.hero-art {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-.hero-banner {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  /* Banners crop their vertical overflow on wide stages; anchoring to the top
-     keeps faces in frame and trims legs instead of the other way round. */
-  object-position: center top;
-  transform: scale(1.06);
-  transition: transform 9s linear;
-}
-.hero-slide.is-in .hero-banner {
-  transform: scale(1);
-}
-.hero-slide.is-instant .hero-banner {
-  transform: scale(1.02);
-  transition: none;
-}
-
-/* No banner — the poster is blurred into the stage instead of stretched across
-   it, and the sharp copy of it stays in the corner beside the title. */
-.hero-art.is-fallback {
-  background: var(--surface);
-}
-.hero-blur {
-  position: absolute;
-  inset: -10%;
-  width: 120%;
-  height: 120%;
-  object-fit: cover;
-  object-position: center 24%;
-  filter: blur(38px) brightness(0.6) saturate(1.35);
-  transform: scale(1.12);
-}
-
-.hero-scrim {
-  --scrim-dir: 90deg;
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(
-      var(--scrim-dir),
-      rgba(2, 3, 5, 0.95) 0%,
-      rgba(3, 4, 7, 0.74) 38%,
-      rgba(4, 6, 9, 0.18) 72%,
-      transparent 100%
-    ),
-    linear-gradient(180deg, rgba(3, 4, 7, 0.6) 0%, transparent 32%, rgba(2, 3, 5, 0.92) 100%);
-}
-[dir='rtl'] .hero-scrim {
-  --scrim-dir: -90deg;
-}
-
-.hero-content {
-  position: relative;
-  z-index: 2;
-  padding: clamp(18px, 3vw, 32px);
-  width: 100%;
-  max-width: 720px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  animation: fade-up var(--t-slow) var(--ease) both;
-}
-
-/* Poster and heading are flex siblings, so the corner art can never land on top
-   of the words at any width. The row is as tall as the taller of the two, and
-   the poster's fixed 2:3 box means a slow image has already paid for its space. */
-.hero-head {
-  display: flex;
-  align-items: flex-start;
-  gap: clamp(12px, 1.6vw, 18px);
-  width: 100%;
-  min-width: 0;
-}
-.hero-thumb {
-  flex: none;
-  width: clamp(80px, 7.4vw, 104px);
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
-  object-position: center top;
-  border-radius: var(--r-md);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: var(--sh-3), 0 0 0 1px var(--line-strong);
-}
-.hero-heading {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 2px;
-}
-
-.hero-title {
-  font-size: clamp(24px, 3.5vw, 40px);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.08;
-  text-wrap: balance;
-  text-shadow: 0 4px 34px rgba(0, 0, 0, 0.8);
-}
-.hero-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-display);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-}
-.hero-meta .sep {
-  opacity: 0.4;
-}
-.hero-score {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--accent-text);
-}
-.hero-score svg {
-  width: 13px;
-  height: 13px;
-  filter: drop-shadow(0 0 8px var(--accent-glow));
-}
-.hero-genres {
+/* ---- detail genre chips ------------------------------------------------ */
+.detail-genres {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
-.hero-chip {
+.detail-chip {
   height: 26px;
   display: inline-flex;
   align-items: center;
@@ -224,107 +49,11 @@
     box-shadow var(--t-med);
 }
 @media (hover: hover) {
-  .hero-chip:hover {
+  .detail-chip:hover {
     background: color-mix(in srgb, var(--accent) 34%, rgba(255, 255, 255, 0.08));
     border-color: var(--accent-line);
     box-shadow: var(--inner-hi-strong), 0 0 22px -10px var(--accent-glow);
     transform: translateY(-2px);
-  }
-}
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 2px;
-}
-
-.hero-controls {
-  position: absolute;
-  inset-inline-end: clamp(14px, 2.4vw, 26px);
-  bottom: clamp(14px, 2.4vw, 26px);
-  z-index: 4;
-  display: flex;
-  gap: 8px;
-}
-.hero-nav {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  touch-action: manipulation;
-  background: rgba(5, 7, 10, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  color: var(--text);
-  box-shadow: var(--inner-hi-strong), 0 6px 20px -8px rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(var(--blur-md)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(160%);
-  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast) var(--ease-out-back),
-    box-shadow var(--t-med);
-}
-.hero-nav svg {
-  width: 21px;
-  height: 21px;
-}
-.hero-nav:active {
-  transform: scale(0.93);
-  background: var(--accent);
-}
-.hero-nav:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 3px;
-}
-@media (hover: hover) {
-  .hero-nav:hover {
-    background: var(--accent);
-    border-color: var(--accent-line);
-    box-shadow: var(--inner-hi-strong), 0 0 26px -8px var(--accent-glow);
-    transform: scale(1.08);
-  }
-}
-
-.hero-foot {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
-}
-.hero-dots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: var(--sp-4);
-}
-.hero-dots button {
-  position: relative;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: all var(--t-med) var(--ease);
-}
-.hero-dots button::after {
-  content: '';
-  position: absolute;
-  /* Grow the tap area without stealing a neighbour's: the dots sit 10px apart,
-     so 8px sideways is exactly the pitch, while height is free to reach 43px. */
-  inset: -18px -8px;
-}
-.hero-dots button[aria-selected='true'] {
-  width: 22px;
-  border-radius: var(--r-pill);
-  background: var(--accent-bright);
-  box-shadow: 0 0 14px var(--accent-glow);
-}
-.hero-dots button:focus-visible {
-  outline: 2px solid var(--accent-bright);
-  outline-offset: 4px;
-}
-@media (hover: hover) {
-  .hero-dots button:hover {
-    background: rgba(255, 255, 255, 0.8);
   }
 }
 
@@ -1184,6 +913,117 @@
   height: 100%;
   aspect-ratio: auto;
 }
+/* The paused first frame. It is a poster and one glass Play control; the
+   source is not contacted until that control is pressed. */
+.player-ready {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #08090b;
+}
+.player-ready[hidden] {
+  display: none;
+}
+.player-ready-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 34%;
+}
+.player-ready-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(5, 6, 8, 0.82) 0%, rgba(5, 6, 8, 0.28) 58%, rgba(5, 6, 8, 0.16) 100%),
+    linear-gradient(0deg, rgba(5, 6, 8, 0.76) 0%, transparent 60%);
+}
+.player-ready-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  width: min(100%, 620px);
+  padding: clamp(20px, 4vw, 46px);
+  text-align: center;
+}
+.player-ready-copy.is-start {
+  justify-items: start;
+  width: min(100%, 760px);
+  padding: clamp(22px, 6vw, 60px);
+  text-align: start;
+}
+.player-ready-copy.is-start .player-ready-title {
+  max-width: 18ch;
+  font-size: clamp(28px, 5vw, 54px);
+  line-height: 0.98;
+}
+.player-ready-copy.is-start .player-ready-play {
+  height: 48px;
+  margin-top: 8px;
+  padding: 0 22px;
+}
+.player-ready-kicker {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.62);
+}
+.player-ready-title {
+  max-width: 20ch;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3.2vw, 40px);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: #fff;
+  text-shadow: 0 12px 40px rgba(0, 0, 0, 0.65);
+}
+.player-ready-meta {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.player-ready-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 46px;
+  margin-top: 7px;
+  padding: 0 21px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--r-pill);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06)),
+    rgba(20, 22, 26, 0.54);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 16px 34px -18px rgba(0, 0, 0, 0.9);
+  color: #fff;
+  font: inherit;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.player-ready-play:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08)),
+    rgba(32, 35, 41, 0.62);
+  border-color: rgba(255, 255, 255, 0.42);
+}
+.player-ready-play svg {
+  width: 18px;
+  height: 18px;
+}
+
 .player-boot {
   position: absolute;
   inset: 0;
@@ -2202,5 +2042,155 @@ button.cal-cell:focus-visible { outline: 2px solid var(--accent); outline-offset
   .catalogue-art img,
   .catalogue-title {
     transition: none;
+  }
+}
+
+/* ---- settings: subtitle customiser -------------------------------------- */
+.sub-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.sub-control-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.sub-control {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.sub-control label,
+.sub-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sub-value {
+  color: var(--text-faint);
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sub-range {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.sub-color-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.sub-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sub-color input {
+  width: 34px;
+  height: 28px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+
+.sub-preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 190px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background:
+    radial-gradient(80% 120% at 20% 0%, rgba(90, 104, 128, 0.34), transparent 60%),
+    linear-gradient(145deg, #15181e, #08090c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 20px 42px -34px #000;
+}
+
+.sub-preview-card {
+  --sub-size: 100%;
+  --sub-bottom: 88%;
+  --sub-color: #fff;
+  --sub-bg: #000;
+  --sub-alpha: 0.62;
+  position: absolute;
+  inset-inline: 14px;
+  bottom: calc(100% - var(--sub-bottom) - 18px);
+  display: flex;
+  justify-content: center;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.sub-preview-card::before {
+  content: '';
+  position: absolute;
+  inset: -5px -8px;
+  z-index: -1;
+  border-radius: 7px;
+  background: var(--sub-bg);
+  opacity: var(--sub-alpha);
+}
+
+.sub-preview-text {
+  max-width: 88%;
+  color: var(--sub-color);
+  font-family: var(--font-ui);
+  font-size: calc(15px * var(--sub-size) / 100);
+  font-weight: 650;
+  line-height: 1.45;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+}
+
+/* ---- watched episode blur ------------------------------------------------ */
+html[data-blur-watched='true'] .ep.is-watched .ep-art img,
+html[data-blur-watched='true'] .ep.is-watched .ep-thumb img {
+  filter: blur(7px) brightness(0.62);
+  transform: scale(1.05);
+}
+
+/* ---- spotlight title alignment ------------------------------------------ */
+html[data-title-align='center'] .cine-copy {
+  align-items: center;
+  text-align: center;
+  margin-inline: auto;
+}
+
+html[data-title-align='center'] .cine-title,
+html[data-title-align='center'] .cine-desc {
+  margin-inline: auto;
+}
+
+html[data-title-align='center'] .cine-actions,
+html[data-title-align='center'] .cine-dots {
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .sub-control-row {
+    grid-template-columns: 1fr;
   }
 }

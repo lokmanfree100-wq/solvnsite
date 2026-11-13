@@ -1,11 +1,8 @@
 /**
- * The category strip: the two catalogues Solvn is open for.
+ * The category strip: Anime, Kids Cartoons, Movies and Series.
  *
- * Movies and Series are parked in development, so they are not drawn here at
- * all. A tab that opens nothing is a promise the strip cannot keep, and a "Soon"
- * chip on every visit is louder than the one short note a film address raises
- * (components/films-gate.js). Everything drawn is an anchor: each category keeps
- * its filters in the URL and a tab worth bookmarking has to be a real link.
+ * Each keeps its filters in the URL, and a tab worth bookmarking is a real
+ * link. The film tabs point at their own hubs rather than a shared query.
  */
 
 import { h, icon } from '../lib/dom.js';
@@ -13,7 +10,9 @@ import { t } from '../lib/i18n.js';
 
 export const CATEGORIES = [
   { id: 'anime', href: '#/discover', icon: 'sparkles', label: 'Anime' },
-  { id: 'toons', href: '#/toons', icon: 'cat', label: 'Cartoons' },
+  { id: 'toons', href: '#/kids', icon: 'cat', label: 'Kids Cartoons' },
+  { id: 'movie', href: '#/movies', icon: 'film', label: 'Movies' },
+  { id: 'tv', href: '#/series', icon: 'film', label: 'Series' },
 ];
 
 export function categoryTabs(active) {

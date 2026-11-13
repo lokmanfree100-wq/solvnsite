@@ -19,7 +19,6 @@
     <meta name="twitter:description" content="Solvn — anime &amp; cartoons in HD. One player, no installs, nothing to pay for." />
     <meta name="twitter:image" content="https://solvn.site/assets/solvn-cat.jpg" />
     <title>Solvn — anime &amp; cartoons in HD</title>
-    <link rel="preload" as="image" href="assets/solvn-cat.jpg" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Poster art is the bulk of the first paint, so its DNS + TLS handshake
@@ -54,36 +53,31 @@
     <link rel="stylesheet" href="styles/sponsor.css" />
     <link rel="stylesheet" href="styles/mobile.css" />
     <link rel="stylesheet" href="styles/maintenance.css" />
+    <!-- Movies & Series: the cinematic hubs and the premium player. -->
+    <link rel="stylesheet" href="styles/movies.css" />
     <!-- The vibrant glass theme layer. Last, so it can re-light every sheet above
          it without any of them having to know the default palette changed. -->
     <link rel="stylesheet" href="styles/vibrant.css" />
     <!-- The material layer: transparency, rims and depth on every surface. It
          loads after the theme so its shadows win without !important. -->
     <link rel="stylesheet" href="styles/glass.css" />
-    <!-- The home spotlight: its own palette tokens and episode strip. -->
+    <!-- The home featured showcase: its own palette tokens and episode rail. -->
     <link rel="stylesheet" href="styles/spotlight.css" />
-    <!-- SOLVN CAT: the mascot button and the assistant panel. -->
-    <link rel="stylesheet" href="styles/cat.css" />
-    <!-- The tab icon is the same file the splash and the chrome use, and it is
-         already preloaded above, so it costs no request of its own. -->
+    <link rel="stylesheet" href="styles/kids.css" />
+    <!-- The tab icon keeps the cat artwork; the startup veil and chrome now
+         use the CSS wordmark and do not download it. -->
     <link rel="icon" type="image/jpeg" href="assets/solvn-cat.jpg" />
   </head>
   <body>
     <div id="splash" class="splash" aria-hidden="true">
       <div class="splash-mark">
-        <div class="splash-stage">
-          <img
-            class="splash-cat"
-            src="assets/solvn-cat.jpg"
-            alt=""
-            width="736"
-            height="736"
-            decoding="async"
-            fetchpriority="high"
-          />
-        </div>
-        <span class="splash-word">Solvn</span>
-        <span class="splash-sub">anime &amp; cartoons</span>
+        <span class="brand-lockup splash-lockup" aria-hidden="true">
+          <span class="brand-word">solvn</span>
+          <span class="brand-stars" aria-hidden="true">
+            <i class="brand-star brand-star--lead"></i>
+            <i class="brand-star brand-star--tail"></i>
+          </span>
+        </span>
       </div>
     </div>
 

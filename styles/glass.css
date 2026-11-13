@@ -229,7 +229,6 @@
    — the tinted pieces travel to the new colour instead of snapping. */
 .tabbar,
 .btn,
-.hero-chip,
 .badge,
 .tab-btn,
 .ep,
@@ -386,7 +385,6 @@
 .row-arrow,
 .cw-kill,
 .welcome-close,
-.films-pop-ok,
 .cat-tab,
 .genre-pill,
 .tab,
@@ -424,7 +422,6 @@
   .row-arrow:hover,
   .cw-kill:hover,
   .welcome-close:hover,
-  .films-pop-ok:hover,
   .cat-tab:hover,
   .genre-pill:hover,
   .tab:hover,
@@ -444,7 +441,6 @@
 .tabbar,
 .searchbar,
 .search input,
-.films-pop-card,
 .sheet,
   .panel-card,
   .dialog {
@@ -477,12 +473,11 @@
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-/* The large action clusters (title page, banner) set their own face earlier at
-   higher specificity; they take the same six-per-cent pane as every other
-   control, so the primary action is distinguished by its rim and shadow rather
-   than by a brighter fill. */
+/* The large action cluster on a title page sets its own face earlier at higher
+   specificity; it takes the same six-per-cent pane as every other control, so
+   the primary action is distinguished by its rim and shadow rather than by a
+   brighter fill. */
 .detail-actions .btn,
-.hero-actions .btn,
 button.icon-btn,
   .topbar .icon-btn,
   .tabbar .icon-btn {
@@ -604,10 +599,6 @@ button.icon-btn,
     color: #ffffff;
     background: rgba(255, 255, 255, 0.06);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-  }
-
-  .topnav-link.is-locked {
-    color: var(--text-faint);
   }
 
   .nav-more {
@@ -847,4 +838,34 @@ button.icon-btn,
 }
 .tabbar .tab:active {
   transform: scale(0.94);
+}
+
+/* ---- cool glass card edge (final cascade) ------------------------------
+   Loaded after every view sheet so a media card cannot fall back to the old
+   warm hairline. Ice blue is the resting edge, crimson is the pressed edge. */
+.card,
+.m-card {
+  border-color: rgba(174, 220, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 14px 30px -26px rgba(0, 0, 0, 0.95);
+  transition: border-color 180ms ease, box-shadow 220ms ease, transform 220ms ease;
+}
+@media (hover: hover) {
+  .card:hover,
+  .m-card:hover {
+    border-color: rgba(186, 230, 255, 0.62);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 0 0 1px rgba(174, 220, 255, 0.14),
+      0 20px 38px -26px rgba(68, 174, 255, 0.78);
+  }
+}
+.card:active,
+.m-card:active {
+  border-color: rgba(255, 82, 112, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 0 1px rgba(255, 82, 112, 0.2),
+    0 18px 36px -26px rgba(255, 44, 82, 0.75);
 }

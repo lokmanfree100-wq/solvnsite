@@ -283,8 +283,6 @@ const TAPPABLE = [
   '.seg button',
   '.switch',
   '.genre-pill',
-  '.hero-nav',
-  '.hero-dots button',
   '.check',
 ].join(', ');
 

@@ -73,7 +73,7 @@ const SOCIALS = [
 
 export function mountMaintenance() {
   /* The intro veil sits above everything; lift it at once so the overlay is the
-     first and only thing on screen rather than waiting out a 3.5s cat animation
+     first and only thing on screen rather than waiting out a startup animation
      for a page nobody can use. */
   qs('#splash')?.remove();
 

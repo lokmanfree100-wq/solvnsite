@@ -1,9 +1,7 @@
 /** Media card, carousel row, and the shared loading/error/empty states. */
 
 import { h, icon, qs, scrollMax, scrollPos, scrollInlineBy } from '../lib/dom.js';
-import { title, formatLabel, yearOf, episodeCount, scoreTone, scoreLabel, statusLabel, STATUS_TONE, watched } from '../lib/util.js';
-import { getProgress } from '../lib/store.js';
-import { trackChip, tracksOffered } from '../lib/sources.js';
+import { title, statusLabel, STATUS_TONE, watched } from '../lib/util.js';
 import { retryNow } from '../lib/anilist.js';
 import { t } from '../lib/i18n.js';
 
@@ -66,103 +64,44 @@ export function posterImage(media, { eager = false, size = 'large' } = {}) {
 }
 
 /**
- * Art for one episode row: the curated still when AniList has one, then the
- * show's own banner and cover, so a row can never render as an empty frame.
- *
- * The callers already mount an `.art-ph` under the image, so an exhausted ladder
- * leaves that one showing rather than stacking a second placeholder on it.
+ * Art for one episode row: only the actual still for that episode. There is
+ * deliberately no banner/poster rung here — repeating the title art made older
+ * episodes indistinguishable — so a missing still leaves the caller's own
+ * `.art-ph` showing rather than a fake scene.
  */
-export function episodeArt(media, ep, { eager = false } = {}) {
-  const c = media?.coverImage;
-  return stillImage([ep?.thumb, media?.bannerImage, c?.large, c?.extraLarge], {
+export function episodeArt(_media, ep, { eager = false } = {}) {
+  /* Only a per-episode still is valid here. Banners and posters are deliberately
+     not in this ladder: repeating the show art made every old episode look the
+     same and misrepresented the scene, so a row with no still shows its
+     placeholder instead of a fake frame. */
+  return stillImage([ep?.thumb], {
     eager,
     fallback: () => null,
   });
 }
 
-/** The little contextual pill on a poster, mirroring the reference's tag. */
-function cardFlag(media) {
-  const p = getProgress(media.id);
-  if (p?.episode) {
-    return h('span.flag', {}, icon('history'), t('Ep {n}', { n: p.episode }));
-  }
-  if (media.status === 'RELEASING') {
-    return h('span.flag', {}, icon('film'), t('Airing'));
-  }
-  if (media.format === 'MOVIE') {
-    return h('span.flag', {}, icon('sparkles'), t('Film'));
-  }
-  if (media.status === 'NOT_YET_RELEASED') {
-    return h('span.flag', {}, icon('calendar'), t('Upcoming'));
-  }
-  return null;
-}
-
-/* The audio languages this copy of Solvn can put in the player, lit along the
-   bottom of the poster. AniList keeps no dub-availability field for a title, so
-   the honest promise a card can make is the one the configured servers declare:
-   the built-in source carries Japanese subtitles and the English dub, so those
-   are the chips; add an Arabic or French server in Settings and its chip joins
-   every poster, because the player will genuinely try it. */
-function trackBadges(flag) {
-  const offered = tracksOffered();
-  const marks = [flag, ...(offered.length > 1 ? offered.map(trackChip) : [])].filter(Boolean);
-  if (!marks.length) return null;
-  return h('div.card-tracks', {}, ...marks.map((text) => h('span.dub', {}, text)));
-}
-
-/* ---- poster card ---------------------------------------------------- */
-export function mediaCard(media, { to, eager = false, showTitle = true, meta = true, progress = null, size = 'large', flag = null } = {}) {
+/* ---- poster card ----------------------------------------------------
+   The card is deliberately the whole card: poster, then title. No score, no
+   language chips, no airing flag, no progress footer — the grids across Anime,
+   Kids Cartoons, Movies and Series all share this one shape. */
+export function mediaCard(media, { to, eager = false, showTitle = true, size = 'large' } = {}) {
   const href = to || `#/anime/${media.id}`;
-  const score = media.averageScore;
-  const prog = progress ?? (getProgress(media.id) && media.format !== 'MOVIE' ? getProgress(media.id) : null);
-  const pct = prog?.total ? Math.min(100, (prog.episode / prog.total) * 100) : null;
-
-  const tag = cardFlag(media);
-  const art = h(
-    'div.card-art',
-    {},
-    posterImage(media, { eager, size }),
-    tag ? h('div.card-flag', {}, tag) : null,
-    score ? h('span.card-score', { class: scoreTone(score) === 'low' ? 'is-low' : null }, icon('star'), scoreLabel(score)) : null,
-    trackBadges(flag),
-    h('div.card-play', {}, h('span', {}, icon('play'))),
-    pct != null ? h('div.card-progress', {}, h('i', { style: { width: `${pct}%` } })) : null,
-  );
-
-  const metaBits = [];
-  if (meta) {
-    metaBits.push(h('span', {}, formatLabel(media.format)));
-    const y = yearOf(media);
-    if (y) metaBits.push(h('span.dot'), h('span.tnum', {}, String(y)));
-    const ec = episodeCount(media);
-    if (ec && media.format !== 'MOVIE') metaBits.push(h('span.dot'), h('span', {}, ec));
-  }
-
-  const card = h(
+  return h(
     'a.card',
     { href, 'aria-label': title(media) },
-    art,
-    showTitle
-      ? h(
-          'div.card-body',
-          {},
-          h('div.card-title.clamp-2', {}, title(media)),
-          metaBits.length ? h('div.card-meta', {}, ...metaBits) : null,
-        )
-      : null,
+    h('div.card-art', {}, posterImage(media, { eager, size })),
+    showTitle ? h('div.card-body', {}, h('div.card-title.clamp-2', {}, title(media))) : null,
   );
-  return card;
 }
 
 export function cardSkeleton(count = 7) {
   return Array.from({ length: count }, () =>
-    h('div.card', { 'aria-hidden': 'true' }, h('div.sk.sk--poster'), h('div.sk.sk--text'), h('div.sk.sk--text.w60')),
+    h('div.card', { 'aria-hidden': 'true' }, h('div.sk.sk--poster'), h('div.sk.sk--text')),
   );
 }
 
 /* ---- carousel row ---------------------------------------------------- */
-export function mediaRow({ id, heading, sub, items = [], viewAll, skeleton = false, empty, flag = null }) {
+export function mediaRow({ id, heading, sub, items = [], viewAll, skeleton = false, empty }) {
   const track = h(`div.row.no-scrollbar${skeleton ? '.is-skeleton' : ''}`, { id, role: 'list' });
   const fill = () => {
     track.replaceChildren();
@@ -176,7 +115,7 @@ export function mediaRow({ id, heading, sub, items = [], viewAll, skeleton = fal
     }
     items.forEach((m, i) => {
       const wrap = h('div', { role: 'listitem', style: { display: 'contents' } });
-      wrap.append(mediaCard(m, { eager: i < 4, flag }));
+      wrap.append(mediaCard(m, { eager: i < 4 }));
       track.append(wrap);
     });
   };
@@ -251,8 +190,8 @@ export const lazyGrid = (opts) => lazyBlock(opts, mediaGrid);
 /* ---- editorial blocks -------------------------------------------------- */
 /* Home's two non-rail shapes. Neither one touches a card: they only say where
    the cards that `mediaCard()` returns get put, so the poster ladder, the hover
-   lift, the score badges and the progress bars all carry straight into the new
-   arrangement. Sizing lives in layout.css — nothing here writes a style. */
+   lift and the poster ladder carry straight into the new arrangement. Sizing
+   lives in layout.css — nothing here writes a style. */
 
 /** One lead card beside a stack of smaller ones. Unused on home now, kept for
  *  the views that still want a lead. */
@@ -305,24 +244,13 @@ export function mediaFeature({ id, heading, sub, items = [], viewAll, skeleton =
   return h('section.section.feature-wrap', {}, blockHead({ heading, sub, viewAll }), track);
 }
 
-/** One row of the magazine split: thumb, title, one line of facts. */
+/** One row of the magazine split: thumb and title, nothing else. */
 function splitRow(m) {
-  const meta = [h('span', {}, formatLabel(m.format))];
-  const y = yearOf(m);
-  if (y) meta.push(h('span.split-dot'), h('span.tnum', {}, String(y)));
-  const ec = episodeCount(m);
-  if (ec && m.format !== 'MOVIE') meta.push(h('span.split-dot'), h('span', {}, ec));
-
   return h(
     'a.split-item',
     { href: `#/anime/${m.id}`, role: 'listitem' },
     h('div.split-thumb', {}, posterImage(m, {})),
-    h(
-      'div.split-copy',
-      {},
-      h('div.split-item-title.clamp-2', {}, title(m)),
-      h('div.split-item-meta', {}, ...meta),
-    ),
+    h('div.split-copy', {}, h('div.split-item-title.clamp-2', {}, title(m))),
   );
 }
 
@@ -332,10 +260,10 @@ export function mediaSplit({ id, heading, sub, items = [], viewAll, skeleton = f
   const track = h(`div.split.block-track${skeleton ? '.is-skeleton' : ''}`, { id }, art, list);
 
   if (skeleton) {
-    art.append(h('div.card', { 'aria-hidden': 'true' }, h('div.sk.sk--wide'), h('div.sk.sk--text'), h('div.sk.sk--text.w60')));
+    art.append(h('div.card', { 'aria-hidden': 'true' }, h('div.sk.sk--wide'), h('div.sk.sk--text')));
     list.append(
       ...Array.from({ length: SPLIT_ITEMS - 1 }, () =>
-        h('div.split-item.is-skeleton', { 'aria-hidden': 'true' }, h('div.split-thumb.sk'), h('div.split-copy', {}, h('div.sk.sk--text'), h('div.sk.sk--text.w60'))),
+        h('div.split-item.is-skeleton', { 'aria-hidden': 'true' }, h('div.split-thumb.sk'), h('div.split-copy', {}, h('div.sk.sk--text'))),
       ),
     );
   } else if (!items.length) {
@@ -481,7 +409,7 @@ export function errorState(what, retry, opts = {}) {
 
 export function loadingGrid(count = 18) {
   return h('div.grid', { 'aria-hidden': 'true' }, ...Array.from({ length: count }, () =>
-    h('div.card', {}, h('div.sk.sk--poster'), h('div.sk.sk--text'), h('div.sk.sk--text.w60')),
+    h('div.card', {}, h('div.sk.sk--poster'), h('div.sk.sk--text')),
   ));
 }
 

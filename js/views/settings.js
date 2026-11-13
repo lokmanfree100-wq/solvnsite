@@ -5,13 +5,13 @@ import { settings, onSettings, ACCENTS, ACCENT_LABELS, CUSTOM_ACCENT, QUALITIES,
 import { accentId, accentValue, paintAccent, previewAccent } from '../lib/accent.js';
 import { parseHex, toHex } from '../lib/color.js';
 import { clearCache, apiStatus, checkNow } from '../lib/anilist.js';
-import { isSignedIn, tellDiscord, staticHost } from '../lib/account.js';
+import { isSignedIn, tellDiscord, staticHost, logout } from '../lib/account.js';
 import { FAILOVER_CHOICES, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, isSiteServer, removeServer, serverKind, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
 import { toast, confirmSheet } from '../lib/ui.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
-import { cloudConfig, cloudActive, clearCloudConfig, testCloudConnection } from '../lib/cloud.js';
+import { cloudConfig, cloudActive, clearCloudConfig, testCloudConnection, cloudSignOut } from '../lib/cloud.js';
 import { syncMyData, captureDeviceData, backupBundle, restoreBundle } from '../lib/core.js';
-import { authSheet, say } from '../components/account.js';
+import { authSheet, say, signOutButton } from '../components/account.js';
 import { renderFooter } from '../components/footer.js';
 import { logoMark } from '../lib/brand.js';
 
@@ -787,6 +787,190 @@ export async function SettingsView() {
   }
   paintServers();
 
+  /* ---- account ---------------------------------------------------------- */
+  const accountBody = h('div');
+  function paintAccount() {
+    const signed = isSignedIn();
+    accountBody.replaceChildren(
+      rowOf({
+        iconName: 'user',
+        label: 'Account',
+        hint: signed ? t('Signed in. Your local library stays on this device.') : t('Continue as a guest, or sign in to sync a library across devices.'),
+        control: signed
+          ? signOutButton()
+          : h('button.btn.btn--sm.btn--primary', { onclick: () => authSheet('login') }, icon('user'), t('Sign in')),
+      }),
+      rowOf({
+        iconName: 'trash',
+        label: 'Delete account',
+        hint: t('Signs out of the central cloud and wipes every Solvn preference from this browser. This cannot be undone.'),
+        control: h(
+          'button.btn.btn--sm',
+          {
+            style: { color: 'var(--danger)' },
+            onclick: () =>
+              confirmSheet({
+                heading: t('Delete this account?'),
+                body: t('This signs you out, removes the local profile, lists, progress and settings. A cloud account itself can only be removed by the service operator.'),
+                confirmLabel: t('Delete account'),
+                onConfirm: async () => {
+                  try { await logout(); } catch { /* a static host has no account route */ }
+                  cloudSignOut();
+                  clearAll();
+                  toast(t('Account data removed from this device'), { tone: 'ok', iconName: 'check' });
+                  location.hash = '#/';
+                  setTimeout(() => location.reload(), 450);
+                },
+              }),
+          },
+          icon('trash'),
+          t('Delete'),
+        ),
+      }),
+    );
+  }
+  paintAccount();
+
+  /* ---- subtitles -------------------------------------------------------- */
+  const subPreview = h('div.sub-preview', { 'aria-live': 'polite' });
+  const subPreviewText = h('span.sub-preview-text', {}, t('The quick brown fox jumps over the lazy dog.'));
+  const subPreviewCard = h('div.sub-preview-card', {}, subPreviewText);
+  subPreview.append(subPreviewCard);
+
+  const subtitleNumber = (key, { min, max, step = 1, label, unit = '' }) => {
+    const read = () => {
+      const n = Number(settings.get(key));
+      return Math.min(max, Math.max(min, Number.isFinite(n) ? n : min));
+    };
+    const out = h('output.sub-value', {}, `${read()}${unit}`);
+    const input = h('input.sub-range', {
+      type: 'range',
+      min: String(min),
+      max: String(max),
+      step: String(step),
+      value: String(read()),
+      'aria-label': t(label),
+      oninput: (e) => {
+        const n = Number(e.currentTarget.value);
+        settings.set(key, n);
+        out.textContent = `${n}${unit}`;
+        paintSubtitlePreview();
+      },
+    });
+    return h('div.sub-control', {}, h('label', {}, t(label), out), input);
+  };
+
+  const subtitleColor = (key, label) =>
+    h(
+      'label.sub-color',
+      {},
+      h('span', {}, t(label)),
+      h('input', {
+        type: 'color',
+        value: settings.get(key) || '#ffffff',
+        'aria-label': t(label),
+        oninput: (e) => {
+          settings.set(key, e.currentTarget.value);
+          paintSubtitlePreview();
+        },
+      }),
+    );
+
+  const subtitleLang = h(
+    'select.select',
+    {
+      'aria-label': t('Subtitle language'),
+      onchange: (e) => settings.set('subtitleLang', e.currentTarget.value),
+    },
+    ...[['auto', t('Automatic')], ['en', 'English'], ['ar', 'العربية'], ['fr', 'Français']].map(([value, label]) =>
+      h('option', { value, selected: settings.get('subtitleLang') === value }, label),
+    ),
+  );
+
+  const subSize = subtitleNumber('subtitleSize', { min: 70, max: 160, label: 'Font size', unit: '%' });
+  const subPosition = subtitleNumber('subtitlePosition', { min: 50, max: 96, label: 'Vertical position', unit: '%' });
+  const subOpacity = subtitleNumber('subtitleBgOpacity', { min: 0, max: 100, step: 1, label: 'Background opacity', unit: '%' });
+
+  function paintSubtitlePreview() {
+    const size = Number(settings.get('subtitleSize')) || 100;
+    const pos = Number(settings.get('subtitlePosition')) || 88;
+    const opacity = Number(settings.get('subtitleBgOpacity'));
+    const bgOpacity = Number.isFinite(opacity) ? opacity / 100 : 0.62;
+    subPreviewCard.style.setProperty('--sub-size', `${size}%`);
+    subPreviewCard.style.setProperty('--sub-bottom', `${Math.max(6, Math.min(94, pos))}%`);
+    subPreviewCard.style.setProperty('--sub-color', settings.get('subtitleColor') || '#ffffff');
+    subPreviewCard.style.setProperty('--sub-bg', settings.get('subtitleBg') || '#000000');
+    subPreviewCard.style.setProperty('--sub-alpha', String(bgOpacity));
+  }
+  paintSubtitlePreview();
+
+  const subtitlesBody = h(
+    'div.sub-settings',
+    {},
+    h('div.sub-control-row', {}, h('label.sub-label', {}, t('Subtitle language')), subtitleLang),
+    h('div.sub-control-row', {}, subSize, subPosition),
+    h('div.sub-color-row', {}, subtitleColor('subtitleColor', 'Text colour'), subtitleColor('subtitleBg', 'Background colour')),
+    subOpacity,
+    subPreview,
+    h('p.faint.cloud-note', {}, t('The preview updates immediately. A stream supplies its own caption tracks; this device applies the appearance where the player exposes styled captions.')),
+  );
+
+  const titleAlignSeg = h(
+    'div.seg',
+    { role: 'group', 'aria-label': t('Title position') },
+    ...[['start', t('Start')], ['center', t('Centre')]].map(([value, label]) =>
+      h(`button${settings.get('titleAlign') === value ? '.is-active' : ''}`, {
+        type: 'button',
+        'aria-pressed': String(settings.get('titleAlign') === value),
+        onclick: (e) => {
+          settings.set('titleAlign', value);
+          [...e.currentTarget.parentElement.children].forEach((b) => {
+            b.classList.remove('is-active');
+            b.setAttribute('aria-pressed', 'false');
+          });
+          e.currentTarget.classList.add('is-active');
+          e.currentTarget.setAttribute('aria-pressed', 'true');
+        },
+      }, label),
+    ),
+  );
+
+  const statusBody = h('div');
+  function paintStatus() {
+    const api = apiStatus();
+    const online = typeof navigator === 'undefined' ? true : navigator.onLine;
+    statusBody.replaceChildren(
+      rowOf({
+        iconName: online ? 'globe' : 'offline',
+        label: 'Connection',
+        hint: online ? t('This browser is online.') : t('This browser is offline; saved pages and local data still work.'),
+        control: h('span.badge', {}, online ? t('Online') : t('Offline')),
+      }),
+      rowOf({
+        iconName: api.tone === 'live' ? 'globe' : 'offline',
+        label: 'Catalogue',
+        hint: t(api.hint),
+        control: h('span.badge', {}, t(api.label)),
+      }),
+      rowOf({
+        iconName: 'swap',
+        label: 'Cloud sync',
+        hint: cloudActive() ? t('Connected to the central account service.') : t('Local only. No cloud account is active in this browser.'),
+        control: h('span.badge', {}, cloudActive() ? t('Connected') : t('Local')),
+      }),
+      h('div.rowline.wrap', { style: { gap: '8px', padding: '12px 0 0' } },
+        h('button.btn.btn--sm', { onclick: async (e) => {
+          const b = e.currentTarget;
+          b.disabled = true;
+          await checkNow();
+          b.disabled = false;
+          paintStatus();
+        } }, icon('refresh'), t('Check now')),
+      ),
+    );
+  }
+  paintStatus();
+
   wrap.append(
     h('header.page-head', {},
       h('div.eyebrow', {}, t('SETTINGS')),
@@ -795,18 +979,39 @@ export async function SettingsView() {
     ),
 
     h('section.set-group', {},
-      h('h3', {}, t('Appearance')),
+      h('h3', {}, t('Account')),
+      accountBody,
+    ),
+
+    h('section.set-group', {},
+      h('h3', {}, t('Interface')),
       rowOf({ iconName: 'globe', label: 'Language', hint: t('Interface text and reading direction. Titles keep their original names.'), control: langSeg }),
       rowOf({ iconName: 'palette', label: 'Accent colour', hint: t('Applies to buttons, highlights and the player'), control: swatches }),
       rowOf({ iconName: 'monitor', label: 'Dim hero artwork', hint: t('Skip the blurred banner behind detail pages'), control: toggle('reduceBackdrop', 'Dim hero artwork') }),
+      rowOf({ iconName: 'eye', label: 'Blur watched episodes', hint: t('Dim an episode thumbnail once it is behind your current progress.'), control: toggle('blurWatched', 'Blur watched episodes') }),
+      rowOf({ iconName: 'sliders', label: 'Title position', hint: t('Where the spotlight title sits over the artwork.'), control: titleAlignSeg }),
+    ),
+
+    h('section.set-group', {},
+      h('h3', {}, t('Subtitles')),
+      subtitlesBody,
+    ),
+
+    h('section.set-group', {},
+      h('h3', {}, t('Audio')),
+      rowOf({ iconName: 'mic', label: 'Default audio', hint: t('Applies when you open a new episode'), control: audioSeg }),
     ),
 
     h('section.set-group', {},
       h('h3', {}, t('Playback')),
-      rowOf({ iconName: 'mic', label: 'Default audio', hint: t('Applies when you open a new episode'), control: audioSeg }),
       rowOf({ iconName: 'next', label: 'Auto-play next episode', hint: t('The player rolls on to the next episode by itself'), control: toggle('autoplay', 'Auto-play next episode') }),
       rowOf({ iconName: 'sliders', label: 'Streaming quality', hint: t('What the player aims for. The source decides what actually plays.'), control: qualitySeg }),
       rowOf({ iconName: 'volume', label: 'Sound effects', hint: t('A chime on a choice, a sweep on a page, a tap on a control'), control: toggle('uiSound', 'Sound effects') }),
+    ),
+
+    h('section.set-group', {},
+      h('h3', {}, t('Server status')),
+      statusBody,
     ),
 
     h('section.set-group', {},
@@ -817,12 +1022,12 @@ export async function SettingsView() {
     /* Posting a status needs server.js: the address is a credential and the
        request is sent from there, not from the page. A static copy has no way
        to make it work, so the card is left out. */
-    staticHost()
-      ? null
-      : h('section.set-group', {},
+    ...(staticHost()
+      ? []
+      : [h('section.set-group', {},
           h('h3', {}, t('Discord')),
           discordBody,
-        ),
+        )]),
 
     h('section.set-group', {},
       h('h3', {}, t('Footer links')),

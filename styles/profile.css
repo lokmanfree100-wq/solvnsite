@@ -1195,19 +1195,19 @@
 
 /* ---- the animated bands ------------------------------------------------
    Every band is drawn from two pieces: a palette of four colours declared by
-   its `data-theme`, and one of thirteen motion archetypes named by its
+   its `data-theme`, and one of six motion archetypes named by its
    `data-motion`. Keeping those apart means a theme is a colour table rather
-   than forty-six bespoke animations, and it means every archetype is written
+   than six bespoke animations, and it means every archetype is written
    once under the same rule — only `transform` and `opacity` move, so the
    compositor owns the whole shelf and the main thread stays free.
 
-   The palettes are deliberately loud: electric cyan, hot magenta, molten gold,
-   acid green, deep cosmic violet. A band is the one place on a profile that is
-   allowed to shout.
+   The palettes are deliberately loud: electric cyan, hot magenta, acid green,
+   deep cosmic violet. A band is the one place on a profile that is allowed to
+   shout.
 
    A picker tile that has scrolled out of view is paused by `profile.js` (it
-   marks the visible ones `is-live`), so forty-six moving bands never become
-   forty-six moving frames.
+   marks the visible ones `is-live`), so six moving bands never become
+   six moving frames.
    ------------------------------------------------------------------------ */
 .bk {
   --bk-1: #5b8dff;
@@ -1243,283 +1243,42 @@
 }
 
 /* ---- palettes ---------------------------------------------------------- */
-.bk[data-theme='aurora'] {
-  --bk-1: #2bffb0;
-  --bk-2: #4f8cff;
-  --bk-3: #04131c;
-  --bk-hi: #d7fff0;
-}
-.bk[data-theme='neon'] {
-  --bk-1: #00e5ff;
+.bk[data-theme="neon-cyber"] {
+  --bk-1: #22e4ff;
   --bk-2: #ff2bd6;
-  --bk-3: #160023;
-  --bk-hi: #e6fbff;
+  --bk-3: #02050e;
+  --bk-hi: #dffbff;
 }
-.bk[data-theme='ocean'] {
-  --bk-1: #0aa8ff;
-  --bk-2: #00f5d4;
-  --bk-3: #02122b;
-  --bk-hi: #b9f6ff;
-}
-.bk[data-theme='ember'] {
-  --bk-1: #ff7a18;
-  --bk-2: #ffd166;
-  --bk-3: #1a0703;
-  --bk-hi: #ffe7b0;
-}
-.bk[data-theme='matrix'] {
-  --bk-1: #39ff88;
-  --bk-2: #00b34a;
-  --bk-3: #021006;
-  --bk-hi: #c8ffdc;
-}
-.bk[data-theme='violet'] {
-  --bk-1: #8b5cff;
-  --bk-2: #ff4fd8;
-  --bk-3: #0c0420;
-  --bk-hi: #efe4ff;
-}
-.bk[data-theme='spectrum'] {
-  --bk-1: #00e5ff;
-  --bk-2: #ff2bd6;
-  --bk-3: #100018;
+.bk[data-theme="obsidian"] {
+  --bk-1: #8ea2b8;
+  --bk-2: #dbe7f5;
+  --bk-3: #020304;
   --bk-hi: #ffffff;
 }
-.bk[data-theme='gold'] {
-  --bk-1: #ffc83d;
-  --bk-2: #ff8a00;
-  --bk-3: #1a0f02;
-  --bk-hi: #fff3c4;
+.bk[data-theme="astral"] {
+  --bk-1: #7b6cff;
+  --bk-2: #ff5cd6;
+  --bk-3: #060219;
+  --bk-hi: #e8e4ff;
 }
-.bk[data-theme='sakura'] {
-  --bk-1: #ff8fc7;
-  --bk-2: #ff4f9a;
-  --bk-3: #1c0712;
-  --bk-hi: #ffe1ef;
+.bk[data-theme="matrix-code"] {
+  --bk-1: #43ff9a;
+  --bk-2: #0affc8;
+  --bk-3: #010805;
+  --bk-hi: #d3ffe7;
 }
-.bk[data-theme='storm'] {
-  --bk-1: #5b8dff;
-  --bk-2: #9fb4ff;
-  --bk-3: #080d1c;
+.bk[data-theme="electric"] {
+  --bk-1: #5aa7ff;
+  --bk-2: #b7d7ff;
+  --bk-3: #020713;
   --bk-hi: #ffffff;
 }
-.bk[data-theme='sunset'] {
-  --bk-1: #ff6a3d;
-  --bk-2: #ff2e88;
-  --bk-3: #1a0616;
-  --bk-hi: #ffd9a8;
-}
-.bk[data-theme='glacier'] {
-  --bk-1: #6ee7ff;
-  --bk-2: #3d7bff;
-  --bk-3: #03101c;
-  --bk-hi: #e6fbff;
-}
-.bk[data-theme='lava'] {
-  --bk-1: #ff3d00;
-  --bk-2: #ffb300;
-  --bk-3: #140301;
-  --bk-hi: #ffd27a;
-}
-.bk[data-theme='forest'] {
-  --bk-1: #29ff87;
-  --bk-2: #b6ff3d;
-  --bk-3: #03120a;
-  --bk-hi: #e0ffc2;
-}
-.bk[data-theme='retro'] {
-  --bk-1: #ff2e88;
-  --bk-2: #ffb300;
-  --bk-3: #12001f;
-  --bk-hi: #ffe9a8;
-}
-.bk[data-theme='glitch'] {
+.bk[data-theme="glitch-wave"] {
   --bk-1: #00f0ff;
   --bk-2: #ff2bd6;
   --bk-3: #05000a;
   --bk-hi: #ffffff;
 }
-.bk[data-theme='cyber'] {
-  --bk-1: #22d3ff;
-  --bk-2: #3b6bff;
-  --bk-3: #030a1a;
-  --bk-hi: #d6f7ff;
-}
-.bk[data-theme='toxic'] {
-  --bk-1: #9dff00;
-  --bk-2: #00ffa3;
-  --bk-3: #061003;
-  --bk-hi: #ecffb8;
-}
-.bk[data-theme='ink'] {
-  --bk-1: #7f8cff;
-  --bk-2: #cfd6ff;
-  --bk-3: #05070f;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='chrome'] {
-  --bk-1: #d9e2ff;
-  --bk-2: #7f9cff;
-  --bk-3: #0a0d16;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='cosmos'] {
-  --bk-1: #7a5cff;
-  --bk-2: #ff4fd8;
-  --bk-3: #050218;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='eclipse'] {
-  --bk-1: #ffb347;
-  --bk-2: #ff4a1c;
-  --bk-3: #07030c;
-  --bk-hi: #fff0c9;
-}
-.bk[data-theme='fireworks'] {
-  --bk-1: #ff2bd6;
-  --bk-2: #00e5ff;
-  --bk-3: #060018;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='bubbles'] {
-  --bk-1: #5ce1ff;
-  --bk-2: #7f8cff;
-  --bk-3: #021423;
-  --bk-hi: #e8fdff;
-}
-.bk[data-theme='mint'] {
-  --bk-1: #3dffc0;
-  --bk-2: #00c2a8;
-  --bk-3: #03130f;
-  --bk-hi: #dcfff6;
-}
-.bk[data-theme='lilac'] {
-  --bk-1: #b388ff;
-  --bk-2: #ff86d8;
-  --bk-3: #0e071c;
-  --bk-hi: #f3e8ff;
-}
-.bk[data-theme='peach'] {
-  --bk-1: #ff9e6b;
-  --bk-2: #ff5f9e;
-  --bk-3: #1a0810;
-  --bk-hi: #ffe3cf;
-}
-.bk[data-theme='ice'] {
-  --bk-1: #9fe8ff;
-  --bk-2: #5b8dff;
-  --bk-3: #04101e;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='mango'] {
-  --bk-1: #ffb300;
-  --bk-2: #ff6a00;
-  --bk-3: #1a0c02;
-  --bk-hi: #ffe6a8;
-}
-.bk[data-theme='lotus'] {
-  --bk-1: #ff6fb5;
-  --bk-2: #b04dff;
-  --bk-3: #1a0518;
-  --bk-hi: #ffe0f0;
-}
-.bk[data-theme='polar'] {
-  --bk-1: #4dffb0;
-  --bk-2: #4f8cff;
-  --bk-3: #020a16;
-  --bk-hi: #d8fff0;
-}
-.bk[data-theme='siren'] {
-  --bk-1: #00f5d4;
-  --bk-2: #00a3ff;
-  --bk-3: #02141a;
-  --bk-hi: #d6fff9;
-}
-.bk[data-theme='dusk'] {
-  --bk-1: #8b5cff;
-  --bk-2: #ff6f91;
-  --bk-3: #0d0618;
-  --bk-hi: #f0e6ff;
-}
-.bk[data-theme='cotton'] {
-  --bk-1: #ff9ee0;
-  --bk-2: #9fd8ff;
-  --bk-3: #120a1c;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='honey'] {
-  --bk-1: #ffc83d;
-  --bk-2: #ff9f1c;
-  --bk-3: #160d02;
-  --bk-hi: #fff0bc;
-}
-.bk[data-theme='ripple'] {
-  --bk-1: #00f0ff;
-  --bk-2: #ff2bd6;
-  --bk-3: #040713;
-  --bk-hi: #e6fdff;
-}
-.bk[data-theme='pulse'] {
-  --bk-1: #ff2d78;
-  --bk-2: #ff7aa8;
-  --bk-3: #16020c;
-  --bk-hi: #ffd6e4;
-}
-.bk[data-theme='veil'] {
-  --bk-1: #b9c6ff;
-  --bk-2: #ffb8f0;
-  --bk-3: #080912;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='beam'] {
-  --bk-1: #dfe9ff;
-  --bk-2: #8fb8ff;
-  --bk-3: #060a14;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='horizon'] {
-  --bk-1: #00e5ff;
-  --bk-2: #ff2bd6;
-  --bk-3: #0a0216;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='koi'] {
-  --bk-1: #ff7a2f;
-  --bk-2: #00e5c0;
-  --bk-3: #04141a;
-  --bk-hi: #ffdcc2;
-}
-.bk[data-theme='crystal'] {
-  --bk-1: #a8e8ff;
-  --bk-2: #b9a8ff;
-  --bk-3: #060b18;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='inferno'] {
-  --bk-1: #ffb300;
-  --bk-2: #ff3d00;
-  --bk-3: #120201;
-  --bk-hi: #ffe7a8;
-}
-.bk[data-theme='rose'] {
-  --bk-1: #ff4f9a;
-  --bk-2: #ff9ecf;
-  --bk-3: #17040f;
-  --bk-hi: #ffe2ee;
-}
-.bk[data-theme='thunder'] {
-  --bk-1: #b9c6ff;
-  --bk-2: #7a5cff;
-  --bk-3: #05030f;
-  --bk-hi: #ffffff;
-}
-.bk[data-theme='tide'] {
-  --bk-1: #00c2ff;
-  --bk-2: #00f5d4;
-  --bk-3: #02101f;
-  --bk-hi: #d9fbff;
-}
-
 /* ---- drift -------------------------------------------------------------
    Three coloured blooms crossing a dark sky, with a slow sheen over them. */
 .bk[data-motion='drift']::before {
@@ -1537,74 +1296,8 @@
   opacity: 0.7;
 }
 
-/* ---- neon grid ---------------------------------------------------------
-   A plane of cyan and magenta lines running toward the viewer under a horizon
-   that keeps breathing. */
-.bk[data-motion='grid']::before {
-  inset: 30% -40% -48%;
-  background:
-    repeating-linear-gradient(90deg, color-mix(in srgb, var(--bk-1) 62%, transparent) 0 1.5px, transparent 1.5px 44px),
-    repeating-linear-gradient(0deg, color-mix(in srgb, var(--bk-2) 52%, transparent) 0 1.5px, transparent 1.5px 32px);
-  transform-origin: 50% 100%;
-  animation: bk-grid-run 2.8s linear infinite;
-}
-.bk[data-motion='grid']::after {
-  background:
-    radial-gradient(58% 26% at 50% 36%, color-mix(in srgb, var(--bk-2) 58%, transparent), transparent 72%),
-    linear-gradient(180deg, transparent 39%, color-mix(in srgb, var(--bk-hi) 62%, transparent) 40%, transparent 41%);
-  animation: bk-breathe 5.5s ease-in-out infinite alternate;
-}
-
-/* ---- waves -------------------------------------------------------------
-   Two swells crossing at slightly different speeds, the crest lighter than the
-   trough. This is the ocean, the tide and the koi pond. */
-.bk[data-motion='waves']::before {
-  inset: -20% -32%;
-  background:
-    radial-gradient(72% 100% at 50% 116%, color-mix(in srgb, var(--bk-1) 55%, transparent), transparent 64%),
-    repeating-linear-gradient(96deg, transparent 0 46px, color-mix(in srgb, var(--bk-2) 32%, transparent) 46px 52px, transparent 52px 104px);
-  animation: bk-wave 11s ease-in-out infinite alternate;
-}
-.bk[data-motion='waves']::after {
-  inset: -26% -36%;
-  background:
-    radial-gradient(54% 80% at 42% 108%, color-mix(in srgb, var(--bk-2) 46%, transparent), transparent 62%),
-    repeating-linear-gradient(84deg, transparent 0 58px, color-mix(in srgb, var(--bk-hi) 26%, transparent) 58px 62px, transparent 62px 126px);
-  animation: bk-wave 8s ease-in-out infinite alternate-reverse;
-  opacity: 0.8;
-}
-
-/* ---- rise (embers and bubbles) ----------------------------------------
-   Two point fields climbing past a heat glow that swells and fades. */
-.bk[data-motion='rise']::before,
-.bk[data-motion='lift']::before {
-  background-image:
-    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--bk-hi) 85%, transparent) 0 1.7px, transparent 2.3px),
-    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--bk-1) 88%, transparent) 0 1.3px, transparent 1.9px);
-  background-size: 96px 140px, 64px 140px;
-  background-position: 0 0, 27px 46px;
-  animation: bk-rise 6s linear infinite;
-}
-.bk[data-motion='rise']::after {
-  background: radial-gradient(76% 58% at 50% 108%, color-mix(in srgb, var(--bk-1) 64%, transparent), transparent 62%);
-  animation: bk-breathe 4.2s ease-in-out infinite alternate;
-}
-/* Bubbles are rings, not sparks, and they climb more slowly. */
-.bk[data-motion='lift']::before {
-  background-image:
-    radial-gradient(circle at 50% 50%, transparent 46%, color-mix(in srgb, var(--bk-hi) 70%, transparent) 48% 54%, transparent 56%),
-    radial-gradient(circle at 50% 50%, transparent 44%, color-mix(in srgb, var(--bk-1) 66%, transparent) 46% 52%, transparent 54%);
-  background-size: 120px 160px, 82px 160px;
-  background-position: 0 0, 41px 58px;
-  animation-duration: 10s;
-}
-.bk[data-motion='lift']::after {
-  background: radial-gradient(70% 58% at 50% 110%, color-mix(in srgb, var(--bk-2) 44%, transparent), transparent 64%);
-  animation: bk-breathe 6s ease-in-out infinite alternate;
-}
-
-/* ---- code rain ---------------------------------------------------------
-   Thin columns of glyph-light falling behind one soft glow. */
+/* ---- matrix rain -------------------------------------------------------
+   A curtain of fine code columns with a soft bloom behind it. */
 .bk[data-motion='rain']::before {
   background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--bk-1) 82%, transparent) 0 4px, transparent 4px 22px);
   -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 19px), linear-gradient(180deg, #000 66%, transparent);
@@ -1638,35 +1331,8 @@
   animation: bk-flash 7.2s steps(1, end) infinite;
 }
 
-/* ---- heartbeat ---------------------------------------------------------
-   Two thumps, then silence, on both the pool of light and its rings. */
-.bk[data-motion='pulse']::before {
-  background: radial-gradient(58% 58% at 50% 55%, color-mix(in srgb, var(--bk-1) 70%, transparent), transparent 68%);
-  animation: bk-beat 1.6s cubic-bezier(0.22, 0.9, 0.3, 1) infinite;
-}
-.bk[data-motion='pulse']::after {
-  background: repeating-radial-gradient(circle at 50% 55%, transparent 0 54px, color-mix(in srgb, var(--bk-2) 52%, transparent) 54px 57px, transparent 57px 112px);
-  animation: bk-beat-ring 1.6s cubic-bezier(0.22, 0.9, 0.3, 1) infinite;
-  opacity: 0.55;
-}
-
-/* ---- ripple ------------------------------------------------------------
-   Two sets of rings widening from different points, each fading as it grows. */
-.bk[data-motion='ripple']::before {
-  background: repeating-radial-gradient(circle at 32% 62%, transparent 0 34px, color-mix(in srgb, var(--bk-1) 64%, transparent) 34px 37px, transparent 37px 78px);
-  transform-origin: 32% 62%;
-  animation: bk-ripple 7s ease-out infinite;
-}
-.bk[data-motion='ripple']::after {
-  background: repeating-radial-gradient(circle at 76% 30%, transparent 0 28px, color-mix(in srgb, var(--bk-2) 56%, transparent) 28px 31px, transparent 31px 66px);
-  transform-origin: 76% 30%;
-  animation: bk-ripple 7s ease-out infinite;
-  animation-delay: -3.5s;
-}
-
-/* ---- nebula ------------------------------------------------------------
-   A slow turning colour wheel under a starfield; the corona of an eclipse is
-   the same move with warmer light. */
+/* ---- orbit -------------------------------------------------------------
+   A slow conic sweep with a field of stars behind it. */
 .bk[data-motion='spin']::before {
   inset: -55%;
   background: conic-gradient(
@@ -1690,26 +1356,6 @@
   animation: bk-twinkle 6s ease-in-out infinite alternate;
 }
 
-/* ---- sweep -------------------------------------------------------------
-   A bright diagonal passing across the band, and a finer line behind it. */
-.bk[data-motion='sweep']::before {
-  inset: -40% -55%;
-  background: linear-gradient(
-    112deg,
-    transparent 34%,
-    color-mix(in srgb, var(--bk-1) 64%, transparent) 44%,
-    color-mix(in srgb, var(--bk-hi) 76%, transparent) 50%,
-    color-mix(in srgb, var(--bk-2) 64%, transparent) 56%,
-    transparent 68%
-  );
-  animation: bk-sweep 10s ease-in-out infinite alternate;
-}
-.bk[data-motion='sweep']::after {
-  background: repeating-linear-gradient(112deg, transparent 0 42px, color-mix(in srgb, var(--bk-hi) 22%, transparent) 42px 43px, transparent 43px 96px);
-  animation: bk-drift 14s ease-in-out infinite alternate-reverse;
-  opacity: 0.6;
-}
-
 /* ---- scan --------------------------------------------------------------
    Fine horizontal lines with one bright bar walking down them. */
 .bk[data-motion='scan']::before {
@@ -1728,34 +1374,8 @@
   animation: bk-scan 4.6s ease-in-out infinite alternate;
 }
 
-/* ---- fireworks ---------------------------------------------------------
-   Two bursts of rays, offset by half a cycle. */
-.bk[data-motion='burst']::before {
-  background: repeating-conic-gradient(
-    from 0deg at 50% 55%,
-    transparent 0 7deg,
-    color-mix(in srgb, var(--bk-1) 82%, transparent) 7deg 8.2deg,
-    transparent 8.2deg 18deg
-  );
-  -webkit-mask-image: radial-gradient(closest-side at 50% 55%, transparent 8%, #000 24%, transparent 62%);
-  mask-image: radial-gradient(closest-side at 50% 55%, transparent 8%, #000 24%, transparent 62%);
-  animation: bk-burst 5.4s ease-out infinite;
-}
-.bk[data-motion='burst']::after {
-  background: repeating-conic-gradient(
-    from 0deg at 27% 28%,
-    transparent 0 9deg,
-    color-mix(in srgb, var(--bk-2) 78%, transparent) 9deg 10deg,
-    transparent 10deg 22deg
-  );
-  -webkit-mask-image: radial-gradient(closest-side at 27% 28%, transparent 6%, #000 20%, transparent 54%);
-  mask-image: radial-gradient(closest-side at 27% 28%, transparent 6%, #000 20%, transparent 54%);
-  animation: bk-burst 5.4s ease-out infinite;
-  animation-delay: -2.7s;
-}
-
 /* ---- glitch ------------------------------------------------------------
-   Three colour tears that jump out of place for a couple of frames. */
+   Torn colour slices and a pair of magenta/cyan blooms. */
 .bk[data-motion='glitch']::before {
   background:
     linear-gradient(
@@ -1779,21 +1399,6 @@
   animation: bk-breathe 2.6s ease-in-out infinite alternate;
 }
 
-/* ---- fall (petals) -----------------------------------------------------
-   Elliptical flecks drifting down through the light. */
-.bk[data-motion='fall']::before {
-  background-image:
-    radial-gradient(ellipse 5px 3px at 50% 50%, color-mix(in srgb, var(--bk-hi) 88%, transparent) 0 60%, transparent 64%),
-    radial-gradient(ellipse 4px 2.4px at 50% 50%, color-mix(in srgb, var(--bk-1) 84%, transparent) 0 60%, transparent 64%);
-  background-size: 110px 150px, 76px 150px;
-  background-position: 12px 0, 52px 58px;
-  animation: bk-fall 9s linear infinite;
-}
-.bk[data-motion='fall']::after {
-  background: radial-gradient(66% 50% at 50% 8%, color-mix(in srgb, var(--bk-2) 42%, transparent), transparent 68%);
-  animation: bk-breathe 6.5s ease-in-out infinite alternate;
-}
-
 /* ---- keyframes ---------------------------------------------------------
    Each one moves `transform` or `opacity` and nothing else. */
 @keyframes bk-drift {
@@ -1804,30 +1409,6 @@
   to {
     transform: translate3d(5%, -2%, 0) scale(1.14);
     opacity: 1;
-  }
-}
-@keyframes bk-grid-run {
-  from {
-    transform: perspective(260px) rotateX(64deg) translate3d(0, 0, 0);
-  }
-  to {
-    transform: perspective(260px) rotateX(64deg) translate3d(0, 32px, 0);
-  }
-}
-@keyframes bk-wave {
-  from {
-    transform: translate3d(-4%, 1.5%, 0) scaleY(1.03);
-  }
-  to {
-    transform: translate3d(4%, -1.5%, 0) scaleY(1.1);
-  }
-}
-@keyframes bk-rise {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(0, -140px, 0);
   }
 }
 @keyframes bk-rain {
@@ -1890,65 +1471,6 @@
     opacity: 1;
   }
 }
-@keyframes bk-beat {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.5;
-  }
-  12% {
-    transform: scale(1.18);
-    opacity: 1;
-  }
-  24% {
-    transform: scale(1.02);
-    opacity: 0.66;
-  }
-  36% {
-    transform: scale(1.12);
-    opacity: 0.92;
-  }
-  52% {
-    transform: scale(1);
-    opacity: 0.46;
-  }
-}
-@keyframes bk-beat-ring {
-  0%,
-  100% {
-    transform: scale(1.02);
-    opacity: 0.2;
-  }
-  14% {
-    transform: scale(1.12);
-    opacity: 0.7;
-  }
-  28% {
-    transform: scale(1.03);
-    opacity: 0.3;
-  }
-  40% {
-    transform: scale(1.09);
-    opacity: 0.55;
-  }
-  56% {
-    transform: scale(1);
-    opacity: 0.18;
-  }
-}
-@keyframes bk-ripple {
-  0% {
-    transform: scale(0.55);
-    opacity: 0;
-  }
-  16% {
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.32);
-    opacity: 0;
-  }
-}
 @keyframes bk-spin {
   to {
     transform: rotate(360deg);
@@ -1964,36 +1486,12 @@
     transform: translate3d(0, -1.5%, 0) scale(1.02);
   }
 }
-@keyframes bk-sweep {
-  from {
-    transform: translate3d(-18%, 4%, 0) rotate(-2deg);
-  }
-  to {
-    transform: translate3d(18%, -4%, 0) rotate(2deg);
-  }
-}
 @keyframes bk-scan {
   from {
     transform: translate3d(0, -36%, 0);
   }
   to {
     transform: translate3d(0, 36%, 0);
-  }
-}
-@keyframes bk-burst {
-  0% {
-    transform: scale(0.35);
-    opacity: 0;
-  }
-  12% {
-    opacity: 1;
-  }
-  55% {
-    opacity: 0.3;
-  }
-  100% {
-    transform: scale(1.25);
-    opacity: 0;
   }
 }
 @keyframes bk-glitch {
@@ -2014,14 +1512,6 @@
   87% {
     transform: translate3d(-1%, 0, 0);
     opacity: 0.6;
-  }
-}
-@keyframes bk-fall {
-  from {
-    transform: translate3d(-2%, -150px, 0);
-  }
-  to {
-    transform: translate3d(2%, 0, 0);
   }
 }
 
@@ -2089,7 +1579,7 @@
   cursor: pointer;
   transition: border-color var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
 }
-/* Forty-six bands is a long shelf, and every one of them animates. A tile the
+/* Six bands is a compact shelf, and every one of them animates. A tile the
    member cannot see yet is skipped rather than composited, and `profile.js`
    pauses its two layers as well. */
 .bk-grid .bk-tile {
@@ -2494,4 +1984,55 @@
   .user-title {
     max-width: 15ch;
   }
+}
+
+/* ---- the six premium profile bands -------------------------------------
+   The shelf was rebuilt around six cinematic pieces rather than a long colour
+   list. Each tile is framed like a small pane of glass: an ice-blue hairline,
+   a light catch along the top edge, and a deep ambient shadow. Obsidian is the
+   one intentionally static band; it is a slow optical glow, not a moving
+   gradient, so the collection has a calm option next to the animated ones. */
+.bk[data-theme='obsidian'][data-motion='drift']::before {
+  animation: none;
+  opacity: 0.72;
+  background:
+    radial-gradient(48% 90% at 24% 18%, color-mix(in srgb, var(--bk-1) 34%, transparent), transparent 70%),
+    radial-gradient(38% 70% at 78% 8%, color-mix(in srgb, var(--bk-2) 22%, transparent), transparent 66%),
+    linear-gradient(120deg, transparent 18%, color-mix(in srgb, var(--bk-hi) 8%, transparent) 48%, transparent 72%);
+}
+.bk[data-theme='obsidian'][data-motion='drift']::after {
+  animation: none;
+  opacity: 0.28;
+}
+
+.bk-tile {
+  border-color: rgba(174, 224, 255, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 14px 34px -26px rgba(79, 181, 255, 0.8);
+}
+.bk-tile[aria-pressed='true'] {
+  border-color: rgba(196, 236, 255, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(174, 224, 255, 0.42),
+    0 0 30px -8px rgba(88, 198, 255, 0.72),
+    0 18px 40px -28px #000;
+}
+@media (hover: hover) {
+  .bk-tile:hover {
+    border-color: rgba(180, 228, 255, 0.68);
+    box-shadow:
+      0 0 0 1px rgba(174, 224, 255, 0.18),
+      0 20px 46px -28px rgba(74, 176, 255, 0.85);
+  }
+}
+.bk-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(206, 240, 255, 0.2), transparent 34%, transparent 68%, rgba(255, 255, 255, 0.08));
+  pointer-events: none;
+  mix-blend-mode: screen;
 }

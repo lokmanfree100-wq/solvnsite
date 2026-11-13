@@ -15,7 +15,6 @@
 import { h, icon, scrollMax, scrollPos, scrollInlineBy } from '../lib/dom.js';
 import { clearProgress } from '../lib/store.js';
 import { stillImage } from './media.js';
-import { clamp } from '../lib/util.js';
 import { t } from '../lib/i18n.js';
 import { toast } from '../lib/ui.js';
 
@@ -23,33 +22,9 @@ import { toast } from '../lib/ui.js';
 const resumeUrl = (e) =>
   `#/watch/${e.id}/${Math.max(1, Number(e.episode) || 1)}${!e.audio || e.audio === 'sub' ? '' : `?audio=${e.audio}`}`;
 
-/**
- * How far along this is, in per cent. The player has never reported a position
- * for a saved entry, so the only honest bar most cards get is the one drawn from
- * the series length; a title with neither number gets no bar at all rather than
- * a made-up one.
- */
-function percent(e) {
-  const duration = Number(e.duration) || 0;
-  const seconds = Number(e.seconds) || 0;
-  if (duration > 0) return clamp((seconds / duration) * 100, 3, 100);
-  const total = Number(e.total) || 0;
-  if (total > 0) return clamp(((Number(e.episode) || 1) / total) * 100, 3, 100);
-  return null;
-}
-
-function minutesLeft(e) {
-  const duration = Number(e.duration) || 0;
-  const seconds = Number(e.seconds) || 0;
-  if (duration > 0) return Math.max(0, Math.round((duration - seconds) / 60));
-  return Math.max(0, Math.round(Number(e.mins) || 0));
-}
-
 function card(e, onRemove, { eager = false } = {}) {
   const movie = e.format === 'MOVIE';
   const ep = Math.max(1, Number(e.episode) || 1);
-  const left = minutesLeft(e);
-  const pct = percent(e);
   const what = movie ? t('Watch film') : t('Episode {n}', { n: ep });
 
   return h(
@@ -62,22 +37,8 @@ function card(e, onRemove, { eager = false } = {}) {
         'div.card-art',
         {},
         stillImage([e.cover], { alt: '', eager }) || h('span.card-ph', {}, icon('film')),
-        h('div.card-play', {}, h('span', {}, icon('play'))),
-        pct != null ? h('div.card-progress', {}, h('i', { style: { width: `${pct}%` } })) : null,
       ),
-      h(
-        'div.card-body',
-        {},
-        h('div.card-title.clamp-2', {}, e.title),
-        h(
-          'div.card-meta',
-          {},
-          h('span', {}, movie ? t('Film') : t('Episode {n}', { n: ep })),
-          // Minutes left only means something for an episodic show.
-          left > 0 && !movie ? h('span.dot') : null,
-          left > 0 && !movie ? h('span', {}, t('{n} min left', { n: left })) : null,
-        ),
-      ),
+      h('div.card-body', {}, h('div.card-title.clamp-2', {}, e.title)),
     ),
     h(
       'button.cw-kill',

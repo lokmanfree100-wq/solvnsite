@@ -30,36 +30,151 @@
 }
 
 .brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  flex: none;
+  border-radius: 999px;
+}
+
+/* ---- the wordmark ----------------------------------------------------- */
+/* One lockup, drawn in the top bar, the footer and the startup veil. The stars
+   are clipped diamonds rather than glyphs so they scale with the word and keep
+   the same four clean points at 15px and at 178px. */
+.brand-lockup {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
   font-family: var(--font-display);
+  font-size: 1em;
   font-weight: 800;
-  font-size: 19px;
-  letter-spacing: -0.03em;
-  flex: none;
+  line-height: 0.78;
+  letter-spacing: -0.065em;
+  text-transform: lowercase;
+  white-space: nowrap;
 }
-.brand-mark {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  display: grid;
-  place-items: center;
-  background: var(--text);
-  box-shadow: var(--inner-hi-strong), 0 6px 20px -6px rgba(0, 0, 0, 0.7);
-  color: var(--void);
-  flex: none;
+.brand-word {
+  display: block;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
 }
-.brand-mark svg {
-  width: 19px;
-  height: 19px;
+.brand-stars {
+  position: absolute;
+  top: -0.3em;
+  inset-inline-end: -0.24em;
+  width: 0.82em;
+  height: 0.98em;
+  pointer-events: none;
 }
-/* The mark is artwork, not a glyph. It fills the box it is handed and keeps its
-   own black field, so the tile behind it goes away; the hairline and the accent
-   bloom are what stop a dark drawing from simply dissolving into a dark page. */
-.brand-mark:has(.logo) {
-  background: none;
-  box-shadow: none;
+.brand-star {
+  position: absolute;
+  display: block;
+  background: #fff;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  filter: drop-shadow(0 0 0.16em rgba(255, 255, 255, 0.55));
+}
+.brand-star--lead {
+  width: 0.42em;
+  height: 0.42em;
+  top: 0;
+  right: 0.12em;
+}
+.brand-star--tail {
+  width: 0.25em;
+  height: 0.25em;
+  top: 0.4em;
+  right: 0;
+  opacity: 0.92;
+}
+
+/* ---- the liquid glass bubble -----------------------------------------
+   The rim is a real border, the top-left highlight and cool lower-right bloom
+   are painted inside it, and the backdrop is filtered so the poster wall moves
+   under the logo rather than behind a flat capsule. */
+.brand-bubble {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.58em 1.08em 0.58em 0.92em;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 999px;
+  background:
+    radial-gradient(120% 140% at 16% -18%, rgba(255, 255, 255, 0.42), transparent 42%),
+    radial-gradient(100% 130% at 84% 120%, rgba(153, 182, 224, 0.24), transparent 62%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.045) 48%, rgba(5, 7, 10, 0.34));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    inset 0 -9px 18px -14px rgba(255, 255, 255, 0.45),
+    0 10px 30px -14px rgba(0, 0, 0, 0.92),
+    0 0 34px -20px rgba(183, 207, 241, 0.8);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  overflow: hidden;
+  isolation: isolate;
+  animation: brand-float 6.5s ease-in-out infinite;
+  transition:
+    transform 420ms var(--ease),
+    border-color 420ms var(--ease),
+    box-shadow 420ms var(--ease);
+  will-change: translate;
+}
+.brand-bubble::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -95%;
+  left: -25%;
+  width: 95%;
+  height: 190%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.56), transparent 66%);
+  transform: rotate(-22deg);
+  opacity: 0.62;
+  pointer-events: none;
+}
+.brand-bubble::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 1px;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.42),
+    inset 0 -10px 20px -16px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+.brand-bubble--nav {
+  font-size: 20px;
+}
+.brand-bubble--foot {
+  font-size: 18px;
+  padding: 0.7em 1.2em 0.7em 1em;
+}
+@media (hover: hover) {
+  .brand:hover .brand-bubble,
+  .foot-logo:hover .brand-bubble,
+  .foot-logo:focus-visible .brand-bubble {
+    border-color: rgba(255, 255, 255, 0.54);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+      inset 0 -9px 18px -12px rgba(255, 255, 255, 0.55),
+      0 16px 38px -16px rgba(0, 0, 0, 0.94),
+      0 0 42px -18px rgba(191, 214, 247, 0.9);
+    transform: perspective(560px) rotateX(6deg) rotateY(-4deg) translateY(-2px) scale(1.035);
+  }
+}
+.brand:active .brand-bubble {
+  transform: scale(0.975);
+}
+@keyframes brand-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -2.5px;
+  }
 }
 .logo {
   display: block;
@@ -67,11 +182,6 @@
   height: 100%;
   object-fit: cover;
   border-radius: inherit;
-}
-.brand-mark .logo {
-  width: 30px;
-  height: 30px;
-  box-shadow: 0 0 0 1px var(--line-strong), 0 4px 16px -6px var(--accent-glow);
 }
 
 .topbar-spacer {

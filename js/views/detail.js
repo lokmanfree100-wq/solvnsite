@@ -20,6 +20,7 @@ import { titleDiscussion } from '../components/discussion.js';
 import { addToPlaylistButton } from '../components/playlists.js';
 import { sheet, toast } from '../lib/ui.js';
 import { buildEpisodes, episodeCountIsGuess, resolveEpisodeCount } from '../lib/embed.js';
+import { episodeStills } from '../lib/episode-stills.js';
 import { t, genre } from '../lib/i18n.js';
 
 const CHUNK = 60;
@@ -106,7 +107,7 @@ export async function DetailView({ params, onCleanup }) {
   const facts = [
     ['Format', formatLabel(media.format)],
     ['Status', statusLabel(media.status)],
-    ['Episodes', media.format === 'MOVIE' ? t('Film') : episodeCountIsGuess(media) ? t('Not listed') : String(media.episodes || total)],
+    ['Parts', media.format === 'MOVIE' ? t('Film') : episodeCountIsGuess(media) ? t('Not listed') : String(media.episodes || total)],
     ['Runtime', runtime(media) || '—'],
     ['Season', seasonLabel(media) || '—'],
     ['Studio', media.studios?.nodes?.[0]?.name || '—'],
@@ -121,7 +122,7 @@ export async function DetailView({ params, onCleanup }) {
   const header = h(
     'header.detail-top',
     {},
-    h('div.detail-poster', {}, mediaCard(media, { to: null, showTitle: false, meta: false, eager: true })),
+    h('div.detail-poster', {}, mediaCard(media, { to: null, showTitle: false, eager: true })),
     h(
       'div',
       {},
@@ -134,8 +135,8 @@ export async function DetailView({ params, onCleanup }) {
       h('h1.detail-title.display', {}, title(media)),
       titleAlt(media) ? h('p.detail-alt', {}, titleAlt(media)) : null,
       (media.synonyms || []).length ? h('p.detail-alt.clamp-1', { style: { fontStyle: 'italic' } }, media.synonyms.slice(0, 3).join(' · ')) : null,
-      h('div.hero-genres', { style: { marginTop: '14px' } }, ...(media.genres || []).map((g) =>
-        h('a.hero-chip', { href: `#/discover?genre=${encodeURIComponent(g)}`, style: { background: 'var(--surface-2)', color: 'var(--text-dim)', borderColor: 'var(--line)' } }, genre(g)))),
+      h('div.detail-genres', { style: { marginTop: '14px' } }, ...(media.genres || []).map((g) =>
+        h('a.detail-chip', { href: `#/discover?genre=${encodeURIComponent(g)}`, style: { background: 'var(--surface-2)', color: 'var(--text-dim)', borderColor: 'var(--line)' } }, genre(g)))),
       synEl,
       h('button.read-more', { onclick: () => {
         const open = synEl.classList.toggle('is-collapsed');
@@ -163,7 +164,7 @@ export async function DetailView({ params, onCleanup }) {
   const panel = h('div.tab-panel');
   const tabsEl = h('div.tabs', { role: 'tablist' });
   const TABS = [
-    ['episodes', 'Episodes', media.format === 'MOVIE' ? null : String(total)],
+    ['episodes', 'Watch', media.format === 'MOVIE' ? null : String(total)],
     ['characters', 'Characters', media.characters?.nodes?.length ? String(media.characters.nodes.length) : null],
     ['relations', 'Related', String((media.relations?.edges || []).filter((e) => e.node?.format !== 'MUSIC').length || '')],
     ['recs', 'Recommendations', String(media.recommendations?.nodes?.length || '')],
@@ -260,12 +261,13 @@ export async function DetailView({ params, onCleanup }) {
     if (media.format === 'MOVIE') build([]);
     else {
       list.replaceChildren(h('p.muted', { style: { padding: '20px 0' } }, h('span.spinner.inline'), ` ${t('Loading episodes…')}`));
-      fetchEpisodes(media.id)
+      Promise.all([fetchEpisodes(media.id).catch(() => null), episodeStills(media.id)])
         // The detail payload already carries the curated list; the per-episode
         // query can answer with an empty one, and that must not throw the stills away.
-        .then((m) => build(buildEpisodes(
+        .then(([m, stills]) => build(buildEpisodes(
           { ...media, ...(m || {}) },
           m?.streamingEpisodes?.length ? m.streamingEpisodes : media.streamingEpisodes || [],
+          stills,
         )))
         .catch(() => build(buildEpisodes(media, media.streamingEpisodes || [])));
     }

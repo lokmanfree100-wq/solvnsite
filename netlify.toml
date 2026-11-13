@@ -51,12 +51,3 @@
   from = "/stream"
   to = "/.netlify/functions/proxy?kind=stream"
   status = 200
-
-# SOLVN CAT. The assistant's model key is a Netlify secret named
-# OPENAI_API_KEY; the endpoint is OpenAI-compatible, so OPENAI_BASE_URL and
-# OPENAI_MODEL may point it at another provider without a code change. Never
-# put the key in this repository or in the page.
-[[redirects]]
-  from = "/api/chat"
-  to = "/.netlify/functions/chat"
-  status = 200

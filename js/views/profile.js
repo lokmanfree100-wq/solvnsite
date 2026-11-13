@@ -691,7 +691,7 @@ function bannerSheet(user, onDone) {
 
   /* ---- the gallery --------------------------------------------------
      Every band is open, so the shelf is a wardrobe: one press wears the theme
-     and there is nothing to earn first. The forty-six tiles all move at once,
+     and there is nothing to earn first. The six tiles all move at once,
      which is why the grid only lets the ones on screen stay in motion — a
      band scrolled past is a band that is not costing a frame.
      ------------------------------------------------------------------------ */
@@ -972,9 +972,12 @@ function paintBand(band, banner) {
     band.append(img, h('span.pf-banner-veil'));
     return;
   }
-  if (BANNER_KEYS.includes(banner?.theme)) {
-    band.append(bkNode(banner.theme), h('span.pf-banner-veil'));
-  }
+  const theme = BANNER_KEYS.includes(banner?.theme)
+    ? banner.theme
+    : banner?.theme
+      ? 'obsidian'
+      : null;
+  if (theme) band.append(bkNode(theme), h('span.pf-banner-veil'));
 }
 
 function heroBackdrop(user, { canEdit = false, onChanged = null } = {}) {

@@ -1,8 +1,8 @@
 /**
  * Movies & Series hub — the TMDB half of the site.
  *
- * `/movies`            → hub: hero, continue watching, rails, genre strip
- * `/movies?type=tv`    → the Series hub
+ * `/movies`            → the film hub: spotlight, rails, genre strip
+ * `/series`            → the TV hub, with its own spotlight and rows
  * `/movies?list=…`     → a paginated grid for one rail ("View all")
  * `/movies?genre=…`    → a paginated genre grid
  * `/movies?q=…`        → its own search results grid
@@ -16,12 +16,11 @@ import { t } from '../../lib/i18n.js';
 import { sheet } from '../../lib/ui.js';
 import { stillImage } from '../../components/media.js';
 import { categoryTabs } from '../../components/cats.js';
-import { hero, heroSkeleton, filmPick } from '../../components/hero.js';
+import { cinematicShowcase } from '../../components/cinematic-showcase.js';
 import { makeDeduper } from '../../lib/dedupe.js';
-import { watched } from '../../lib/util.js';
 import {
-  api, poster, nameOf, yearOf, rating, genreMap,
-  firstTrailer, movieContinueWatching, movieWatchlist, movieProgress, servingOffline,
+  api, poster, nameOf, genreMap,
+  movieContinueWatching, movieWatchlist, servingOffline,
 } from '../../lib/tmdb.js';
 
 /* ---- one honest shelf per page ----------------------------------------
@@ -35,9 +34,11 @@ function failRail(root) {
 
 /* ---- links ------------------------------------------------------------ */
 
-const detailHref = (t2, id) => `#/movie/${id}?type=${t2}`;
+const detailHref = (t2, id) => (t2 === 'tv' ? `#/series/${id}` : `#/movie/${id}`);
 const watchHref = (t2, id, s = 1, e = 1) =>
-  t2 === 'tv' ? `#/mwatch/${id}?type=tv&s=${s}&e=${e}` : `#/mwatch/${id}?type=movie`;
+  t2 === 'tv' ? `#/swatch/${id}?s=${s}&e=${e}` : `#/mwatch/${id}`;
+/** The hub a type lives on: one base for tabs, filters, search and "View all". */
+const baseFor = (t2) => (t2 === 'tv' ? '/series' : '/movies');
 
 const typeOf = (t2) => (t2?.media_type === 'tv' || t2?.first_air_date || t2?.name ? 'tv' : 'movie');
 
@@ -68,9 +69,6 @@ export function mCard(t2, { eager = false, wide = false } = {}) {
   const type = t2.media_type || typeOf(t2);
   const title = nameOf(t2);
   const href = t2._href || detailHref(type, t2.id);
-  const prog = movieProgress(t2.id);
-  const pct = prog?.duration && prog?.seconds ? Math.min(100, (prog.seconds / prog.duration) * 100) : null;
-  const score = Number(t2.vote_average);
 
   return h(
     `a.card.m-card${wide ? '.is-wide' : ''}`,
@@ -85,29 +83,14 @@ export function mCard(t2, { eager = false, wide = false } = {}) {
          leaving a black tile the viewer reads as a broken site. */
       stillImage([poster(t2.poster_path, 'w500'), poster(t2.poster_path, 'w342')], { eager }) ||
         h('span.card-ph', {}, icon('film')),
-      prog?.episode ? h('span.flag', {}, icon('history'), t('Ep {n}', { n: prog.episode })) : null,
-      score ? h('span.card-score', {}, icon('star'), rating(score)) : null,
-      h('div.card-play', {}, h('span', {}, icon('play'))),
-      pct != null ? h('div.card-progress', {}, h('i', { style: { width: `${pct}%` } })) : null,
     ),
-    h(
-      'div.card-body',
-      {},
-      h('div.card-title.clamp-2', {}, title),
-      h(
-        'div.card-meta',
-        {},
-        h('span', {}, type === 'tv' ? t('Series') : t('Movie')),
-        yearOf(t2) ? h('span.dot') : null,
-        yearOf(t2) ? h('span.tnum', {}, String(yearOf(t2))) : null,
-      ),
-    ),
+    h('div.card-body', {}, h('div.card-title.clamp-2', {}, title)),
   );
 }
 
 function mSkeletons(n) {
   return Array.from({ length: n }, () =>
-    h('div.card.m-card', { 'aria-hidden': 'true' }, h('div.sk.sk--poster'), h('div.sk.sk--text'), h('div.sk.sk--text.w60')),
+    h('div.card.m-card', { 'aria-hidden': 'true' }, h('div.sk.sk--poster'), h('div.sk.sk--text')),
   );
 }
 
@@ -176,7 +159,7 @@ export function mRail({ heading, sub, viewAll, fetcher }) {
 
 /* ---- grid (one list, paginated) ------------------------------------------ */
 
-function mGrid({ title, sub, type, fetcher }) {
+function mGrid({ title, sub, type, fetcher, base = baseFor(type) }) {
   const box = h('div.m-grid', { role: 'list' });
   /* One type per grid, and the grid stamps it on every tile anyway, so the key
      is the same for every page it pulls in. */
@@ -248,26 +231,11 @@ function mGrid({ title, sub, type, fetcher }) {
       h('h2', {}, title),
       sub ? h('span.sub', {}, sub) : null,
       h('span.spacer'),
-      h('a.link-all', { href: `#/movies?type=${type}` }, icon('chevronLeft', { cls: 'flip' }), type === 'tv' ? t('Back to Series') : t('Back to Movies')),
+      h('a.link-all', { href: `#${base}` }, icon('chevronLeft', { cls: 'flip' }), type === 'tv' ? t('Back to Series') : t('Back to Movies')),
     ),
     box,
     h('div.m-more-wrap', {}, more),
   );
-}
-
-/* ---- hero -----------------------------------------------------------------
-   The hub's banner is the Home spotlight with a Trailer button on it: the same
-   facts-only card, the same polite 5s rotation, the same 44px arrows. Only the
-   picks are built here, because the trailer sheet belongs to this page. */
-
-function mHero(items, { onCleanup }) {
-  const picks = items.map((d) => {
-    const p = filmPick(d, typeOf(d));
-    const trailer = firstTrailer((d.videos || {}).results);
-    if (trailer) p.onTrailer = () => openTrailer(trailer.key, p.name);
-    return p;
-  });
-  return hero(picks, { onCleanup });
 }
 
 /* ---- hub sections --------------------------------------------------------- */
@@ -338,18 +306,17 @@ const GENRE_ROWS = {
 
 const LIST_ROWS = {
   movie: [
-    ['trending', 'Trending This Week', 'What everyone is watching right now.'],
+    ['trending', 'Trending Movies', 'What everyone is watching right now.'],
     ['popular', 'Popular Movies', 'The most-watched films on the catalogue.'],
-    ['top', 'Top Rated Movies', 'The best-scoring films, in order.'],
-    ['now', 'Now Playing', 'Fresh in cinemas and already streaming.'],
-    ['upcoming', 'Upcoming', 'Releases worth the wait.'],
+    ['now', 'Recently Added', 'Fresh in cinemas and new to the catalogue.'],
+    ['top', 'Top Rated', 'The best-scoring films, in order.'],
   ],
   tv: [
-    ['trending', 'Trending This Week', 'What everyone is watching right now.'],
-    ['popular', 'Popular Series', 'The most-watched series on the catalogue.'],
-    ['top', 'Top Rated Series', 'The best-scoring series, in order.'],
-    ['airing', 'Airing Today', 'Episodes dropping today.'],
-    ['onair', 'On The Air', 'Seasons running right now.'],
+    ['trending', 'Trending Series', 'What everyone is watching right now.'],
+    ['popular', 'Popular Shows', 'The most-watched series on the catalogue.'],
+    ['onair', 'Recently Updated', 'Series with fresh chapters this week.'],
+    ['airing', 'New This Week', 'Fresh chapters landing today.'],
+    ['top', 'Top Rated', 'The best-scoring series, in order.'],
   ],
 };
 
@@ -403,7 +370,7 @@ async function filteredTitle(type, q, list) {
   return bits.join(' · ') || (type === 'tv' ? t('Series') : t('Movies'));
 }
 
-function filterBar(type, q) {
+function filterBar(type, q, base = baseFor(type)) {
   const bar = h('div.filter-bar', { role: 'group', 'aria-label': t('Filter') });
 
   /* One control at a time, and the rest of the state travels with it: picking a
@@ -421,7 +388,7 @@ function filterBar(type, q) {
     if (state.list !== 'kids' && (state.genre || state.year || state.sort)) state.list = '';
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(state)) if (v) p.set(k, String(v));
-    go(`/movies?${p.toString()}`);
+    go(`${base}?${p.toString()}`);
   };
 
   const sel = (label, value, options, onPick) => {
@@ -463,7 +430,7 @@ function filterBar(type, q) {
     bar.append(
       h(
         'button.btn.btn--sm.btn--glass',
-        { type: 'button', onclick: () => go(`/movies?type=${type}`) },
+        { type: 'button', onclick: () => go(base) },
         icon('x'),
         t('Clear filters'),
       ),
@@ -477,21 +444,22 @@ function filterBar(type, q) {
 export async function MoviesView(ctx) {
   const { query } = ctx.route;
   const type = query.type === 'tv' ? 'tv' : 'movie';
+  const base = baseFor(type);
   const wrap = h('div.page-movies');
 
   /* A grid is a shelf of the same catalogue, so it keeps the same tabs and the
      same three controls above it: picking a year inside "Horror" should not
      feel like leaving the page you were filtering. */
   const gridMode = (fetcher) => {
-    wrap.append(categoryTabs(query.list === 'kids' ? 'kids' : type));
-    wrap.append(filterBar(type, query));
+    wrap.append(categoryTabs(type));
+    wrap.append(filterBar(type, query, base));
     return filteredTitle(type, query, query.list || null)
       .then((title) => {
-        wrap.append(mGrid({ title, sub: type === 'tv' ? t('Series') : t('Movies'), type, fetcher }));
+        wrap.append(mGrid({ title, sub: type === 'tv' ? t('Series') : t('Movies'), type, fetcher, base }));
         return wrap;
       })
       .catch(() => {
-        wrap.append(mGrid({ title: type === 'tv' ? t('Series') : t('Movies'), type, fetcher }));
+        wrap.append(mGrid({ title: type === 'tv' ? t('Series') : t('Movies'), type, fetcher, base }));
         return wrap;
       });
   };
@@ -522,11 +490,13 @@ export async function MoviesView(ctx) {
   }
 
   /* ---- hub ---- */
-  /* The two-way Movies/Series switch this page used to carry is the same choice
-     the category strip makes with five of them, so the strip replaced it: one
-     row of tabs, and the page you are on is the tab that is lit. */
+  /* The spotlight is the page's first object: the editorial lead (Resident
+     Evil on Movies, The Mentalist on Series), its 4K backdrop edge to edge,
+     and a three-card vertical preview dock on the right. Tabs, filters and
+     search follow the stage rather than pushing the art below the fold. */
+  wrap.append(cinematicShowcase(type, { onCleanup: ctx?.onCleanup }));
   wrap.append(categoryTabs(type));
-  wrap.append(filterBar(type, query));
+  wrap.append(filterBar(type, query, base));
 
   /* its own search box — the header field searches anime, this one the TMDB side */
   const searchInput = h('input.m-search', {
@@ -546,32 +516,20 @@ export async function MoviesView(ctx) {
     if (e.key !== 'Enter') return;
     e.preventDefault();
     const q = searchInput.value.trim();
-    go(q ? `/movies?type=${type}&q=${encodeURIComponent(q)}` : `/movies?type=${type}`);
+    go(q ? `${base}?q=${encodeURIComponent(q)}` : base);
   });
   wrap.append(searchField);
-
-  const heroSlot = h('div.home-hero-slot', {}, heroSkeleton());
-  wrap.append(heroSlot);
 
   /* ---- one title, once --------------------------------------------------
      TMDB's shelves genuinely overlap — a film in release is in "Now Playing" and
      "Upcoming" at the same time, and every popular query returns the same
      blockbusters — so without this the same poster led three rows on one page.
      The claim queue runs in the order the sections appear, so a title belongs to
-     whichever shelf sits higher up and simply does not repeat below. The
-     spotlight waits at the front of that queue: it is the one slate chosen on
-     purpose, and a slow API must not keep the whole page hanging, so the rails
-     hold off for it briefly rather than forever. Its grace covers a trending
-     query plus the six detail rows the Trailer button needs, not one round trip. */
+     whichever shelf sits higher up and simply does not repeat below. */
   const dedupe = makeDeduper((m) => `${typeOf(m)}:${m.id}`);
-  let releaseHero;
-  const heroChosen = new Promise((r) => {
-    releaseHero = r;
-  });
-  const heroWait = Promise.race([heroChosen, new Promise((r) => setTimeout(r, 4500))]);
 
   /* continue watching — local, tmdb-prefixed, never collides with anime ids */
-  const cw = movieContinueWatching(14);
+  const cw = movieContinueWatching(14).filter((p) => p.type === type);
   if (cw.length) {
     wrap.append(mRail({
       heading: t('Continue Watching'),
@@ -592,10 +550,10 @@ export async function MoviesView(ctx) {
   }
 
   /* watchlist — the films/series saved from their detail pages */
-  const wl = movieWatchlist();
+  const wl = movieWatchlist().filter((e) => e.type === type);
   if (wl.length) {
     wrap.append(mRail({
-      heading: t('My Movies Watchlist'),
+      heading: type === 'tv' ? t('My Series Watchlist') : t('My Movies Watchlist'),
       sub: t('Saved from detail pages.'),
       fetcher: async () =>
         dedupe.claimSync(
@@ -616,13 +574,13 @@ export async function MoviesView(ctx) {
     wrap.append(mRail({
       heading: t(heading),
       sub: t(sub),
-      viewAll: `#/movies?type=${type}&list=${list}`,
+      viewAll: `#${base}?list=${list}`,
       /* Claim first, then trim to a rail: a shelf that hands twenty titles to
          the queue and keeps sixteen is still full, while one that trims first
          would show eighteen and quietly lose four to the row above it. */
       fetcher: () =>
         listFetcher(list, type)
-          .then((r) => dedupe.claim(r.results, { after: heroWait }))
+          .then((r) => dedupe.claim(r.results))
           .then((fresh) => fresh.slice(0, 18)),
     }));
   }
@@ -637,59 +595,24 @@ export async function MoviesView(ctx) {
         genreSlot.append(mRail({
           heading: t(heading),
           sub: names.slice(0, 2).map((n) => t(n)).join(' · '),
-          viewAll: `#/movies?type=${type}&genre=${ids.split(',')[0]}`,
+          viewAll: `#${base}?genre=${ids.split(',')[0]}`,
           fetcher: () =>
             genreFetcher(ids, type)
-              .then((r) => dedupe.claim(r.results, { after: heroWait }))
+              .then((r) => dedupe.claim(r.results))
               .then((fresh) => fresh.slice(0, 18)),
         }));
       }
     })
     .catch(() => genreSlot.remove());
 
-  /* hero last-in: the hub's spotlight, drawn from what is trending, what is new
-     and what is popular for the type on screen, taken in turns so one shelf
-     cannot fill the banner by itself. Trending mixes in people, and a person row
-     reads as a series to typeOf(), so they are dropped before the type filter.
-     Details come last and only for the Trailer button — a shelf that is slow or
-     down costs its own picks, not the frame. */
-  const shelves = type === 'tv'
-    ? [() => api.trending('week'), () => api.onTheAir(), () => api.popularTv()]
-    : [() => api.trending('week'), () => api.nowPlaying(), () => api.popularMovies()];
-  const shelfRows = (r) =>
-    (r?.results || []).filter((m) => m.media_type !== 'person' && !m.adult && typeOf(m) === type);
-  const answers = new Array(shelves.length).fill([]);
-  const gather = Promise.all(
-    shelves.map((f, i) => watched(f(), 4000).then((r) => { answers[i] = shelfRows(r); }).catch(() => {})),
-  );
-
-  Promise.race([gather, new Promise((r) => setTimeout(r, 4200))])
-    .then(async () => {
-      const seen = new Set();
-      const picks = [];
-      for (let i = 0; i < 20 && picks.length < 8; i++) {
-        for (const list of answers) {
-          const m = list[i];
-          if (!m || seen.has(m.id)) continue;
-          seen.add(m.id);
-          picks.push(m);
-        }
-      }
-      const chosen = picks.slice(0, 8);
-      const details = await watched(
-        Promise.all(chosen.map((p) => api.details(type, p.id).catch(() => p))),
-        3000,
-      ).catch(() => chosen);
-      for (const d of details) if (!d.media_type) d.media_type = type;
-      const mine = dedupe.claimSync(details.filter((d) => d.backdrop_path || d.poster_path));
-      releaseHero();
-      if (!mine.length) return heroSlot.remove();
-      heroSlot.replaceChildren(mHero(mine, { onCleanup: ctx.onCleanup }));
-    })
-    .catch(() => {
-      releaseHero();
-      heroSlot.remove();
-    });
-
   return wrap;
+}
+
+/** `/series` — the TV half of the same machinery, with its own base path and
+    its own rows, so the two catalogues never share a shelf. */
+export function SeriesView(ctx) {
+  return MoviesView({
+    ...ctx,
+    route: { ...ctx.route, query: { ...ctx.route.query, type: 'tv' } },
+  });
 }
