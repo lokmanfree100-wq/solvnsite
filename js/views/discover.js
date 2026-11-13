@@ -241,8 +241,8 @@ export async function DiscoverView(ctx) {
     if (!show.length) {
       grid.replaceChildren(
         emptyState({
-          heading: t('No streamable titles match those filters'),
-          body: t('Try widening the season, removing a genre, or lowering the score threshold — or add a streaming server in Settings.'),
+          heading: t('No titles found'),
+          body: t('Try widening the season, removing a genre, or lowering the score threshold.'),
           action: h('button.btn.btn--primary', { onclick: resetAll }, icon('refresh'), t('Clear filters')),
         }),
       );
