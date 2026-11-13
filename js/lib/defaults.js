@@ -39,8 +39,11 @@
  * third-party page on screen; anything else is framed.
  */
 
-/* No external embed sources ship by default. Solvn plays direct media addresses
-   (.m3u8/.mp4/.webm) in its own player; operators add their own direct or clean
-   internal streaming URLs here or via Settings. External embed hosts such as
-   AniGato/Megavid are intentionally omitted to avoid redirects, ads and watermarks. */
-export const DEFAULT_SERVERS = [];
+/* One clean direct-media source ships by default so the player is never empty on a
+   fresh install: a direct .mp4 that plays in Solvn's own <video> with zero ads,
+   zero watermarks and no third-party page. Operators replace or extend it with
+   their own direct/clean internal streaming URLs here or via Settings. External
+   embed hosts such as AniGato/Megavid are intentionally omitted. */
+export const DEFAULT_SERVERS = [
+  { id: 'solvn-direct', name: 'Solvn Direct', url: 'https://www.w3schools.com/html/mov_bbb.mp4', tracks: ['sub'] },
+];
