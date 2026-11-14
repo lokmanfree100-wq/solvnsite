@@ -396,8 +396,9 @@ export async function fetchStremioStreams(anilistId, episode, addonFilter) {
 export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season = 1, episode = 1) {
   const id = Number(tmdbId);
   if (!Number.isFinite(id) || id <= 0) return [];
-  const cacheKey = `tmdb:${id}:${type}:${season}:${episode}`;
-  const cached = readCache(cacheKey, 0);
+  const cacheKey = `stremio.tmdb:${id}:${type}:${season}:${episode}`;
+  const ttlKey = `${cacheKey}:ttl`;
+  const cached = tryGetStrArr(cacheKey);
   if (cached) return cached;
 
   let kitsu = null;
@@ -449,7 +450,11 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
   const streams = results.flat();
   const seen = new Set();
   const unique = streams.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
-  writeCache(cacheKey, 0, unique, unique.length ? CACHE_TTL : EMPTY_TTL);
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(unique));
+    try { settings.set(ttlKey, String(Date.now())); } catch {};
+  } catch {}
+  return unique;
   return unique;
 }
 
