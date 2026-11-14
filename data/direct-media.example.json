@@ -2,8 +2,5 @@
   "16498": {
     "1": "https://cdn.example.com/aot-ep1.m3u8",
     "2": "https://cdn.example.com/aot-ep2.m3u8"
-  },
-  "9000001": {
-    "1": "https://cdn.example.com/demo-ep1.mp4"
   }
 }

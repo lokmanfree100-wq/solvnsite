@@ -30,7 +30,7 @@ const watchPath = (room) => `/watch/${room.media}?room=${encodeURIComponent(room
    believes. `room.cap` on each row is still the truth of that particular room. */
 const SEAT_HINT = 12;
 
-const roomName = (room) => room.title?.trim() || t('Anime #{id}', { id: room.media });
+const roomName = (room) => room.title?.trim() || t('Watch together');
 
 /**
  * The name a person is shown by.

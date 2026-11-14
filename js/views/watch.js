@@ -1360,7 +1360,7 @@ function stubFrom(e, id) {
   return {
     id: Number(id),
     type: 'ANIME',
-    title: { romaji: e.title || `Anime #${id}` },
+    title: { romaji: e.title || '' },
     coverImage: { large: e.cover || null },
     format: e.format || null,
     episodes: e.episodes || e.total || null,

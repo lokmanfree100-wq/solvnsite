@@ -145,6 +145,15 @@ CORS, and how it is bypassed without a server of your own:
 Settings ▸ Test reports whether an add-on was reached directly or through the
 proxy, and why if it failed.
 
+What ships by default is metadata only. No public add-on returns direct
+.m3u8/.mp4 files without either an account (PenguPlay asks you to sign in) or a
+per-user build URL (Yukistreams generates one on its configure page); everything
+else that is public returns embeds or torrents, which Solvn filters out. To make
+episodes play, add a stream-capable base URL in Settings ▸ Stremio-style add-ons
+or js/lib/defaults.js — it is then queried automatically, per episode, with no
+further setup. The earlier demo titles were removed; every title on a shelf now
+comes from the live AniList or catalogue data.
+
 Built-in default: js/lib/store.js already points `stremioProxy` at the
 production Cloudflare Worker (the same code in workers/stremio-proxy.js, hosted
 on Freebuff at

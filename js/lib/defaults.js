@@ -68,8 +68,14 @@ export const DIRECT_MEDIA = {};
    the template servers in Settings. Add your own clean stream add-on base URLs
    here (they must return direct file links; embeds and torrents are filtered). */
 export const STREMIO_ADDONS = [
-  // Metadata/catalog default so Settings is not empty; skipped for streams.
+  // Live anime catalogue/metadata (real Kitsu data). Skipped for stream lookup.
   'https://anime-kitsu.strem.fun',
-  // Add stream-capable base URLs here, one per line, e.g.:
-  // 'https://your-clean-stream-addon.example.com',
+  // Real stream-capable add-ons. Add one per line, only if it returns direct
+  // .m3u8/.mp4 URLs (embeds and torrents are filtered out). Public instances
+  // that return direct streams do not exist without an account or a per-user
+  // build, so these are enabled per deployment rather than hardcoded:
+  //   PenguPlay      https://pengu.uk                    (needs its sign-in)
+  //   Yukistreams    https://stremio.yukistreams.xyz/<build>/manifest.json
+  // A base URL added here is asked for /manifest.json and then
+  // /stream/{type}/{id}.json automatically for every episode.
 ];
