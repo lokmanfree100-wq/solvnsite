@@ -290,7 +290,11 @@ async function fetchFromAddon(base, ids, types) {
   for (const id of ids) {
     let got = 0;
     for (const type of typeList) {
-      const r = await addonFetch(base, `stream/${type}/${encodeURIComponent(id)}.json`);
+      /* Stremio ids carry literal colons (anilist:123, mal:456); encode the
+         rest of the segment but leave ':' as the protocol expects, or an add-on
+         with a strict path match never sees its id. */
+      const pathId = encodeURIComponent(id).replace(/%3A/gi, ':');
+      const r = await addonFetch(base, `stream/${type}/${pathId}.json`);
       if (!r.ok) continue;
       const streams = Array.isArray(r.json?.streams) ? r.json.streams : [];
       for (const s of streams) {
