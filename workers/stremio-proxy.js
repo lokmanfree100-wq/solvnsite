@@ -14,22 +14,47 @@
  *        https://<name>.<subdomain>.workers.dev/?url={url}
  *   5. Add your add-on and press Test — it should now say "Addon OK".
  *
- * Lock-down (why it is not an open proxy):
- *   - Only Stremio API paths are fetched: /manifest.json and
- *     /{stream|catalog|meta|subtitles}/… . Any other path is refused, so it
- *     cannot be used as a general-purpose CORS relay.
- *   - https only, private/loopback hosts refused (no SSRF into a LAN).
+ * Lock-down:
+ *   - Only Stremio API paths: /manifest.json and /{stream|catalog|meta|subtitles}/…
+ *   - https only, private/loopback hosts refused (no SSRF).
  *   - GET/OPTIONS only, 1.4 MB response cap, 9 s upstream timeout.
- *   - CORS answers only Solvn's own origins; another website's browser cannot
- *     read the response. (A non-browser client is bounded by the Freebuff
- *     hosting quota and the caps above.)
+ *   - CORS answers only Solvn's own origins.
+ *   - Rate limit: per-client-IP and a global per-isolate backstop. Counters are
+ *     in memory, so each isolate enforces its own share; combined with the
+ *     hosting daily/monthly quota this caps abuse without extra services.
  */
 
 const MAX_BYTES = 1_400_000;
 const TIMEOUT_MS = 9000;
 
-/* Origins allowed to read a response in a browser. Solvn's own hosts plus
-   loopback for local development. */
+/* Rate limit: a client may make up to PER_IP requests per WINDOW_MS; the whole
+   isolate stops at GLOBAL in the same window. Tune down for a stricter proxy. */
+const WINDOW_MS = 60_000;
+const PER_IP = 40;
+const GLOBAL = 6000;
+
+const buckets = new Map(); // ip -> { count, reset }
+let globalBucket = { count: 0, reset: Date.now() + WINDOW_MS };
+
+const PRIVATE_HOST = (host) => {
+  const h = String(host || '').toLowerCase();
+  if (h === 'localhost' || h === '0.0.0.0' || h.endsWith('.localhost')) return true;
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(h)) {
+    const [a, b] = h.split('.').map(Number);
+    if (a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+  return false;
+};
+
+const StremioPath = (pathname) => {
+  const p = String(pathname || '').replace(/^\/+/, '');
+  if (/(^|\/)manifest\.json$/.test(p)) return true;
+  return /(^|\/)(stream|catalog|meta|subtitles)\//.test(p);
+};
+
 const ORIGIN_OK = (origin) => {
   const o = String(origin || '').replace(/\/$/, '');
   if (!o) return false;
@@ -50,32 +75,33 @@ const corsFor = (origin) => {
   return { ...base, 'access-control-allow-origin': 'https://solvn.site', vary: 'Origin' };
 };
 
-const PRIVATE_HOST = (host) => {
-  const h = String(host || '').toLowerCase();
-  if (h === 'localhost' || h === '0.0.0.0' || h.endsWith('.localhost')) return true;
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(h)) {
-    const [a, b] = h.split('.').map(Number);
-    if (a === 10 || a === 127) return true;
-    if (a === 169 && b === 254) return true;
-    if (a === 172 && b >= 16 && b <= 31) return true;
-    if (a === 192 && b === 168) return true;
+const clientIp = (request) =>
+  request.headers.get('cf-connecting-ip') ||
+  (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() ||
+  'unknown';
+
+/* Returns the number of seconds to wait, or 0 when allowed. */
+function rateLimit(ip) {
+  const now = Date.now();
+  if (now >= globalBucket.reset) globalBucket = { count: 0, reset: now + WINDOW_MS };
+  globalBucket.count += 1;
+  if (globalBucket.count > GLOBAL) return Math.max(1, Math.ceil((globalBucket.reset - now) / 1000));
+
+  if (buckets.size > 10000) buckets.clear();
+  let b = buckets.get(ip);
+  if (!b || now >= b.reset) {
+    b = { count: 0, reset: now + WINDOW_MS };
+    buckets.set(ip, b);
   }
-  return false;
-};
+  b.count += 1;
+  if (b.count > PER_IP) return Math.max(1, Math.ceil((b.reset - now) / 1000));
+  return 0;
+}
 
-/* The Stremio endpoint shapes this proxy is allowed to forward. A base path
-   prefix (https://host/addon/stream/…) is allowed, but the final segment must
-   be a Stremio API shape, so this never becomes a general CORS relay. */
-const StremioPath = (pathname) => {
-  const p = String(pathname || '').replace(/^\/+/, '');
-  if (/(^|\/)manifest\.json$/.test(p)) return true;
-  return /(^|\/)(stream|catalog|meta|subtitles)\//.test(p);
-};
-
-const json = (status, obj, origin) =>
+const json = (status, obj, origin, extra) =>
   new Response(JSON.stringify(obj), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...corsFor(origin) },
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...(extra || {}), ...corsFor(origin) },
   });
 
 export default {
@@ -83,6 +109,9 @@ export default {
     const origin = request.headers.get('origin') || '';
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsFor(origin) });
     if (request.method !== 'GET') return json(405, { error: 'GET only' }, origin);
+
+    const wait = rateLimit(clientIp(request));
+    if (wait) return json(429, { error: 'rate limited', retryAfter: wait }, origin, { 'retry-after': String(wait) });
 
     const url = new URL(request.url);
     const target = url.searchParams.get('url');

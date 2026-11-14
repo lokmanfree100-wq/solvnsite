@@ -136,35 +136,31 @@ the visitor's browser, because solvn.site is a static folder with no server.
 CORS, and how it is bypassed without a server of your own:
   - Direct fetch first. An add-on that sends `Access-Control-Allow-Origin` is
     read straight from the browser; nothing else is involved.
-  - Netlify proxy next, only when js/lib/proxy.js has an API_HOST set: the
-    `stremio` route on netlify/functions/proxy.mjs forwards server-side, so any
-    add-on works regardless of CORS.
-  - Public CORS proxy fallback otherwise, so GitHub Pages works out of the box.
-    If the direct read is blocked, Solvn retries the same URL through a list of
-    public CORS proxies (allorigins, codetabs, corsproxy.io, cors.eu.org) and
-    uses the first answer that parses. These are third-party and best-effort.
-    Settings ▸ Stremio-style add-ons has a "CORS proxy" field: put a template
-    with `{url}` there (for example your own Worker, `https://my-proxy.workers.dev/?url={url}`)
-    and it is tried first, instead of the public list, for a reliable deploy.
+  - Netlify proxy next, only when js/lib/proxy.js has an API_HOST set.
+  - Otherwise the site's dedicated CORS proxy (stremioProxy, the Cloudflare
+    Worker in workers/stremio-proxy.js). There are no third-party proxies in
+    the chain anymore: the Worker is the single fallback, so behaviour is the
+    same for every visitor and nothing leaks through an unknown middleman.
 
-So GitHub Pages works with no extra deploy; a dedicated proxy or the Netlify
-function makes it reliable. Settings ▸ Test reports whether an add-on was reached
-directly or through a proxy, and why if it failed.
+Settings ▸ Test reports whether an add-on was reached directly or through the
+proxy, and why if it failed.
 
 Built-in default: js/lib/store.js already points `stremioProxy` at the
 production Cloudflare Worker (the same code in workers/stremio-proxy.js, hosted
 on Freebuff at
 https://site-516fa2e359d94d71a3832e2da2e69e42.freebuff.page/?url={url}), and
 js/lib/defaults.js pre-loads Anime Kitsu. So a fresh visitor needs no setup: the
-proxy answers out of the box and the public-proxy list is only a backstop.
+proxy answers out of the box and there is no third-party proxy involved.
 
 That Worker is locked down: it only forwards Stremio API paths (/manifest.json
 and /{stream|catalog|meta|subtitles}/…), refuses non-https and private/loopback
-hosts, caps responses at 1.4 MB with a 9 s timeout, and only lets Solvn's own
-origins (solvn.site, www, the GitHub Pages host, and localhost) read a response
-in a browser. Abuse is further bounded by the hosting quota. To use your own
-Worker instead, paste its URL with `{url}` into Settings ▸ Stremio-style
-add-ons ▸ "CORS proxy" — it is tried first.
+hosts, caps responses at 1.4 MB with a 9 s timeout, only lets Solvn's own origins
+(solvn.site, www, the GitHub Pages host, and localhost) read a response in a
+browser, and rate-limits each client (40 requests/minute per Worker instance,
+with a 6000/minute global backstop per instance). Counters are in memory, so
+each instance enforces its own share; the hosting quota is the hard ceiling. To
+use your own Worker instead, paste its URL with `{url}` into Settings ▸
+Stremio-style add-ons ▸ "CORS proxy" — it is tried first.
 
 Deploy your own dedicated proxy in two minutes (no flaky public proxies):
 

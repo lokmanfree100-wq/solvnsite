@@ -13,16 +13,9 @@ const MANIFEST_TTL = 60 * 60 * 1000;
 const manifestMem = new Map();
 
 /* CORS is not a server feature here: solvn.site is static, so an add-on that
-   refuses a cross-origin read is fetched through a proxy. The site's own
-   Netlify function is preferred when configured; otherwise a public CORS
-   proxy is tried. These are third-party, so they are best-effort and the
-   direct fetch always wins when the add-on allows it. */
-const PUBLIC_PROXIES = [
-  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  (u) => `https://cors.eu.org/${u}`,
-];
+   refuses a cross-origin read is fetched through the site's dedicated CORS
+   proxy (stremioProxy, a Cloudflare Worker). The direct fetch always wins when
+   the add-on allows it, and there is no third-party proxy in the chain. */
 
 export function storedStremioAddons() {
   const v = settings.get(STORAGE_KEY);
@@ -103,36 +96,33 @@ function configuredProxy() {
   return null;
 }
 
-async function publicProxyFetch(url) {
-  const builders = [];
+async function configuredProxyFetch(url) {
   const cfg = configuredProxy();
-  if (cfg) builders.push((u) => cfg.replace('{url}', encodeURIComponent(u)));
-  for (const b of PUBLIC_PROXIES) builders.push(b);
-  for (const build of builders) {
-    try {
-      const res = await fetch(build(url), { mode: 'cors', credentials: 'omit' });
-      if (!res.ok) continue;
-      const text = await res.text();
-      let json = null;
-      try { json = JSON.parse(text); } catch {}
-      if (json && typeof json === 'object') return { ok: true, status: res.status, json, text };
-    } catch { /* try the next proxy */ }
+  if (!cfg) return { ok: false, status: 0, json: null, text: '' };
+  try {
+    const res = await fetch(cfg.replace('{url}', encodeURIComponent(url)), { mode: 'cors', credentials: 'omit' });
+    if (!res.ok) return { ok: false, status: res.status, json: null, text: '' };
+    const text = await res.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch {}
+    return { ok: true, status: res.status, json, text };
+  } catch (e) {
+    return { ok: false, status: 0, json: null, text: '', error: String((e && e.message) || e) };
   }
-  return { ok: false, status: 0, json: null, text: '' };
 }
 
 async function addonFetch(base, relPath) {
   const url = addonUrl(base, relPath);
   const direct = await directFetch(url);
   if (direct.ok) return direct;
-  // 1. Site's own proxy (Netlify deploy), when configured.
+  // 1. Site's own Netlify function, when configured.
   if (API_HOST) {
     const site = await siteProxyFetch(base, relPath);
     if (site.ok) return site;
   }
-  // 2. Public CORS proxy fallback, so this works on GitHub Pages too.
-  const pub = await publicProxyFetch(url);
-  if (pub.ok) return pub;
+  // 2. The dedicated CORS proxy (stremioProxy). No third-party proxies.
+  const cfg = await configuredProxyFetch(url);
+  if (cfg.ok) return cfg;
   return direct; // keep the original error for the report
 }
 
@@ -156,7 +146,7 @@ export async function testAddon(base) {
   if (!manifest) {
     return {
       ok: false,
-      error: (error || 'no manifest') + ' (direct + site/public CORS proxies all failed — the add-on may be down or blocking proxies)',
+      error: (error || 'no manifest') + ' (direct and the site CORS proxy both failed — the add-on may be down, or set a working proxy in Settings)',
       manifest: null,
       streams: [],
     };
