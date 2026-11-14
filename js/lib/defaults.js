@@ -48,6 +48,13 @@
 export const DEFAULT_SERVERS = [];
 
 /* Self-hosted direct media map: anime id -> { episode: direct .mp4/.m3u8 url }.
-   Operators fill this (or use Settings ▸ Direct media links) to play clean,
-   ad-free episodes in Solvn's own <video>. Leave empty to use nothing. */
+   Operators fill this (or use Settings ▸ Direct media links ▸ Bulk import) to
+   play clean, ad-free episodes in Solvn's own <video>. Leave empty to use nothing.
+
+   Bulk format (paste into DIRECT_MEDIA, or into Settings bulk import JSON):
+     Object form:  { "16498": { "1": "https://cdn.example.com/aot-ep1.m3u8", "2": "https://cdn.example.com/aot-ep2.m3u8" } }
+     Array form:   [ { "id": 16498, "episode": 1, "url": "https://cdn.example.com/aot-ep1.m3u8" }, ... ]
+   Aliases: anilistId/animeId/anime_id, ep/episodeNumber/episode_number, link/src/stream/direct.
+   Only https direct media files (.m3u8/.mp4/.webm/...) are accepted; blocked
+   ad hosts are rejected. */
 export const DIRECT_MEDIA = {};

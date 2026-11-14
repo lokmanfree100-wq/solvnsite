@@ -7,7 +7,7 @@ import { parseHex, toHex } from '../lib/color.js';
 import { clearCache, apiStatus, checkNow } from '../lib/anilist.js';
 import { isSignedIn, tellDiscord, staticHost, logout } from '../lib/account.js';
 import { FAILOVER_CHOICES, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, isSiteServer, removeServer, serverKind, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
-import { addDirectMedia, removeDirectMedia, listDirectMedia, directMediaProblem } from '../lib/directmedia.js';
+import { addDirectMedia, removeDirectMedia, listDirectMedia, directMediaProblem, importDirectMediaBulk } from '../lib/directmedia.js';
 import { toast, confirmSheet } from '../lib/ui.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
 import { cloudConfig, cloudActive, clearCloudConfig, testCloudConnection, cloudSignOut } from '../lib/cloud.js';
@@ -1067,6 +1067,30 @@ export async function SettingsView() {
     h('section.set-group', {},
       h('h3', {}, t('Direct media links')),
       directMediaBody,
+      h('div.set-row', {},
+        h('div.ico', {}, icon('list')),
+        h('div.txt', {},
+          h('b', {}, t('Bulk import (JSON)')),
+          h('span', {}, t('Paste an object {id:{episode:url}} or an array [{id,episode,url}]. Validates every entry; invalid ones are skipped.')),
+        ),
+      ),
+      (() => {
+        const ta = h('textarea.input', { rows: '6', spellcheck: 'false', placeholder: '{ "16498": { "1": "https://cdn.example.com/ep1.m3u8" } }', 'aria-label': t('Bulk import JSON') });
+        const btn = h('button.btn.btn--sm.btn--primary', {
+          onclick: () => {
+            const res = importDirectMediaBulk(ta.value);
+            if (res.errors.length && !res.added) {
+              toast(res.errors[0], { tone: 'err', iconName: 'alert' }); return;
+            }
+            const msg = res.added + ' link(s) imported' + (res.skipped ? ', ' + res.skipped + ' skipped' : '');
+            toast(msg, { tone: res.added ? 'ok' : 'warn', iconName: res.added ? 'check' : 'alert' });
+            if (res.errors.length) console.warn('Bulk import skipped:', res.errors);
+            ta.value = '';
+            paintDirectMedia();
+          },
+        }, icon('plus'), t('Import'));
+        return h('div', { style: { padding: '8px 0' } }, ta, h('div.rowline', { style: { gap: '8px', marginTop: '8px' } }, btn));
+      })(),
     ),
 
     /* Posting a status needs server.js: the address is a credential and the
