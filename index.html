@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- One base path for every asset. A page opened at a route address
+         (/mwatch/1396) would otherwise resolve styles/tokens.css and js/app.js
+         under that route — /mwatch/1396/js/app.js — where nothing exists, and the
+         document would sit on its splash veil forever. -->
+    <base href="/" />
     <meta name="theme-color" content="#0b0c0e" />
     <meta name="description" content="Solvn — anime &amp; cartoons in HD. One player, no installs, nothing to pay for." />
     <link rel="canonical" href="https://solvn.site/" />

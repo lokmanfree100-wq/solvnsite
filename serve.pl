@@ -61,6 +61,17 @@ sub serve_one {
   my $file = $root . $path;
   $file .= '/index.html' if -d $file;
 
+  # A route address, not a file. The site is one document with a hash router, so
+  # /mwatch/1396 has to be answered with that document (the app then reads the
+  # path as its route). Anything that looks like a file — it has an extension —
+  # is still a real 404, so a missing script or stylesheet is not papered over
+  # with HTML that the browser would refuse to execute.
+  if (!-f $file) {
+    my $leaf = $path;
+    $leaf =~ s{.*/}{};
+    $file = $root . '/index.html' if $leaf !~ /\./;
+  }
+
   if (!-f $file) {
     $c->send_response(HTTP::Response->new(RC_NOT_FOUND, 'Not Found',
       ['Content-Type' => 'text/plain', 'Connection' => 'close'], "404 $path"));

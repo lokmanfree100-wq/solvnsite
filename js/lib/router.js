@@ -4,8 +4,20 @@ const listeners = [];
 let current = null;
 const scrollMemo = new Map();
 
+/* The route that was asked for without a fragment.
+   A pasted or shared address — /mwatch/1396 rather than /#/mwatch/1396 — carries
+   no hash, and reading only the hash would answer "/" and open the home page
+   instead of the title in the address. The document's own path is the route in
+   that case. go() still writes a hash, so every navigation after the first keeps
+   its own address, and a real fragment always wins over the path. */
+function pathRoute() {
+  const path = location.pathname || '/';
+  if (!path || path === '/' || path === '/index.html') return '';
+  return `${path}${location.search || ''}`;
+}
+
 export function parse() {
-  const raw = location.hash.replace(/^#/, '') || '/';
+  const raw = location.hash.replace(/^#/, '') || pathRoute() || '/';
   const [pathPart, queryPart] = raw.split('?');
   const segments = pathPart.split('/').filter(Boolean);
   const query = {};
