@@ -971,6 +971,8 @@ const ui = {
     'Un carillon quand on choisit, une transition quand la page change, un son quand on appuie',
   'Nothing answered on any server, on either track. This one is not carried yet.':
     'Aucun serveur n’a répondu, ni en VO ni en VF. Ce titre n’est pas encore disponible.',
+  'Your configured stream add-on could not be reached: {list}. It may be down or have moved.':
+    'Impossible de joindre le module de flux configuré : {list}. Il est peut-être hors service ou a changé d’adresse.',
   'Add a server': 'Ajouter un serveur',
   'Report this episode': 'Signaler cet épisode',
   'Nothing played on any server for this episode. Servers tried: {list}':

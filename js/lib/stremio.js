@@ -336,6 +336,10 @@ function matchEpisode(title, want) {
 
 async function fetchFromAddon(base, ids, types, episode) {
   const out = [];
+  /* Did this add-on answer at all? A working add-on answers 200 with an empty
+     list for a title it does not carry; one that is gone answers nothing for
+     any candidate id. The difference is what the watch page reports. */
+  let answered = false;
   const typeList = (types && types.length) ? types : ['anime', 'series', 'movie'];
   /* Candidate ids are tried in priority order. We want streams for the
      *requested* episode. If a suffixed id answers with streams but none of them
@@ -353,6 +357,7 @@ async function fetchFromAddon(base, ids, types, episode) {
     for (const type of typeList) {
       const r = await addonFetch(base, `stream/${type}/${pathId}.json`);
       if (!r.ok) continue;
+      answered = true;
       const streams = Array.isArray(r.json?.streams) ? r.json.streams : [];
       for (const s of streams) {
         const u = s?.url || s?.externalUrl;
@@ -392,7 +397,7 @@ async function fetchFromAddon(base, ids, types, episode) {
      *    hint that a second cleanup step exists. */
   if (false) { /* no-op: the !got && out.length condition is contradictory */ }
   const seen = new Set();
-  return out.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
+  return { streams: out.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true))), answered };
 }
 
 
@@ -407,29 +412,21 @@ export async function fetchStremioStreams(anilistId, episode, addonFilter) {
 
   const mapping = await fetchIdMapping(anilistId);
 
-  const manifests = await Promise.all(addons.map((b) => fetchManifest(b).then((x) => x.manifest)));
-
   /* Only ask add-ons that declare a stream resource. A default catalog add-on
      (Anime Kitsu, Cinemeta) names catalog/meta only; skipping it here keeps a
      pre-configured list from costing a request per episode for nothing. */
-  const usable = [];
-  addons.forEach((base, i) => {
-    const m = manifests[i];
-    if (!m) return;
-    const res = Array.isArray(m.resources) ? m.resources : [];
-    const hasStream = res.length ? res.some((r) => (typeof r === 'string' ? r === 'stream' : r && r.name === 'stream')) : true;
-    if (hasStream) usable.push({ base, m });
-  });
+  const { usable } = await streamAddons(addons);
   if (!usable.length) { writeCache(anilistId, episode, [], EMPTY_TTL); return []; }
 
   const results = await Promise.all(usable.map(async ({ base, m }) => {
     const types = Array.isArray(m?.types) ? m.types : null;
     const prefixes = Array.isArray(m?.idPrefixes) ? m.idPrefixes : null;
     const ids = candidateIds(mapping, episode, prefixes);
-    return fetchFromAddon(base, ids, types, episode);
+    return { base, ...(await fetchFromAddon(base, ids, types, episode)) };
   }));
+  noteSilentAddons(results);
 
-  const streams = results.flat();
+  const streams = results.flatMap((r) => r.streams);
   const seen = new Set();
   const unique = streams.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
 
@@ -447,14 +444,77 @@ function tryGetStrArr(key) {
    add-on that is down. Keeps the last 60 lines in localStorage so they can be
    read after the fact, not only while the console is open. */
 function logTmdb(tmdbId, stage, detail) {
-  const msg = `[stremio] tmdb:${tmdbId} ${stage}${detail ? ` — ${detail}` : ''}`;
-  try { console.info(msg); } catch (e) {}
+  try { console.info(`[stremio] tmdb:${tmdbId} ${stage}${detail ? ` — ${detail}` : ''}`); } catch (e) {}
+  pushLog({ tmdb: tmdbId, stage: String(stage), detail: detail ? String(detail) : null });
+}
+
+/* One ring buffer for both tracks, so a dead source leaves the same trail a
+   failed mapping does. */
+function pushLog(entry) {
   try {
     const prev = JSON.parse(localStorage.getItem('stremio:logs') || '[]');
     const log = Array.isArray(prev) ? prev : [];
-    log.push({ t: Date.now(), tmdb: tmdbId, stage: String(stage), detail: detail ? String(detail) : null });
+    log.push({ t: Date.now(), ...entry });
     localStorage.setItem('stremio:logs', JSON.stringify(log.slice(-60)));
   } catch (e) {}
+}
+
+/* The address a person would recognize: no scheme, no trailing slash. */
+const addonLabel = (base) => String(base || '').replace(/^https?:\/\//i, '').replace(/\/+$/, '').replace(/^www\./i, '');
+
+/* A configured add-on whose manifest did not answer at all. Naming it is the
+   whole point: "no stream" reads as a missing feature, while "this add-on is
+   unreachable" reads as the dead source it actually is. */
+function logAddonDown(base) {
+  try { console.warn(`[stremio] add-on unreachable — ${base} (no answer to its manifest or stream requests; down or moved)`); } catch (e) {}
+  pushLog({ tmdb: null, stage: 'add-on unreachable', detail: String(base) });
+}
+
+/* ---- what actually answered ---------------------------------------------
+   Both resolvers need the same three facts: which add-ons a stream can come
+   from, which ones never answered, and that answer for the card that follows.
+   A watch page with nothing to play reads `lastAddonState()` so it can tell a
+   dead source apart from a title no add-on carries — only one of those is
+   worth sending the viewer to Settings for. */
+let addonState = { down: [], live: 0 };
+
+/** Add-ons that failed to answer during the last resolve, as display names,
+ *  plus how many answered with a stream resource. */
+export function lastAddonState() {
+  return { down: addonState.down.slice(), live: addonState.live };
+}
+
+async function streamAddons(addons) {
+  const list = Array.isArray(addons) ? addons : storedStremioAddons();
+  const manifests = await Promise.all(list.map((b) => fetchManifest(b).then((x) => x.manifest)));
+  const usable = [];
+  const down = [];
+  list.forEach((base, i) => {
+    const m = manifests[i];
+    /* No manifest means the host did not answer — as opposed to an add-on that
+       answered but is a catalog/meta add-on, which is down to its declaration. */
+    if (!m) { down.push(base); return; }
+    const res = Array.isArray(m.resources) ? m.resources : [];
+    const hasStream = res.length ? res.some((r) => (typeof r === 'string' ? r === 'stream' : r && r.name === 'stream')) : true;
+    if (hasStream) usable.push({ base, m });
+  });
+  down.forEach(logAddonDown);
+  addonState = { down: down.map(addonLabel), live: usable.length };
+  return { usable, down };
+}
+
+/* An add-on that answered nothing at all — not one 2xx for any candidate id —
+   is unreachable, even though its manifest may still be cached from the last
+   day it worked. Recording that is the difference between "this add-on is
+   gone" and "this title is not carried". */
+function noteSilentAddons(results) {
+  const silent = results.filter((r) => !r.answered).map((r) => r.base);
+  if (!silent.length) return;
+  silent.forEach(logAddonDown);
+  addonState = {
+    live: Math.max(0, addonState.live - silent.length),
+    down: [...new Set([...addonState.down, ...silent.map(addonLabel)])],
+  };
 }
 
 /* ---- TMDB id → the ids an add-on actually answers ------------------------
@@ -546,30 +606,26 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
     return [];
   }
 
-  const manifests = await Promise.all(addons.map((b) => fetchManifest(b).then((x) => x.manifest)));
-  const usable = [];
-  addons.forEach((base, i) => {
-    const m = manifests[i];
-    if (!m) return;
-    const res = Array.isArray(m.resources) ? m.resources : [];
-    const hasStream = res.length ? res.some((r) => (typeof r === 'string' ? r === 'stream' : r && r.name === 'stream')) : true;
-    if (hasStream) usable.push({ base, m });
-  });
+  const { usable } = await streamAddons(addons);
   if (!usable.length) {
-    logTmdb(id, 'no stream-capable add-ons', 'every configured add-on either failed manifest fetch or declares no stream resource');
+    logTmdb(id, 'no stream-capable add-ons', 'no configured add-on answered with a stream resource');
     return [];
   }
 
   logTmdb(id, 'querying', `add-ons=${usable.map((u) => u.base).join(', ')} ids=${candidateIds(mapping, eps).join(' ')}`);
 
-  const results = await Promise.all(usable.map(({ base, m }) => fetchFromAddon(
+  const results = await Promise.all(usable.map(async ({ base, m }) => ({
     base,
-    candidateIds(mapping, eps, Array.isArray(m?.idPrefixes) ? m.idPrefixes : null),
-    Array.isArray(m?.types) ? m.types : null,
-    eps,
-  )));
+    ...(await fetchFromAddon(
+      base,
+      candidateIds(mapping, eps, Array.isArray(m?.idPrefixes) ? m.idPrefixes : null),
+      Array.isArray(m?.types) ? m.types : null,
+      eps,
+    )),
+  })));
+  noteSilentAddons(results);
 
-  const streams = results.flat();
+  const streams = results.flatMap((r) => r.streams);
   const seen = new Set();
   const unique = streams.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
 
@@ -579,7 +635,10 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
     logTmdb(id, 'no streams', `mapped via ${mapping.via} but no stream-capable add-on returned a direct .m3u8/.mp4 for the requested episode`);
   }
 
-  try { localStorage.setItem(cacheKey, JSON.stringify(unique)); } catch {}
+  /* Only a hit is worth remembering. Caching the empty result would answer the
+     next Play from storage, skipping the add-on probe — and with it the reason
+     the card is meant to show. */
+  if (unique.length) { try { localStorage.setItem(cacheKey, JSON.stringify(unique)); } catch {} }
   return unique;
 }
 

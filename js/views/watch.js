@@ -28,7 +28,7 @@ import { buildEpisodes, episodeCountIsGuess, resolveEpisodeCount } from '../lib/
 import { episodeStills } from '../lib/episode-stills.js';
 import { asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isMediaUrl, isTrack, markServer, serverKind, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
 import { directMediaServers } from '../lib/directmedia.js';
-import { storedStremioAddons, fetchStremioStreams, stremioServers } from '../lib/stremio.js';
+import { storedStremioAddons, fetchStremioStreams, stremioServers, lastAddonState } from '../lib/stremio.js';
 import { createStage } from '../lib/playback.js';
 import { accentValue } from '../lib/accent.js';
 import { mediaRow, emptyState, episodeArt } from '../components/media.js';
@@ -434,7 +434,12 @@ export function WatchView({ params, route, onCleanup }) {
        fetchStremioStreams already returned [] for the requested episode under
        the suffixed/bare rule in stremio.js (a bare-E1 fallback is kept only
        for want==1; anything else is an honest miss). */
-    bootMsg.textContent = t('No direct streams available.');
+    const { down, live } = lastAddonState();
+    /* An add-on that never answered is a different answer from a title no
+       add-on carries: the first one is a broken source worth naming. */
+    bootMsg.textContent = (!live && down.length)
+      ? t('Your configured stream add-on could not be reached: {list}. It may be down or have moved.', { list: down.join(', ') })
+      : t('No direct streams available.');
 
     bootWhen.classList.remove('hide');
     bootWhen.textContent = t('No add-on named a direct .m3u8/.mp4 for this title. Add a stream-capable add-on or server in Settings.');

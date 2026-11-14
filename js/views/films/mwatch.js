@@ -12,7 +12,7 @@ import { t } from '../../lib/i18n.js';
 import { errorState } from '../../components/media.js';
 import { brandBubble, logoMark } from '../../lib/brand.js';
 import { api, backdrop, poster, nameOf, setMovieProgress } from '../../lib/tmdb.js';
-import { fetchStremioStreamsForTmdb } from '../../lib/stremio.js';
+import { fetchStremioStreamsForTmdb, lastAddonState } from '../../lib/stremio.js';
 import { attachMedia } from '../../lib/playback.js';
 import { isMediaUrl } from '../../lib/sources.js';
 import { mRail } from './movies.js';
@@ -306,7 +306,14 @@ export async function MovieWatchView(ctx) {
       } catch { /* fall through to the honest no-source state */ }
     }
     if (!url) {
-      showFail(t('No direct video source is configured for this title yet.'));
+      /* Two different dead ends, said differently. An add-on that never
+         answered is a broken source the viewer can act on; a title nothing
+         carries is not, and telling them to check settings they already have
+         sends them hunting for a fault that is not there. */
+      const { down, live } = lastAddonState();
+      showFail(!live && down.length
+        ? t('Your configured stream add-on could not be reached: {list}. It may be down or have moved.', { list: down.join(', ') })
+        : t('No direct video source is configured for this title yet.'));
       return;
     }
     mountVideo(url);

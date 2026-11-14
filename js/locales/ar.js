@@ -941,6 +941,8 @@ const ui = {
     'رنّة عند الاختيار، وتمريرة عند تغيير الصفحة، ونقرة عند الضغط على زر',
   'Nothing answered on any server, on either track. This one is not carried yet.':
     'لم يستجب أي خادم، لا بالمسار المترجم ولا المدبلج. هذا العمل غير متوفر بعد.',
+  'Your configured stream add-on could not be reached: {list}. It may be down or have moved.':
+    'تعذّر الوصول إلى إضافة البث المضبوطة: {list}. ربما توقفت عن العمل أو انتقلت إلى عنوان آخر.',
   'Add a server': 'إضافة خادم',
   'Report this episode': 'أبلِغ عن هذه الحلقة',
   'Nothing played on any server for this episode. Servers tried: {list}':
