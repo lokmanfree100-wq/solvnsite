@@ -442,6 +442,30 @@ function tryGetStrArr(key) {
   try { return JSON.parse(localStorage.getItem(key) || 'null') || null; } catch { return null; }
 }
 
+function logTmdb(tmdbId, stage, detail) {
+  const d = typeof Date !== 'undefined' && Date.now ? Date.now() : 0;
+  const msg = `[stremio] tmdb:${tmdbId} ${stage}${detail ? ` — ${detail}` : ''}`;
+  try {
+    if (typeof console === 'object' && console && typeof console.info === 'function') {
+      console.info(msg);
+    }
+  } catch (e) {}
+  try {
+    const LS = typeof localStorage === 'object' && localStorage && typeof localStorage.getItem === 'function' && typeof localStorage.setItem === 'function';
+    if (LS) {
+      let prev = [];
+      try {
+        const raw = localStorage.getItem('stremio:logs');
+        if (raw) prev = JSON.parse(raw);
+        if (!Array.isArray(prev)) prev = [];
+      } catch (_) { prev = []; }
+      prev.push({ t: d, tmdb: tmdbId, stage: String(stage), detail: detail ? String(detail) : null });
+      if (prev.length > 60) prev.splice(0, prev.length - 60);
+      try { localStorage.setItem('stremio:logs', JSON.stringify(prev)); } catch (_) {}
+    }
+  } catch (e) {}
+}
+
 export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season = 1, episode = 1) {
   const id = Number(tmdbId);
   if (!Number.isFinite(id) || id <= 0) return [];
@@ -450,8 +474,13 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
   const cached = tryGetStrArr(cacheKey);
   if (cached) return cached;
 
+  logTmdb(id, 'resolve start', `type=${type} s=${season} e=${episode}`);
+
   let kitsu = null;
   let imdb = null;
+  let via = 'none';
+
+  // Direct TMDB -> external id mapping first.
   try {
     const res = await fetch(`https://api.ani.zip/mappings?themoviedb_id=${id}`, { cache: 'default' });
     if (res.ok) {
@@ -459,9 +488,37 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
       const m = data?.mappings || {};
       if (m.kitsu_id) kitsu = Number(m.kitsu_id) || null;
       if (m.imdb_id) imdb = String(m.imdb_id);
+      via = 'ani.zip thetmdb_id';
+    } else {
+      logTmdb(id, 'resolve ani.zip thetmdb_id non-ok', `status=${res.status}`);
     }
-  } catch {}
-  if (!kitsu && !imdb) return [];
+  } catch (e) {
+    logTmdb(id, 'resolve ani.zip thetmdb_id error', String(e?.message || e));
+  }
+
+  // If the direct mapping did not yield a usable id, try the cached/shared
+  // AniList mapping (same bucket and shape as the anime path).
+  if (!kitsu && !imdb) {
+    const existing = await fetchIdMappingForTmdb(id);
+    if (existing) {
+      logTmdb(id, 'resolve fallback', `anilist=${existing.anilist ?? 'none'} mal=${existing.mal ?? 'none'} kitsu=${existing.kitsu ?? 'none'} imdb=${existing.imdb ?? 'none'}`);
+      if (existing.kitsu) kitsu = existing.kitsu;
+      if (!imdb && existing.imdb) imdb = existing.imdb;
+      via = 'ani.zip anilist_id || AniList';
+    } else {
+      logTmdb(id, 'resolve fallback empty', 'no ani.zip anilist_id mapping and no AniList mapping cached or reachable');
+    }
+  }
+
+  // If we still have nothing usable, fail loud enough to read in console/
+  // a log, then return empty so the watch page can still show the honest card.
+  if (!kitsu && !imdb) {
+    logTmdb(id, 'resolve fail', `could not map TMDB id ${id} to any streamable external id (kitsu/imdb) — no add-on streams will be queried`);
+    cacheTmdbResolve(id, null);
+    return [];
+  }
+
+  logTmdb(id, 'resolve ok', `via=${via} kitsu=${kitsu ?? 'none'} imdb=${imdb ?? 'none'}`);
 
   const eps = Math.max(1, Number(episode) || 1);
   const ids = [];
@@ -475,7 +532,11 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
   }
 
   const addons = storedStremioAddons();
-  if (!addons.length) return [];
+  if (!addons.length) {
+    logTmdb(id, 'no add-ons', 'storedStremioAddons is empty, nothing to query');
+    return [];
+  }
+
   const manifests = await Promise.all(addons.map((b) => fetchManifest(b).then((x) => x.manifest)));
   const usable = [];
   addons.forEach((base, i) => {
@@ -485,7 +546,12 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
     const hasStream = res.length ? res.some((r) => (typeof r === 'string' ? r === 'stream' : r && r.name === 'stream')) : true;
     if (hasStream) usable.push({ base, m });
   });
-  if (!usable.length) return [];
+  if (!usable.length) {
+    logTmdb(id, 'no stream-capable add-ons', 'every configured add-on either failed manifest fetch or declares no stream resource');
+    return [];
+  }
+
+  logTmdb(id, 'querying', `add-ons=${usable.map((u) => u.base).join(', ')} ids=${ids.join(' ')}`);
 
   const results = await Promise.all(usable.map(async ({ base, m }) => {
     const types = Array.isArray(m?.types) ? m.types : null;
@@ -499,6 +565,13 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
   const streams = results.flat();
   const seen = new Set();
   const unique = streams.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
+
+  if (!unique.length) {
+    logTmdb(id, 'no streams', `TMDB id mapped (${via}) but no stream-capable add-on returned a direct .m3u8/.mp4 for the requested episode`);
+  } else {
+    logTmdb(id, 'streams found', `count=${unique.length}`);
+  }
+
   try {
     localStorage.setItem(cacheKey, JSON.stringify(unique));
     try { settings.set(ttlKey, String(Date.now())); } catch {};
