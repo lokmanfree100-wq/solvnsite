@@ -14,21 +14,40 @@
  *        https://<name>.<subdomain>.workers.dev/?url={url}
  *   5. Add your add-on and press Test — it should now say "Addon OK".
  *
- * Request shape:  GET /?url=https%3A%2F%2Faddon.example%2Fmanifest.json
- * Response:       the add-on's body, with CORS headers for any origin.
- *
- * Safety: https only, private/loopback hosts refused, GET only, response capped,
- * upstream timeout. It is a proxy for add-on JSON only — it does not follow the
- * add-on's redirects to arbitrary hosts beyond one hop on the same host.
+ * Lock-down (why it is not an open proxy):
+ *   - Only Stremio API paths are fetched: /manifest.json and
+ *     /{stream|catalog|meta|subtitles}/… . Any other path is refused, so it
+ *     cannot be used as a general-purpose CORS relay.
+ *   - https only, private/loopback hosts refused (no SSRF into a LAN).
+ *   - GET/OPTIONS only, 1.4 MB response cap, 9 s upstream timeout.
+ *   - CORS answers only Solvn's own origins; another website's browser cannot
+ *     read the response. (A non-browser client is bounded by the Freebuff
+ *     hosting quota and the caps above.)
  */
 
 const MAX_BYTES = 1_400_000;
 const TIMEOUT_MS = 9000;
 
-const CORS = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, OPTIONS',
-  'access-control-allow-headers': '*',
+/* Origins allowed to read a response in a browser. Solvn's own hosts plus
+   loopback for local development. */
+const ORIGIN_OK = (origin) => {
+  const o = String(origin || '').replace(/\/$/, '');
+  if (!o) return false;
+  if (o === 'https://solvn.site' || o === 'https://www.solvn.site') return true;
+  if (o === 'https://lokmanfree100-wq.github.io') return true;
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o)) return true;
+  return false;
+};
+
+const corsFor = (origin) => {
+  const base = {
+    'access-control-allow-methods': 'GET, OPTIONS',
+    'access-control-allow-headers': '*',
+  };
+  if (ORIGIN_OK(origin)) {
+    return { ...base, 'access-control-allow-origin': origin.replace(/\/$/, ''), vary: 'Origin' };
+  }
+  return { ...base, 'access-control-allow-origin': 'https://solvn.site', vary: 'Origin' };
 };
 
 const PRIVATE_HOST = (host) => {
@@ -44,25 +63,36 @@ const PRIVATE_HOST = (host) => {
   return false;
 };
 
-const json = (status, obj) =>
+/* The Stremio endpoint shapes this proxy is allowed to forward. A base path
+   prefix (https://host/addon/stream/…) is allowed, but the final segment must
+   be a Stremio API shape, so this never becomes a general CORS relay. */
+const StremioPath = (pathname) => {
+  const p = String(pathname || '').replace(/^\/+/, '');
+  if (/(^|\/)manifest\.json$/.test(p)) return true;
+  return /(^|\/)(stream|catalog|meta|subtitles)\//.test(p);
+};
+
+const json = (status, obj, origin) =>
   new Response(JSON.stringify(obj), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...CORS },
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...corsFor(origin) },
   });
 
 export default {
   async fetch(request) {
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-    if (request.method !== 'GET') return json(405, { error: 'GET only' });
+    const origin = request.headers.get('origin') || '';
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsFor(origin) });
+    if (request.method !== 'GET') return json(405, { error: 'GET only' }, origin);
 
     const url = new URL(request.url);
     const target = url.searchParams.get('url');
-    if (!target) return json(400, { error: 'missing ?url=' });
+    if (!target) return json(400, { error: 'missing ?url=' }, origin);
 
     let parsed;
-    try { parsed = new URL(target); } catch { return json(400, { error: 'bad url' }); }
-    if (parsed.protocol !== 'https:') return json(403, { error: 'https required' });
-    if (PRIVATE_HOST(parsed.hostname)) return json(403, { error: 'host not allowed' });
+    try { parsed = new URL(target); } catch { return json(400, { error: 'bad url' }, origin); }
+    if (parsed.protocol !== 'https:') return json(403, { error: 'https required' }, origin);
+    if (PRIVATE_HOST(parsed.hostname)) return json(403, { error: 'host not allowed' }, origin);
+    if (!StremioPath(parsed.pathname)) return json(403, { error: 'not a Stremio endpoint' }, origin);
 
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -73,17 +103,17 @@ export default {
         signal: ctrl.signal,
       });
       const buf = await res.arrayBuffer();
-      if (buf.byteLength > MAX_BYTES) return json(413, { error: 'response too large' });
+      if (buf.byteLength > MAX_BYTES) return json(413, { error: 'response too large' }, origin);
       return new Response(buf, {
         status: res.status,
         headers: {
           'content-type': res.headers.get('content-type') || 'application/json; charset=utf-8',
           'cache-control': 'no-store',
-          ...CORS,
+          ...corsFor(origin),
         },
       });
     } catch (e) {
-      return json(502, { error: String((e && e.message) || e) });
+      return json(502, { error: String((e && e.message) || e) }, origin);
     } finally {
       clearTimeout(timer);
     }

@@ -93,7 +93,7 @@ const DEFAULT_SETTINGS = {
   servers: [], // extra streaming servers the ladder may try, see lib/sources.js
   directMedia: {}, // self-hosted direct .mp4/.m3u8 links: { [anilistId]: { [episode]: url } }
   stremioAddons: [], // Stremio-style clean add-on base URLs (https) for automated stream discovery
-  stremioProxy: 'https://site-59591c1411c74c819c568a70035b0800.freebuff.page/?url={url}', // built-in Cloudflare Worker CORS proxy; replace with your own workers/stremio-proxy.js deployment if you prefer
+  stremioProxy: 'https://site-516fa2e359d94d71a3832e2da2e69e42.freebuff.page/?url={url}', // production Cloudflare Worker CORS proxy (workers/stremio-proxy.js); override in Settings to use your own
   failover: 8, // seconds the player waits for a frame before hopping servers
   serverStats: {}, // which servers this device has seen answer, see lib/sources.js
   welcomeDismissed: false, // Home greeting strip is turned off for good

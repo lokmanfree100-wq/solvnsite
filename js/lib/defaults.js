@@ -59,11 +59,17 @@ export const DEFAULT_SERVERS = [];
    ad hosts are rejected. */
 export const DIRECT_MEDIA = {};
 
-/* Stremio-style clean add-on base URLs (https). Each must answer
+/* Stremio-style clean add-on base URLs (https). A stream-capable add-on answers
    /stream/{type}/{id}.json with { streams: [{ url, title }] } where url is a
-   direct .m3u8/.mp4/.webm file. Used for automated, ad-free stream discovery.
-   Leave empty to disable. */
-/* Pre-configured so the site works without setup. Anime Kitsu is the canonical
-   clean anime add-on. Add a stream-capable add-on in Settings for playable
-   files; this one supplies metadata and is skipped for stream lookup. */
-export const STREMIO_ADDONS = ['https://anime-kitsu.strem.fun'];
+   direct .m3u8/.mp4/.webm file. Solvn fetches the add-on's /manifest.json first
+   and only asks the ones that declare a `stream` resource, so a catalog add-on
+   here is harmless (it is skipped for playback). Playback order on a watch page
+   is: direct media (DIRECT_MEDIA/Settings) → any stream-capable add-on below →
+   the template servers in Settings. Add your own clean stream add-on base URLs
+   here (they must return direct file links; embeds and torrents are filtered). */
+export const STREMIO_ADDONS = [
+  // Metadata/catalog default so Settings is not empty; skipped for streams.
+  'https://anime-kitsu.strem.fun',
+  // Add stream-capable base URLs here, one per line, e.g.:
+  // 'https://your-clean-stream-addon.example.com',
+];
