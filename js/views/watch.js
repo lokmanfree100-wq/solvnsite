@@ -430,7 +430,12 @@ export function WatchView({ params, route, onCleanup }) {
     /* Both of these promise a next rung that does not exist. */
     bootRetry.classList.add('hide');
     bootSwap.classList.add('hide');
+    /* No Stremio add-on named a direct .m3u8/.mp4 for this title/episode.
+       fetchStremioStreams already returned [] for the requested episode under
+       the suffixed/bare rule in stremio.js (a bare-E1 fallback is kept only
+       for want==1; anything else is an honest miss). */
     bootMsg.textContent = t('No direct streams available.');
+
     bootWhen.classList.remove('hide');
     bootWhen.textContent = t('No add-on named a direct .m3u8/.mp4 for this title. Add a stream-capable add-on or server in Settings.');
     bootServers.classList.remove('hide');

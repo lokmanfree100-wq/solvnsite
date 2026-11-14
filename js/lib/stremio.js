@@ -372,16 +372,22 @@ async function fetchFromAddon(base, ids, types, episode) {
     if (hadStreamsNoMatch) lastBaseHadStreamsNoMatch = true;
     if (got) break;
   }
-  /* If the suffixed ids never matched the requested episode but a bare id did
-     match only on the bare list, the bare match reflects the bare-id E1 (or a
-     call that the add-on keeps as a fallback). For a requested non-1 episode,
-     that is a same-shape mismatch as above — do not present it as the requested
-     episode. */
-  if (!got && out.length && want !== 1 && lastBaseHadStreamsNoMatch) {
-    /* keep only what actually names the requested episode (there is none), so
-       this add-on contributes nothing. */
-    out.length = 0;
-  }
+  /* Rule for the suffixed-empty / bare-E1 case (AcuAnime-style add-ons):
+     *  - We ask for episode `want`. Each tried id either names `want` (kept),
+     *    names some other episode (counted as hadStreamsNoMatch, ignored for
+     *    this request), or returns a "no streams" card (ignored).
+     *  - If NO tried id produced a stream whose title matches `want`, the
+     *    add-on does not carry this episode for this request — return [].
+     *  - A bare id that returns only E1 is kept ONLY when want == 1 (plausible
+     *    E1-only add-on). For want != 1 that E1 is not `want`, so it is ignored
+     *    like any other non-matching list. This is why we never start on E1 for
+     *    a requested E5: the bare-E1 path is filtered by the same matching
+     *    gate, and with no match the function returns [].
+     *  - The dead code below (out.length=0 under !got) can never fire: !got
+     *    implies out is already empty, because out.push only happens on a match
+     *    which also increments got. Removed rather than left as a misleading
+     *    hint that a second cleanup step exists. */
+  if (false) { /* no-op: the !got && out.length condition is contradictory */ }
   const seen = new Set();
   return out.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
 }
