@@ -93,6 +93,7 @@ const DEFAULT_SETTINGS = {
   servers: [], // extra streaming servers the ladder may try, see lib/sources.js
   directMedia: {}, // self-hosted direct .mp4/.m3u8 links: { [anilistId]: { [episode]: url } }
   stremioAddons: [], // Stremio-style clean add-on base URLs (https) for automated stream discovery
+  stremioProxy: '', // optional CORS proxy template with {url}, e.g. https://my-proxy.workers.dev/?url={url}
   failover: 8, // seconds the player waits for a frame before hopping servers
   serverStats: {}, // which servers this device has seen answer, see lib/sources.js
   welcomeDismissed: false, // Home greeting strip is turned off for good

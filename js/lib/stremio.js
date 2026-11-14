@@ -2,13 +2,25 @@ import { settings } from './store.js';
 import { isMediaUrl, blockedHost } from './sources.js';
 import { STREMIO_ADDONS as DEFAULT_STREMIO_ADDONS } from './defaults.js';
 import { gql } from './anilist.js';
-import { proxyUrl } from './proxy.js';
+import { proxyUrl, API_HOST } from './proxy.js';
 
 const STORAGE_KEY = 'stremioAddons';
 const CACHE_KEY = 'stremioStreamCache';
 const MAP_CACHE_KEY = 'stremioIdMap';
 const CACHE_TTL = 12 * 60 * 60 * 1000;
 const MAP_TTL = 7 * 24 * 60 * 60 * 1000;
+
+/* CORS is not a server feature here: solvn.site is static, so an add-on that
+   refuses a cross-origin read is fetched through a proxy. The site's own
+   Netlify function is preferred when configured; otherwise a public CORS
+   proxy is tried. These are third-party, so they are best-effort and the
+   direct fetch always wins when the add-on allows it. */
+const PUBLIC_PROXIES = [
+  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  (u) => `https://cors.eu.org/${u}`,
+];
 
 export function storedStremioAddons() {
   const v = settings.get(STORAGE_KEY);
@@ -64,13 +76,12 @@ async function directFetch(url) {
   }
 }
 
-async function proxyFetch(base, relPath) {
-  // Only useful when a proxy host is configured (Netlify deploy).
+async function siteProxyFetch(base, relPath) {
+  // Netlify function, only when a proxy host is configured.
   try {
     const target = encodeURIComponent(base);
     const p = encodeURIComponent(relPath);
     const url = proxyUrl(`/.netlify/functions/proxy?kind=stremio&target=${target}&path=${p}`);
-    // If proxyUrl returns same-origin (no API_HOST), the function may not exist locally.
     const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
     if (!res.ok) return { ok: false, status: res.status, json: null, text: '' };
     const text = await res.text();
@@ -82,14 +93,45 @@ async function proxyFetch(base, relPath) {
   }
 }
 
+function configuredProxy() {
+  try {
+    const t = String(settings.get('stremioProxy') || '').trim();
+    if (t && t.includes('{url}')) return t;
+  } catch {}
+  return null;
+}
+
+async function publicProxyFetch(url) {
+  const builders = [];
+  const cfg = configuredProxy();
+  if (cfg) builders.push((u) => cfg.replace('{url}', encodeURIComponent(u)));
+  for (const b of PUBLIC_PROXIES) builders.push(b);
+  for (const build of builders) {
+    try {
+      const res = await fetch(build(url), { mode: 'cors', credentials: 'omit' });
+      if (!res.ok) continue;
+      const text = await res.text();
+      let json = null;
+      try { json = JSON.parse(text); } catch {}
+      if (json && typeof json === 'object') return { ok: true, status: res.status, json, text };
+    } catch { /* try the next proxy */ }
+  }
+  return { ok: false, status: 0, json: null, text: '' };
+}
+
 async function addonFetch(base, relPath) {
   const url = addonUrl(base, relPath);
   const direct = await directFetch(url);
   if (direct.ok) return direct;
-  // Fall back to proxy when available (production Netlify).
-  const proxied = await proxyFetch(base, relPath);
-  if (proxied.ok) return proxied;
-  return direct; // keep original error
+  // 1. Site's own proxy (Netlify deploy), when configured.
+  if (API_HOST) {
+    const site = await siteProxyFetch(base, relPath);
+    if (site.ok) return site;
+  }
+  // 2. Public CORS proxy fallback, so this works on GitHub Pages too.
+  const pub = await publicProxyFetch(url);
+  if (pub.ok) return pub;
+  return direct; // keep the original error for the report
 }
 
 async function fetchManifest(base) {
@@ -105,10 +147,12 @@ export async function testAddon(base) {
   if (problem) return { ok: false, error: problem, manifest: null, streams: [] };
   const { manifest, error } = await fetchManifest(clean);
   if (!manifest) {
-    const corsHint = error === 'unreachable' || error === 'Failed to fetch'
-      ? ' (CORS or network — addon must send Access-Control-Allow-Origin, or use a proxy host)'
-      : '';
-    return { ok: false, error: (error || 'no manifest') + corsHint, manifest: null, streams: [] };
+    return {
+      ok: false,
+      error: (error || 'no manifest') + ' (direct + site/public CORS proxies all failed — the add-on may be down or blocking proxies)',
+      manifest: null,
+      streams: [],
+    };
   }
   const resources = Array.isArray(manifest.resources) ? manifest.resources : [];
   const hasStream = resources.some((r) => (typeof r === 'string' ? r === 'stream' : r?.name === 'stream'));

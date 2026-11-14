@@ -126,31 +126,30 @@ changes the live site until they are. The alternative, if you would rather keep
 Pages: run serve-solvn.mjs on any small server you own, at the same address the
 site is served from — that answers all four routes without step 4.
 
-STREMIO-STYLE CLEAN ADD-ONS — fetched from the browser, so CORS decides.
+STREMIO-STYLE CLEAN ADD-ONS — browser fetch with a built-in CORS fallback.
 
 Settings ▸ Stremio-style add-ons stores add-on base URLs; Solvn asks each one
 `/manifest.json` and `/stream/{type}/{id}.json` and keeps only direct
-.m3u8/.mp4/.webm links (no embeds, no redirects, zero ads). These requests run
-in the visitor's browser, not on a server, because solvn.site is a static folder.
-That has one consequence: an add-on only works when it answers with
-`Access-Control-Allow-Origin` for this site. Many do not — Stremio add-ons are
-built for the Stremio app, not for web pages — and for those the browser blocks
-the read even though the add-on itself is fine.
+.m3u8/.mp4/.webm links (no embeds, no redirects, zero ads). The requests run in
+the visitor's browser, because solvn.site is a static folder with no server.
 
-What that means per host:
-  - GitHub Pages (www.solvn.site today): no server code, so no proxy. A
-    CORS-enabled add-on works directly; the rest fail with the Test button's
-    "unreachable (CORS or network)" note. Nothing is silently broken — the
-    player falls back to the direct media links you configured in
-    lib/defaults.js or Settings.
-  - Netlify (the same deploy described above): the `stremio` route on
-    netlify/functions/proxy.mjs forwards the add-on call server-side, so any
-    add-on works regardless of its CORS headers. Solvn tries the browser first
-    and only falls back to the proxy when js/lib/proxy.js has an API_HOST set.
+CORS, and how it is bypassed without a server of your own:
+  - Direct fetch first. An add-on that sends `Access-Control-Allow-Origin` is
+    read straight from the browser; nothing else is involved.
+  - Netlify proxy next, only when js/lib/proxy.js has an API_HOST set: the
+    `stremio` route on netlify/functions/proxy.mjs forwards server-side, so any
+    add-on works regardless of CORS.
+  - Public CORS proxy fallback otherwise, so GitHub Pages works out of the box.
+    If the direct read is blocked, Solvn retries the same URL through a list of
+    public CORS proxies (allorigins, codetabs, corsproxy.io, cors.eu.org) and
+    uses the first answer that parses. These are third-party and best-effort.
+    Settings ▸ Stremio-style add-ons has a "CORS proxy" field: put a template
+    with `{url}` there (for example your own Worker, `https://my-proxy.workers.dev/?url={url}`)
+    and it is tried first, instead of the public list, for a reliable deploy.
 
-So: keep GitHub Pages and use only CORS-friendly add-ons, or deploy the Netlify
-proxy and use any add-on. Settings ▸ Test tells you which case an add-on is in
-before you rely on it.
+So GitHub Pages works with no extra deploy; a dedicated proxy or the Netlify
+function makes it reliable. Settings ▸ Test reports whether an add-on was reached
+directly or through a proxy, and why if it failed.
 
 THE SPONSOR BANNER — one slot, sold by hand, published as a file.
 
