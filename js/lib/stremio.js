@@ -10,7 +10,11 @@ const MAP_CACHE_KEY = 'stremioIdMap';
 const CACHE_TTL = 12 * 60 * 60 * 1000;
 const MAP_TTL = 7 * 24 * 60 * 60 * 1000;
 const MANIFEST_TTL = 60 * 60 * 1000;
+const EMPTY_TTL = 10 * 60 * 1000; // cache "no streams" briefly so misses are not refetched
 const manifestMem = new Map();
+const inflight = new Map(); // de-dupe concurrent identical fetches
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* CORS is not a server feature here: solvn.site is static, so an add-on that
    refuses a cross-origin read is fetched through the site's dedicated CORS
@@ -99,19 +103,31 @@ function configuredProxy() {
 async function configuredProxyFetch(url) {
   const cfg = configuredProxy();
   if (!cfg) return { ok: false, status: 0, json: null, text: '' };
-  try {
-    const res = await fetch(cfg.replace('{url}', encodeURIComponent(url)), { mode: 'cors', credentials: 'omit' });
-    if (!res.ok) return { ok: false, status: res.status, json: null, text: '' };
-    const text = await res.text();
-    let json = null;
-    try { json = JSON.parse(text); } catch {}
-    return { ok: true, status: res.status, json, text };
-  } catch (e) {
-    return { ok: false, status: 0, json: null, text: '', error: String((e && e.message) || e) };
+  const framed = cfg.replace('{url}', encodeURIComponent(url));
+  let last = { ok: false, status: 0, json: null, text: '' };
+  /* A 429 is transient: honour retry-after (capped) and try once more before
+     giving up, so a burst never turns into a visible empty player. */
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(framed, { mode: 'cors', credentials: 'omit' });
+      if (res.status === 429 && attempt === 0) {
+        const ra = Number(res.headers.get('retry-after')) || 0;
+        await sleep(Math.min(Math.max(ra * 1000, 700), 3500));
+        continue;
+      }
+      if (!res.ok) return { ok: false, status: res.status, json: null, text: '' };
+      const text = await res.text();
+      let json = null;
+      try { json = JSON.parse(text); } catch {}
+      return { ok: true, status: res.status, json, text };
+    } catch (e) {
+      last = { ok: false, status: 0, json: null, text: '', error: String((e && e.message) || e) };
+    }
   }
+  return last;
 }
 
-async function addonFetch(base, relPath) {
+async function addonFetchInner(base, relPath) {
   const url = addonUrl(base, relPath);
   const direct = await directFetch(url);
   if (direct.ok) return direct;
@@ -124,6 +140,15 @@ async function addonFetch(base, relPath) {
   const cfg = await configuredProxyFetch(url);
   if (cfg.ok) return cfg;
   return direct; // keep the original error for the report
+}
+
+function addonFetch(base, relPath) {
+  const key = `${base}|${relPath}`;
+  const hit = inflight.get(key);
+  if (hit) return hit;
+  const p = addonFetchInner(base, relPath).finally(() => inflight.delete(key));
+  inflight.set(key, p);
+  return p;
 }
 
 async function fetchManifest(base) {
@@ -229,15 +254,16 @@ function readCache(anilistId, episode) {
   try {
     const cache = settings.get(CACHE_KEY) || {};
     const rec = cache[cacheKey(anilistId, episode)];
-    if (rec && Date.now() - rec.t < CACHE_TTL && Array.isArray(rec.v)) return rec.v;
+    const ttl = rec?.ttl || CACHE_TTL;
+    if (rec && Date.now() - rec.t < ttl && Array.isArray(rec.v)) return rec.v;
   } catch {}
   return null;
 }
 
-function writeCache(anilistId, episode, streams) {
+function writeCache(anilistId, episode, streams, ttl) {
   try {
     const cache = settings.get(CACHE_KEY) || {};
-    cache[cacheKey(anilistId, episode)] = { t: Date.now(), v: streams };
+    cache[cacheKey(anilistId, episode)] = { t: Date.now(), v: streams, ttl: ttl || CACHE_TTL };
     const keys = Object.keys(cache);
     if (keys.length > 200) {
       keys.sort((a, b) => (cache[a].t || 0) - (cache[b].t || 0));
@@ -250,7 +276,11 @@ function writeCache(anilistId, episode, streams) {
 async function fetchFromAddon(base, ids, types) {
   const out = [];
   const typeList = (types && types.length) ? types : ['anime', 'series', 'movie'];
+  /* Candidate ids are tried in priority order and we stop at the first id that
+     answers with streams, so a normal episode is a couple of requests, not one
+     per id × type. */
   for (const id of ids) {
+    let got = 0;
     for (const type of typeList) {
       const r = await addonFetch(base, `stream/${type}/${encodeURIComponent(id)}.json`);
       if (!r.ok) continue;
@@ -263,8 +293,10 @@ async function fetchFromAddon(base, ids, types) {
         if (blockedHost(clean)) continue;
         if (!isMediaUrl(clean)) continue;
         out.push({ url: clean, title: String(s?.title || s?.name || '').trim() });
+        got += 1;
       }
     }
+    if (got) break;
   }
   const seen = new Set();
   return out.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
@@ -272,7 +304,7 @@ async function fetchFromAddon(base, ids, types) {
 
 export async function fetchStremioStreams(anilistId, episode, addonFilter) {
   const cached = readCache(anilistId, episode);
-  if (cached && cached.length) return cached;
+  if (cached) return cached; // includes a cached empty result
 
   let addons = storedStremioAddons();
   if (Array.isArray(addonFilter) && addonFilter.length) addons = addonFilter;
@@ -293,7 +325,7 @@ export async function fetchStremioStreams(anilistId, episode, addonFilter) {
     const hasStream = res.length ? res.some((r) => (typeof r === 'string' ? r === 'stream' : r && r.name === 'stream')) : true;
     if (hasStream) usable.push({ base, m });
   });
-  if (!usable.length) return [];
+  if (!usable.length) { writeCache(anilistId, episode, [], EMPTY_TTL); return []; }
 
   const results = await Promise.all(usable.map(async ({ base, m }) => {
     const types = Array.isArray(m?.types) ? m.types : null;
@@ -306,7 +338,7 @@ export async function fetchStremioStreams(anilistId, episode, addonFilter) {
   const seen = new Set();
   const unique = streams.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
 
-  if (unique.length) writeCache(anilistId, episode, unique);
+  writeCache(anilistId, episode, unique, unique.length ? CACHE_TTL : EMPTY_TTL);
   return unique;
 }
 

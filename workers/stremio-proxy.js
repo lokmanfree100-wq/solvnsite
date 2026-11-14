@@ -30,7 +30,7 @@ const TIMEOUT_MS = 9000;
 /* Rate limit: a client may make up to PER_IP requests per WINDOW_MS; the whole
    isolate stops at GLOBAL in the same window. Tune down for a stricter proxy. */
 const WINDOW_MS = 60_000;
-const PER_IP = 40;
+const PER_IP = 120;
 const GLOBAL = 6000;
 
 const buckets = new Map(); // ip -> { count, reset }
@@ -110,9 +110,6 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsFor(origin) });
     if (request.method !== 'GET') return json(405, { error: 'GET only' }, origin);
 
-    const wait = rateLimit(clientIp(request));
-    if (wait) return json(429, { error: 'rate limited', retryAfter: wait }, origin, { 'retry-after': String(wait) });
-
     const url = new URL(request.url);
     const target = url.searchParams.get('url');
     if (!target) return json(400, { error: 'missing ?url=' }, origin);
@@ -122,6 +119,11 @@ export default {
     if (parsed.protocol !== 'https:') return json(403, { error: 'https required' }, origin);
     if (PRIVATE_HOST(parsed.hostname)) return json(403, { error: 'host not allowed' }, origin);
     if (!StremioPath(parsed.pathname)) return json(403, { error: 'not a Stremio endpoint' }, origin);
+
+    /* Only valid Stremio fetches count against the limit, so malformed or
+       probing requests never throttle a real viewer. */
+    const wait = rateLimit(clientIp(request));
+    if (wait) return json(429, { error: 'rate limited', retryAfter: wait }, origin, { 'retry-after': String(wait) });
 
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);

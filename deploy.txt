@@ -156,11 +156,15 @@ That Worker is locked down: it only forwards Stremio API paths (/manifest.json
 and /{stream|catalog|meta|subtitles}/…), refuses non-https and private/loopback
 hosts, caps responses at 1.4 MB with a 9 s timeout, only lets Solvn's own origins
 (solvn.site, www, the GitHub Pages host, and localhost) read a response in a
-browser, and rate-limits each client (40 requests/minute per Worker instance,
-with a 6000/minute global backstop per instance). Counters are in memory, so
-each instance enforces its own share; the hosting quota is the hard ceiling. To
-use your own Worker instead, paste its URL with `{url}` into Settings ▸
-Stremio-style add-ons ▸ "CORS proxy" — it is tried first.
+browser, and rate-limits each client (120 requests/minute per Worker instance,
+with a 6000/minute global backstop per instance). Only valid Stremio fetches
+count, so probing or malformed requests never throttle a viewer. Counters are in
+memory, so each instance enforces its own share; the hosting quota is the hard
+ceiling. On the page, a 429 is retried once after its `retry-after` (capped),
+identical in-flight requests are shared, and an add-on that returns no streams is
+cached for 10 minutes so repeat lookups never hit the proxy again. To use your
+own Worker instead, paste its URL with `{url}` into Settings ▸ Stremio-style
+add-ons ▸ "CORS proxy" — it is tried first.
 
 Deploy your own dedicated proxy in two minutes (no flaky public proxies):
 
