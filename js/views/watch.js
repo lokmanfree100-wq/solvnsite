@@ -27,6 +27,7 @@ import { title, formatLabel, yearOf, statusLabel, listLabel, STATUS_TONE, plainD
 import { buildEpisodes, episodeCountIsGuess, resolveEpisodeCount } from '../lib/embed.js';
 import { episodeStills } from '../lib/episode-stills.js';
 import { asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isMediaUrl, isTrack, markServer, serverKind, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
+import { directMediaServers } from '../lib/directmedia.js';
 import { createStage } from '../lib/playback.js';
 import { accentValue } from '../lib/accent.js';
 import { mediaRow, emptyState, episodeArt } from '../components/media.js';
@@ -286,7 +287,13 @@ export function WatchView({ params, route, onCleanup }) {
      Settings so a viewer on a fast line can demand three seconds; the reasoning
      behind the default is in `failoverMs`. */
   let watchdog = null;
-  let pool = servers();
+  /* Direct, self-hosted media for this title/episode takes priority over any
+     template server, so a clean operator-provided link always wins. */
+  const baseServers = () => {
+    const direct = directMediaServers(id, ep);
+    return direct.length ? direct : servers();
+  };
+  let pool = baseServers();
   let run = [];
   let pos = 0;
   let serverIdx = 0;
@@ -323,7 +330,7 @@ export function WatchView({ params, route, onCleanup }) {
    * gives up after a single try.
    */
   function startRun(ordered, pinned) {
-    pool = ordered || servers();
+    pool = ordered || baseServers();
     /* A device that has configured nothing has no ladder: there is no rung to
        walk and none to fall back to. `play` reads the empty run and shows the
        way to fix that instead of inventing a source to fill the box. */

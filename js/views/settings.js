@@ -7,6 +7,7 @@ import { parseHex, toHex } from '../lib/color.js';
 import { clearCache, apiStatus, checkNow } from '../lib/anilist.js';
 import { isSignedIn, tellDiscord, staticHost, logout } from '../lib/account.js';
 import { FAILOVER_CHOICES, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, isSiteServer, removeServer, serverKind, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
+import { addDirectMedia, removeDirectMedia, listDirectMedia, directMediaProblem } from '../lib/directmedia.js';
 import { toast, confirmSheet } from '../lib/ui.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
 import { cloudConfig, cloudActive, clearCloudConfig, testCloudConnection, cloudSignOut } from '../lib/cloud.js';
@@ -613,6 +614,50 @@ export async function SettingsView() {
      own: what the site ships with lives in js/lib/defaults.js and reads as a
      locked row, and what is added below is stored in this browser only. */
   const serversBody = h('div');
+  const directMediaBody = h('div');
+
+  function paintDirectMedia() {
+    const idIn = h('input.input', { type: 'number', min: '1', autocomplete: 'off', placeholder: '16498', 'aria-label': t('Anime id (AniList)') });
+    const epIn = h('input.input', { type: 'number', min: '1', autocomplete: 'off', placeholder: '1', 'aria-label': t('Episode') });
+    const urlIn = h('input.input', { type: 'url', autocomplete: 'off', spellcheck: 'false', placeholder: 'https://cdn.example.com/ep1.m3u8', 'aria-label': t('Direct media address') });
+
+    const add = h('button.btn.btn--sm.btn--primary', {
+      onclick: () => {
+        const problem = addDirectMedia({ id: idIn.value, episode: epIn.value, url: urlIn.value });
+        if (problem) { toast(problem, { tone: 'err', iconName: 'alert' }); urlIn.focus(); return; }
+        toast(t('Direct link added'), { tone: 'ok', iconName: 'check' });
+        idIn.value = ''; epIn.value = ''; urlIn.value = '';
+        paintDirectMedia();
+      },
+    }, icon('plus'), t('Add link'));
+
+    const rows = listDirectMedia().map((r) =>
+      h('div.set-row', {},
+        h('div.ico', {}, icon('play')),
+        h('div.txt', {},
+          h('b', {}, `#${r.id} · Ep ${r.episode}`),
+          h('span', {}, r.url),
+        ),
+        h('button.btn.btn--sm.btn--ghost', {
+          onclick: () => { removeDirectMedia(r.id, r.episode); toast(t('Removed'), { tone: 'ok', iconName: 'check' }); paintDirectMedia(); },
+        }, icon('trash'), t('Remove')),
+      ),
+    );
+
+    directMediaBody.replaceChildren(
+      h('div.set-row', {},
+        h('div.ico', {}, icon('link')),
+        h('div.txt', {},
+          h('b', {}, t('Add a clean direct link')),
+          h('span', {}, t('Maps an AniList id + episode to a direct .m3u8/.mp4 URL. Stored in this browser only.')),
+        ),
+      ),
+      h('div.rowline.wrap', { style: { gap: '8px', padding: '8px 0' } }, idIn, epIn, urlIn, add),
+      ...rows,
+      ...(rows.length ? [] : [h('div.set-row', {}, h('div.txt', {}, h('span', {}, t('No direct links yet.'))))]),
+    );
+  }
+  paintDirectMedia();
   const hostOf = (url) => {
     try {
       return new URL(url).host;
@@ -1017,6 +1062,11 @@ export async function SettingsView() {
     h('section.set-group', {},
       h('h3', {}, t('Streaming servers')),
       serversBody,
+    ),
+
+    h('section.set-group', {},
+      h('h3', {}, t('Direct media links')),
+      directMediaBody,
     ),
 
     /* Posting a status needs server.js: the address is a credential and the

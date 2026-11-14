@@ -46,3 +46,8 @@
    intentionally omitted and blocked, since they carry redirects, ads and
    watermarks. Titles without a clean direct link are not linked to any player. */
 export const DEFAULT_SERVERS = [];
+
+/* Self-hosted direct media map: anime id -> { episode: direct .mp4/.m3u8 url }.
+   Operators fill this (or use Settings ▸ Direct media links) to play clean,
+   ad-free episodes in Solvn's own <video>. Leave empty to use nothing. */
+export const DIRECT_MEDIA = {};

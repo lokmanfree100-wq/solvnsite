@@ -91,6 +91,7 @@ const DEFAULT_SETTINGS = {
   discordHook: '', // optional Discord webhook for a status line
   discordShare: false, // post it as each episode starts
   servers: [], // extra streaming servers the ladder may try, see lib/sources.js
+  directMedia: {}, // self-hosted direct .mp4/.m3u8 links: { [anilistId]: { [episode]: url } }
   failover: 8, // seconds the player waits for a frame before hopping servers
   serverStats: {}, // which servers this device has seen answer, see lib/sources.js
   welcomeDismissed: false, // Home greeting strip is turned off for good
