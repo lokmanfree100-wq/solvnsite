@@ -70,6 +70,9 @@ export const DIRECT_MEDIA = {};
 export const STREMIO_ADDONS = [
   // Live anime catalogue/metadata (real Kitsu data). Skipped for stream lookup.
   'https://anime-kitsu.strem.fun',
+  // Public, no-auth, direct-MP4 anime streams (Anixart/Anixio). Returns .mp4
+  // files for the whole series, so the watch page plays them directly.
+  'https://anixio.barigadogram.ru',
   // Real stream-capable add-ons. Add one per line, only if it returns direct
   // .m3u8/.mp4 URLs (embeds and torrents are filtered out). Public instances
   // that return direct streams do not exist without an account or a per-user
