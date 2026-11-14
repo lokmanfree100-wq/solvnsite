@@ -29,6 +29,7 @@ import { episodeStills } from '../lib/episode-stills.js';
 import { asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isMediaUrl, isTrack, markServer, serverKind, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
 import { directMediaServers } from '../lib/directmedia.js';
 import { storedStremioAddons, fetchStremioStreams, stremioServers } from '../lib/stremio.js';
+import { publicDomainServers } from '../lib/pubdomain.js';
 import { createStage } from '../lib/playback.js';
 import { accentValue } from '../lib/accent.js';
 import { mediaRow, emptyState, episodeArt } from '../components/media.js';
@@ -295,18 +296,32 @@ export function WatchView({ params, route, onCleanup }) {
      baseServers() folds it in so a configured add-on feeds the ladder without
      any manual links. */
   let stremioPool = [];
-  const stremioPromise = (storedStremioAddons().length
-    ? fetchStremioStreams(id, ep).then((streams) => {
-        stremioPool = stremioServers(streams);
-        if (!pool.length && stremioPool.length) { pool = baseServers(); }
-        return stremioPool;
-      }).catch(() => [])
-    : Promise.resolve([]));
+  /* Last-resort public-domain reel. Nothing configured may outrank it: a real
+     add-on stream and the operator's own Settings list both come first. */
+  let fallbackPool = [];
+  /* Automatic ladder, no pasting: every configured public add-on is asked for
+     this episode; when none names a direct file, Archive.org is asked for a
+     public-domain copy of the title, and an open-reel HLS sits behind that so
+     the player always has something that actually loads. */
+  const stremioPromise = (async () => {
+    let found = [];
+    try { found = await fetchStremioStreams(id, ep); } catch {}
+    stremioPool = found.length ? stremioServers(found) : [];
+    if (stremioPool.length) {
+      if (!pool.length) { pool = baseServers(); }
+      return stremioPool;
+    }
+    fallbackPool = await publicDomainServers(title(media), { year: yearOf(media), movie: isMovie });
+    if (!pool.length && fallbackPool.length) { pool = baseServers(); }
+    return fallbackPool;
+  })();
   const baseServers = () => {
     const direct = directMediaServers(id, ep);
     if (direct.length) return direct;
     if (stremioPool.length) return stremioPool;
-    return servers();
+    const configured = servers();
+    if (configured.length) return configured;
+    return fallbackPool;
   };
   let pool = baseServers();
   let run = [];

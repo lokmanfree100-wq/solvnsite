@@ -78,4 +78,8 @@ export const STREMIO_ADDONS = [
   //   Yukistreams    https://stremio.yukistreams.xyz/<build>/manifest.json
   // A base URL added here is asked for /manifest.json and then
   // /stream/{type}/{id}.json automatically for every episode.
+  //
+  // With no stream-capable add-on, the watch page still plays: it asks
+  // Archive.org for a public-domain copy of the title and, when there is none,
+  // falls back to an open-reel HLS. Nothing is pasted and nothing is required.
 ];
