@@ -9,6 +9,8 @@ const CACHE_KEY = 'stremioStreamCache';
 const MAP_CACHE_KEY = 'stremioIdMap';
 const CACHE_TTL = 12 * 60 * 60 * 1000;
 const MAP_TTL = 7 * 24 * 60 * 60 * 1000;
+const MANIFEST_TTL = 60 * 60 * 1000;
+const manifestMem = new Map();
 
 /* CORS is not a server feature here: solvn.site is static, so an add-on that
    refuses a cross-origin read is fetched through a proxy. The site's own
@@ -135,10 +137,15 @@ async function addonFetch(base, relPath) {
 }
 
 async function fetchManifest(base) {
+  const hit = manifestMem.get(base);
+  if (hit && Date.now() - hit.t < MANIFEST_TTL) return hit.v;
   const r = await addonFetch(base, 'manifest.json');
-  if (!r.ok) return { manifest: null, error: r.error || (r.status ? `HTTP ${r.status}` : 'unreachable') };
-  if (!r.json || typeof r.json !== 'object') return { manifest: null, error: 'invalid manifest' };
-  return { manifest: r.json, error: null };
+  let out;
+  if (!r.ok) out = { manifest: null, error: r.error || (r.status ? `HTTP ${r.status}` : 'unreachable') };
+  else if (!r.json || typeof r.json !== 'object') out = { manifest: null, error: 'invalid manifest' };
+  else out = { manifest: r.json, error: null };
+  if (out.manifest) manifestMem.set(base, { t: Date.now(), v: out });
+  return out;
 }
 
 export async function testAddon(base) {
@@ -285,8 +292,20 @@ export async function fetchStremioStreams(anilistId, episode, addonFilter) {
 
   const manifests = await Promise.all(addons.map((b) => fetchManifest(b).then((x) => x.manifest)));
 
-  const results = await Promise.all(addons.map(async (base, i) => {
+  /* Only ask add-ons that declare a stream resource. A default catalog add-on
+     (Anime Kitsu, Cinemeta) names catalog/meta only; skipping it here keeps a
+     pre-configured list from costing a request per episode for nothing. */
+  const usable = [];
+  addons.forEach((base, i) => {
     const m = manifests[i];
+    if (!m) return;
+    const res = Array.isArray(m.resources) ? m.resources : [];
+    const hasStream = res.length ? res.some((r) => (typeof r === 'string' ? r === 'stream' : r && r.name === 'stream')) : true;
+    if (hasStream) usable.push({ base, m });
+  });
+  if (!usable.length) return [];
+
+  const results = await Promise.all(usable.map(async ({ base, m }) => {
     const types = Array.isArray(m?.types) ? m.types : null;
     const prefixes = Array.isArray(m?.idPrefixes) ? m.idPrefixes : null;
     const ids = candidateIds(mapping, episode, prefixes);

@@ -151,7 +151,14 @@ So GitHub Pages works with no extra deploy; a dedicated proxy or the Netlify
 function makes it reliable. Settings ▸ Test reports whether an add-on was reached
 directly or through a proxy, and why if it failed.
 
-Dedicated proxy in two minutes (no flaky public proxies):
+Built-in default: js/lib/store.js already points `stremioProxy` at a deployed
+Cloudflare Worker (the same code in workers/stremio-proxy.js, hosted on
+Freebuff), and js/lib/defaults.js pre-loads Anime Kitsu. So a fresh visitor
+needs no setup: the proxy answers out of the box and the public-proxy list is
+only a backstop. To use your own Worker instead, paste its URL with `{url}` into
+Settings ▸ Stremio-style add-ons ▸ "CORS proxy" — it is tried first.
+
+Deploy your own dedicated proxy in two minutes (no flaky public proxies):
 
   workers/stremio-proxy.js is a ready-to-deploy Cloudflare Worker. It fetches an
   add-on and adds the CORS header, so the browser can read it.

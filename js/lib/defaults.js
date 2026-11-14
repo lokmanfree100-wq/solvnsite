@@ -63,4 +63,7 @@ export const DIRECT_MEDIA = {};
    /stream/{type}/{id}.json with { streams: [{ url, title }] } where url is a
    direct .m3u8/.mp4/.webm file. Used for automated, ad-free stream discovery.
    Leave empty to disable. */
-export const STREMIO_ADDONS = [];
+/* Pre-configured so the site works without setup. Anime Kitsu is the canonical
+   clean anime add-on. Add a stream-capable add-on in Settings for playable
+   files; this one supplies metadata and is skipped for stream lookup. */
+export const STREMIO_ADDONS = ['https://anime-kitsu.strem.fun'];

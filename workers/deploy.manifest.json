@@ -1,0 +1,7 @@
+{
+  "entrypoint": "stremio-proxy.js",
+  "compatibilityDate": "2025-09-01",
+  "modules": [
+    { "name": "stremio-proxy.js", "type": "esm", "path": "./stremio-proxy.js" }
+  ]
+}
