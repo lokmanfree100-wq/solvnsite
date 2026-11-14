@@ -362,12 +362,33 @@ export async function fetchStremioStreams(anilistId, episode, addonFilter) {
   return unique;
 }
 
+/* Pull an episode number out of a stream title such as
+   "Studio Band | Kodik — 1 серия (720p)" or "Episode 3". Returns null when
+   none is stated so the caller can fall back to list order. */
+function episodeFromTitle(title) {
+  const t = String(title || '');
+  const patterns = [
+    /(\d{1,4})\s*(?:серия|серии|серий)/i,
+    /(?:episode|ep\.?|e)\s*(\d{1,4})/i,
+    /(?:^|[\s—–-])(\d{1,4})(?:\s*(?:серия|серии|episode|ep\.?))?\s*(?:\(|$)/i,
+  ];
+  for (const re of patterns) {
+    const m = t.match(re);
+    if (m && m[1]) {
+      const n = Number(m[1]);
+      if (Number.isFinite(n) && n > 0 && n < 10000) return n;
+    }
+  }
+  return null;
+}
+
 export function stremioServers(streams) {
   return (streams || []).map((s, i) => ({
     id: `stremio:${i}:${s.url.slice(-12)}`,
     name: s.title || `Stream ${i + 1}`,
     url: s.url,
     tracks: ['sub'],
+    episode: episodeFromTitle(s.title),
   }));
 }
 

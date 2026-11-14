@@ -303,6 +303,12 @@ export function WatchView({ params, route, onCleanup }) {
   const stremioPromise = (storedStremioAddons().length
     ? fetchStremioStreams(id, ep).then((streams) => {
         stremioPool = stremioServers(streams);
+        /* An add-on may return every episode as one list (Anixio does). Move
+           the requested episode to the front of the ladder so it plays first,
+           keeping the rest as fallbacks. */
+        const want = Number(ep);
+        const idx = stremioPool.findIndex((s) => Number(s.episode) === want);
+        if (idx > 0) stremioPool = [stremioPool[idx], ...stremioPool.filter((_, i) => i !== idx)];
         if (!pool.length && stremioPool.length) { pool = baseServers(); }
         return stremioPool;
       }).catch(() => [])
