@@ -389,6 +389,70 @@ export async function fetchStremioStreams(anilistId, episode, addonFilter) {
   return unique;
 }
 
+/* Films & series in the TMDB catalogue carry a TMDB id, not an AniList id.
+   ani.zip can map a TMDB id straight to a Kitsu/IMDb id, so the same direct
+   sources can serve those titles too. Used by the movies/series watch page when
+   no operator `direct_url` is configured. */
+export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season = 1, episode = 1) {
+  const id = Number(tmdbId);
+  if (!Number.isFinite(id) || id <= 0) return [];
+  const cacheKey = `tmdb:${id}:${type}:${season}:${episode}`;
+  const cached = readCache(cacheKey, 0);
+  if (cached) return cached;
+
+  let kitsu = null;
+  let imdb = null;
+  try {
+    const res = await fetch(`https://api.ani.zip/mappings?themoviedb_id=${id}`, { cache: 'default' });
+    if (res.ok) {
+      const data = await res.json();
+      const m = data?.mappings || {};
+      if (m.kitsu_id) kitsu = Number(m.kitsu_id) || null;
+      if (m.imdb_id) imdb = String(m.imdb_id);
+    }
+  } catch {}
+  if (!kitsu && !imdb) return [];
+
+  const eps = Math.max(1, Number(episode) || 1);
+  const ids = [];
+  if (kitsu) {
+    ids.push(`kitsu:${kitsu}:${eps}`);
+    ids.push(`kitsu:${kitsu}`);
+  }
+  if (imdb) {
+    ids.push(`${imdb}:${eps}`);
+    ids.push(imdb);
+  }
+
+  const addons = storedStremioAddons();
+  if (!addons.length) return [];
+  const manifests = await Promise.all(addons.map((b) => fetchManifest(b).then((x) => x.manifest)));
+  const usable = [];
+  addons.forEach((base, i) => {
+    const m = manifests[i];
+    if (!m) return;
+    const res = Array.isArray(m.resources) ? m.resources : [];
+    const hasStream = res.length ? res.some((r) => (typeof r === 'string' ? r === 'stream' : r && r.name === 'stream')) : true;
+    if (hasStream) usable.push({ base, m });
+  });
+  if (!usable.length) return [];
+
+  const results = await Promise.all(usable.map(async ({ base, m }) => {
+    const types = Array.isArray(m?.types) ? m.types : null;
+    const prefixes = Array.isArray(m?.idPrefixes) ? m.idPrefixes : null;
+    const filtered = (prefixes && prefixes.length)
+      ? ids.filter((c) => prefixes.some((p) => c.startsWith(p) || c.split(':')[0] === String(p).replace(/:$/, '')))
+      : ids;
+    return fetchFromAddon(base, filtered.length ? filtered : ids, types);
+  }));
+
+  const streams = results.flat();
+  const seen = new Set();
+  const unique = streams.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
+  writeCache(cacheKey, 0, unique, unique.length ? CACHE_TTL : EMPTY_TTL);
+  return unique;
+}
+
 /* Pull an episode number out of a stream title such as
    "Studio Band | Kodik — 1 серия (720p)" or "Episode 3". Returns null when
    none is stated so the caller can fall back to list order. */

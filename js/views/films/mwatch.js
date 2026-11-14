@@ -12,6 +12,9 @@ import { t } from '../../lib/i18n.js';
 import { errorState } from '../../components/media.js';
 import { brandBubble, logoMark } from '../../lib/brand.js';
 import { api, backdrop, poster, nameOf, setMovieProgress } from '../../lib/tmdb.js';
+import { fetchStremioStreamsForTmdb } from '../../lib/stremio.js';
+import { attachMedia } from '../../lib/playback.js';
+import { isMediaUrl } from '../../lib/sources.js';
 import { mRail } from './movies.js';
 
 /* Direct media only: Solvn plays a direct video address in its own <video>
@@ -215,6 +218,7 @@ export async function MovieWatchView(ctx) {
     clearTimeout(hideTimer);
     hideTimer = 0;
     loaded = false;
+    if (detachMedia) { detachMedia(); detachMedia = null; }
     if (frame) {
       frame.remove();
       frame = null;
@@ -246,15 +250,17 @@ export async function MovieWatchView(ctx) {
   let hideTimer = 0;
   let loaded = false;
 
+  let detachMedia = null;
   function mountVideo(url) {
     dropFrame();
     frame = h('video', {
-      src: url,
       controls: true,
       autoplay: true,
       playsinline: true,
       title: `${title} player`,
     });
+    if (detachMedia) { detachMedia(); detachMedia = null; }
+    attachMedia(frame, url).then((teardown) => { detachMedia = teardown; }).catch(() => {});
     frame.addEventListener('loadeddata', () => {
       if (loaded) return;
       loaded = true;
@@ -271,12 +277,21 @@ export async function MovieWatchView(ctx) {
     player.append(frame);
   }
 
-  function startStream() {
+  async function startStream() {
     ready.hidden = true;
     clearFail();
     loading.classList.remove('hide');
     loadingText.textContent = t('Preparing your stream…');
-    const url = DIRECT_URL(d);
+    let url = DIRECT_URL(d);
+    /* No operator link: resolve the TMDB id through the configured anime
+       add-ons so catalogue anime films and series play too. */
+    if (!url) {
+      try {
+        const streams = await fetchStremioStreamsForTmdb(id, type, season, episode);
+        const first = streams.find((s) => isMediaUrl(s.url));
+        url = first?.url || '';
+      } catch { /* fall through to the honest no-source state */ }
+    }
     if (!url) {
       showFail(t('No direct video source is configured for this title yet.'));
       return;

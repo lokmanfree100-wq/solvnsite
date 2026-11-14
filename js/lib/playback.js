@@ -51,6 +51,27 @@ function hlsEngine() {
 }
 
 /**
+ * Mount a direct/HLS address on a plain `<video>` outside a stage (the movies
+ * watch page). Native HLS wins where the browser has it; otherwise hls.js is
+ * loaded once from the shared engine. Returns a teardown for the hls instance.
+ */
+export async function attachMedia(node, url) {
+  if (!node || !url) return null;
+  if (isHlsUrl(url) && !nativeHls()) {
+    const Hls = await hlsEngine();
+    if (Hls && Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true, lowLatencyMode: false, backBufferLength: 90 });
+      hls.loadSource(url);
+      hls.attachMedia(node);
+      return () => hls.destroy();
+    }
+  }
+  node.src = url;
+  node.load();
+  return null;
+}
+
+/**
  * The caption switch for a plain `<video>`: what tracks it can see, which one is
  * showing, and how to change that. A stage's own element uses this for its
  * single-file branch, and a watch page that plays a file outside a stage — the
