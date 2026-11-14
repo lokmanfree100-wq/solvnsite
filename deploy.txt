@@ -151,6 +151,19 @@ So GitHub Pages works with no extra deploy; a dedicated proxy or the Netlify
 function makes it reliable. Settings ▸ Test reports whether an add-on was reached
 directly or through a proxy, and why if it failed.
 
+Dedicated proxy in two minutes (no flaky public proxies):
+
+  workers/stremio-proxy.js is a ready-to-deploy Cloudflare Worker. It fetches an
+  add-on and adds the CORS header, so the browser can read it.
+  1. dash.cloudflare.com ▸ Workers & Pages ▸ Create ▸ Worker.
+  2. Replace the starter code with workers/stremio-proxy.js, Deploy.
+  3. Copy the Worker URL, e.g. https://solvn-stremio.<you>.workers.dev.
+  4. Solvn ▸ Settings ▸ Stremio-style add-ons ▸ "CORS proxy" paste:
+       https://solvn-stremio.<you>.workers.dev/?url={url}
+  5. Add an add-on and press Test — it should now say "Addon OK".
+  The Worker refuses non-https targets and private/loopback hosts, and caps the
+  response, so it stays a Stremio-add-on reader and not an open proxy.
+
 THE SPONSOR BANNER — one slot, sold by hand, published as a file.
 
 data/sponsor.json is the advert every visitor downloads, and it ships empty, so
