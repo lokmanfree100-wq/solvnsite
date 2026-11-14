@@ -281,6 +281,13 @@ function writeCache(anilistId, episode, streams, ttl) {
   } catch {}
 }
 
+/* Add-ons answer "nothing here" with a real .mp4 of a message card
+   (Yukistreams: /assets/stream-errors/no-stream-found.mp4, PenguPlay:
+   /signin.mp4) and flag it with behaviorHints.notWebReady. Those are
+   placeholders, not media, so they must never reach the player. */
+const PLACEHOLDER_STREAM = /\/assets\/stream-errors\/|\/(?:no-stream-found|media-unsupported|signin)\.mp4(?:$|\?)/i;
+const isPlaceholderStream = (url, stream) => stream?.behaviorHints?.notWebReady === true || PLACEHOLDER_STREAM.test(url);
+
 async function fetchFromAddon(base, ids, types) {
   const out = [];
   const typeList = (types && types.length) ? types : ['anime', 'series', 'movie'];
@@ -303,6 +310,7 @@ async function fetchFromAddon(base, ids, types) {
         const clean = u.trim();
         if (!/^https:\/\//i.test(clean)) continue;
         if (blockedHost(clean)) continue;
+        if (isPlaceholderStream(clean, s)) continue;
         if (!isMediaUrl(clean)) continue;
         out.push({ url: clean, title: String(s?.title || s?.name || '').trim() });
         got += 1;
