@@ -694,7 +694,7 @@ export async function SettingsView() {
         h('div.ico', {}, icon('globe')),
         h('div.txt', {},
           h('b', {}, t('Stremio-style clean add-ons')),
-          h('span', {}, t('Base URL of a clean add-on that answers /stream/{type}/{id}.json with direct .m3u8/.mp4 links. Queried automatically per episode; no ads, no redirects.')),
+          h('span', {}, t('Base URL of a clean add-on that answers /stream/{type}/{id}.json with direct .m3u8/.mp4 links. Queried automatically per episode; no ads, no redirects. Fetched from this browser, so the add-on must send Access-Control-Allow-Origin; otherwise Test reports CORS and you need the Netlify proxy.')),
         ),
       ),
       h('div.rowline.wrap', { style: { gap: '8px', padding: '8px 0' } }, urlIn, add),
