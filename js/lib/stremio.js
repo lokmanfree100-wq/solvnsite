@@ -223,6 +223,11 @@ async function fetchIdMapping(anilistId) {
           const mm = url.match(/tt\d+/);
           if (mm) imdb = mm[0];
         }
+        /* AniList usually links Kitsu; use it when ani.zip lacks a mapping. */
+        if (site.includes('kitsu') || /kitsu\.(?:io|app)\/anime\/(\d+)/i.test(url)) {
+          const km = url.match(/anime\/(\d+)/);
+          if (km) kitsu = Number(km[1]) || null;
+        }
       }
     }
   } catch {}
