@@ -25,11 +25,11 @@ const DIRECT_URL = (d) => (d && (d.direct_url || d.stream_url || d.video_url)) |
 
 export async function MovieWatchView(ctx) {
   const { query } = ctx.route;
-  const isTv = query.type === 'tv';
   const id = Number(ctx.params.id);
-  const season = isTv ? Number(query.s) || 1 : 1;
-  const episode = isTv ? Number(query.e) || 1 : 1;
-  const type = isTv ? 'tv' : 'movie';
+  let type = query.type === 'tv' ? 'tv' : 'movie';
+  let isTv = type === 'tv';
+  let season = isTv ? Number(query.s) || 1 : 1;
+  let episode = isTv ? Number(query.e) || 1 : 1;
 
   const shell = h('div.mwatch-shell');
   const cleanup = (fn) => ctx?.onCleanup?.(fn);
@@ -38,7 +38,20 @@ export async function MovieWatchView(ctx) {
   try {
     d = await api.details(type, id);
   } catch {
-    return errorState(t('That title'), () => ctx.go(ctx.route.raw));
+    /* A TMDB id belongs to exactly one media type, so a watch address that names
+       the other one — /mwatch/<a series id>, or /swatch/<a film id> — asks for a
+       title that does not exist and would end on the error card even though the
+       title is right there. Ask once more for the other type before giving up. */
+    const other = type === 'tv' ? 'movie' : 'tv';
+    try {
+      d = await api.details(other, id);
+      type = other;
+      isTv = other === 'tv';
+      season = isTv ? Number(query.s) || 1 : 1;
+      episode = isTv ? Number(query.e) || 1 : 1;
+    } catch {
+      return errorState(t('That title'), () => ctx.go(ctx.route.raw));
+    }
   }
   d.media_type = type;
   const title = nameOf(d);

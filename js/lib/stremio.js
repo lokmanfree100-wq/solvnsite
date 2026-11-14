@@ -466,6 +466,68 @@ function logTmdb(tmdbId, stage, detail) {
   } catch (e) {}
 }
 
+/* ---- TMDB id → the ids an add-on actually answers ------------------------
+   A watch page holds a TMDB id; no Stremio add-on asks for one. They ask for an
+   IMDb id (tt…), or a Kitsu/AniList id for anime, so the id has to be mapped
+   first. ani.zip is the one keyless service that answers "which anime is this
+   TMDB id" (api.ani.zip/mappings?themoviedb_id=…), and AniList fills in the MAL
+   id and a Kitsu link when ani.zip carried neither.
+
+   That mapping covers anime only, and that is not a gap to paper over: ani.zip
+   answers 404 for a live-action title (Breaking Bad, The Flash), and Cinemeta —
+   Stremio's own metadata service — refuses a numeric TMDB id outright. With no
+   TMDB key on a static host there is no honest bridge for live action, so this
+   returns null and the watch page shows its "no direct streams" card rather
+   than pretending a source exists. */
+async function fetchIdMappingForTmdb(tmdbId, type = 'movie') {
+  const id = Number(tmdbId);
+  if (!Number.isFinite(id) || id <= 0) return null;
+
+  const key = `tmdb:${type === 'tv' ? 'tv' : 'movie'}:${id}`;
+  try {
+    const cache = settings.get(MAP_CACHE_KEY) || {};
+    const rec = cache[key];
+    if (rec && Date.now() - rec.t < MAP_TTL) return rec.v;
+  } catch {}
+
+  const out = { anilist: null, mal: null, imdb: null, kitsu: null, via: 'ani.zip themoviedb_id' };
+
+  try {
+    const res = await fetch(`https://api.ani.zip/mappings?themoviedb_id=${id}`, { cache: 'default' });
+    if (res.ok) {
+      const m = (await res.json())?.mappings || {};
+      if (m.anilist_id) out.anilist = String(m.anilist_id);
+      if (m.kitsu_id) out.kitsu = Number(m.kitsu_id) || null;
+      if (m.imdb_id) out.imdb = String(m.imdb_id);
+      if (m.thetvdb_id) out.tvdb = String(m.thetvdb_id);
+    } else {
+      logTmdb(id, 'resolve ani.zip thetmdb_id non-ok', `status=${res.status}`);
+    }
+  } catch (e) {
+    logTmdb(id, 'resolve ani.zip thetmdb_id error', String(e?.message || e));
+  }
+
+  /* ani.zip only names the anime; AniList knows its MAL id and usually links
+     Kitsu, which is the id AcuAnime and the Kitsu add-ons key on. */
+  if (out.anilist) {
+    const extra = await fetchIdMapping(out.anilist).catch(() => null);
+    if (extra) {
+      out.mal = out.mal || extra.mal || null;
+      out.kitsu = out.kitsu || extra.kitsu || null;
+      out.imdb = out.imdb || extra.imdb || null;
+      out.via = 'ani.zip themoviedb_id + AniList';
+    }
+  }
+
+  const v = out.anilist || out.imdb || out.kitsu ? out : null;
+  try {
+    const cache = settings.get(MAP_CACHE_KEY) || {};
+    cache[key] = { t: Date.now(), v };
+    settings.set(MAP_CACHE_KEY, cache);
+  } catch {}
+  return v;
+}
+
 export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season = 1, episode = 1) {
   const id = Number(tmdbId);
   if (!Number.isFinite(id) || id <= 0) return [];
@@ -476,52 +538,32 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
 
   logTmdb(id, 'resolve start', `type=${type} s=${season} e=${episode}`);
 
-  let kitsu = null;
-  let imdb = null;
-  let via = 'none';
-
-  // Direct TMDB -> external id mapping first.
-  try {
-    const res = await fetch(`https://api.ani.zip/mappings?themoviedb_id=${id}`, { cache: 'default' });
-    if (res.ok) {
-      const data = await res.json();
-      const m = data?.mappings || {};
-      if (m.kitsu_id) kitsu = Number(m.kitsu_id) || null;
-      if (m.imdb_id) imdb = String(m.imdb_id);
-      via = 'ani.zip thetmdb_id';
-    } else {
-      logTmdb(id, 'resolve ani.zip thetmdb_id non-ok', `status=${res.status}`);
-    }
-  } catch (e) {
-    logTmdb(id, 'resolve ani.zip thetmdb_id error', String(e?.message || e));
+  const mapping = await fetchIdMappingForTmdb(id, type);
+  if (mapping) {
+    logTmdb(id, 'resolve fallback', `anilist=${mapping.anilist ?? 'none'} mal=${mapping.mal ?? 'none'} kitsu=${mapping.kitsu ?? 'none'} imdb=${mapping.imdb ?? 'none'}`);
   }
 
-  // If the direct mapping did not yield a usable id, try the cached/shared
-  // AniList mapping (same bucket and shape as the anime path).
-  if (!kitsu && !imdb) {
-    const existing = await fetchIdMappingForTmdb(id);
-    if (existing) {
-      logTmdb(id, 'resolve fallback', `anilist=${existing.anilist ?? 'none'} mal=${existing.mal ?? 'none'} kitsu=${existing.kitsu ?? 'none'} imdb=${existing.imdb ?? 'none'}`);
-      if (existing.kitsu) kitsu = existing.kitsu;
-      if (!imdb && existing.imdb) imdb = existing.imdb;
-      via = 'ani.zip anilist_id || AniList';
-    } else {
-      logTmdb(id, 'resolve fallback empty', 'no ani.zip anilist_id mapping and no AniList mapping cached or reachable');
-    }
-  }
+  const anilist = mapping?.anilist || null;
+  const kitsu = mapping?.kitsu || null;
+  const imdb = mapping?.imdb || null;
+  const via = mapping ? mapping.via : 'none';
 
   // If we still have nothing usable, fail loud enough to read in console/
   // a log, then return empty so the watch page can still show the honest card.
-  if (!kitsu && !imdb) {
-    logTmdb(id, 'resolve fail', `could not map TMDB id ${id} to any streamable external id (kitsu/imdb) — no add-on streams will be queried`);
+  if (!anilist && !kitsu && !imdb) {
+    logTmdb(id, 'resolve fail', `could not map TMDB id ${id} to any streamable external id (anilist/kitsu/imdb) — no add-on streams will be queried`);
     cacheTmdbResolve(id, null);
     return [];
   }
 
-  logTmdb(id, 'resolve ok', `via=${via} kitsu=${kitsu ?? 'none'} imdb=${imdb ?? 'none'}`);
+  logTmdb(id, 'resolve ok', `via=${via} anilist=${anilist ?? 'none'} kitsu=${kitsu ?? 'none'} imdb=${imdb ?? 'none'}`);
 
   const eps = Math.max(1, Number(episode) || 1);
   const ids = [];
+  if (anilist) {
+    ids.push(`anilist:${anilist}:${eps}`);
+    ids.push(`anilist:${anilist}`);
+  }
   if (kitsu) {
     ids.push(`kitsu:${kitsu}:${eps}`);
     ids.push(`kitsu:${kitsu}`);

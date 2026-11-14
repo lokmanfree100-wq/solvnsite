@@ -21,10 +21,9 @@ import { makeDeduper } from '../../lib/dedupe.js';
 import {
   api, poster, nameOf, genreMap,
   movieContinueWatching, movieWatchlist, servingOffline,
-  catalogueAnswer,
 } from '../../lib/tmdb.js';
 import { canStreamTitle } from '../../lib/sources.js';
-import { streamableInCatalogue } from '../../lib/catalogue.js';
+import { answer as catalogueAnswer, loadCatalogue, streamableInCatalogue } from '../../lib/catalogue.js';
 
 /**
  * Rule 1 — only streamable titles reach the wall.
@@ -348,7 +347,13 @@ const listFetcher = (list, type, page = 1) => {
       return api
         .discover(type, { with_genres: KIDS_GENRE[type], sort_by: 'popularity.desc', 'vote_count.gte': 20, page })
         .then(take);
-    case 'stremio': return catalogueAnswer('/stremio-direct', { page }).then(take);
+    /* The snapshot has to be in hand before it can answer this shelf; asking
+       first would answer null on a first visit and show an empty row. */
+    case 'stremio':
+      return loadCatalogue()
+        .then(() => catalogueAnswer('/stremio-direct', { page }))
+        .then((r) => r || { page, total_pages: 1, total_results: 0, results: [] })
+        .then(take);
     default: return api.discover(type, { sort_by: 'popularity.desc', page }).then(take);
   }
 };

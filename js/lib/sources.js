@@ -48,6 +48,7 @@
 import { settings } from './store.js';
 import { DEFAULT_SERVERS } from './defaults.js';
 import { t } from './i18n.js';
+import { API_HOST } from './proxy.js';
 
 /* How long a server stays out of the ladder after it has failed. Half an hour:
    long enough that the next twenty episodes do not start on a dead frame, short
