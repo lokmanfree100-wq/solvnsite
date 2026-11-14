@@ -31,6 +31,7 @@ const SHELF_ROUTES = {
   '/tv/airing_today': 'airingToday',
   '/tv/on_the_air': 'onTheAir',
   '/tv/top_rated': 'topTv',
+  '/stremio-direct': 'stremioDirect',
 };
 
 let loading = null;
@@ -150,6 +151,13 @@ const shelfAnswer = (kind, params) => {
         .filter((r) => !seen.has(r.id))
         .sort(byRating)
         .map(cardOf),
+    );
+  }
+  if (kind === 'stremioDirect') {
+    const seen = new Set(list.map((r) => r.id));
+    list.push(
+      ...ofType('movie').filter((r) => !seen.has(r.id)).sort(byRating).map(cardOf),
+      ...ofType('tv').filter((r) => !seen.has(r.id)).sort(byRating).map(cardOf),
     );
   }
   return {

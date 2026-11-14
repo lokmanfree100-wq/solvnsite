@@ -21,6 +21,7 @@ import { makeDeduper } from '../../lib/dedupe.js';
 import {
   api, poster, nameOf, genreMap,
   movieContinueWatching, movieWatchlist, servingOffline,
+  catalogueAnswer,
 } from '../../lib/tmdb.js';
 import { canStreamTitle } from '../../lib/sources.js';
 import { streamableInCatalogue } from '../../lib/catalogue.js';
@@ -347,6 +348,7 @@ const listFetcher = (list, type, page = 1) => {
       return api
         .discover(type, { with_genres: KIDS_GENRE[type], sort_by: 'popularity.desc', 'vote_count.gte': 20, page })
         .then(take);
+    case 'stremio': return catalogueAnswer('/stremio-direct', { page }).then(take);
     default: return api.discover(type, { sort_by: 'popularity.desc', page }).then(take);
   }
 };
@@ -371,6 +373,11 @@ const GENRE_ROWS = {
     ['9648', 'Mystery'],
     ['99', 'Documentaries'],
   ],
+
+  // TMDB-side Stremio direct stream picks — the 50 titles wired into the snapshot
+  stremio: [
+    ['stremio', t('Stremio Direct'), t('Direct streams from the configured Stremio add-ons.')],
+  ],
 };
 
 const LIST_ROWS = {
@@ -379,6 +386,7 @@ const LIST_ROWS = {
     ['popular', 'Popular Movies', 'The most-watched films on the catalogue.'],
     ['now', 'Recently Added', 'Fresh in cinemas and new to the catalogue.'],
     ['top', 'Top Rated', 'The best-scoring films, in order.'],
+    ['stremio', t('Stremio Direct'), t('Direct streams from the configured Stremio add-ons.')],
   ],
   tv: [
     ['trending', 'Trending Series', 'What everyone is watching right now.'],
@@ -386,6 +394,7 @@ const LIST_ROWS = {
     ['onair', 'Recently Updated', 'Series with fresh chapters this week.'],
     ['airing', 'New This Week', 'Fresh chapters landing today.'],
     ['top', 'Top Rated', 'The best-scoring series, in order.'],
+    ['stremio', t('Stremio Direct'), t('Direct streams from the configured Stremio add-ons.')],
   ],
 };
 

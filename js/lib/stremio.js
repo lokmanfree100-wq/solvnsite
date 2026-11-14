@@ -315,19 +315,39 @@ const PLACEHOLDER_STREAM = /\/assets\/stream-errors\/|\/(?:no-stream-found|media
    only when its URL is a known error/sign-in card. */
 const isPlaceholderStream = (url, stream) => PLACEHOLDER_STREAM.test(String(url || ''));
 
-async function fetchFromAddon(base, ids, types) {
+/* Resolve a stream title to the episode number it claims, or null. Mirrors the
+   watch-page parser so "the episode it plays" is defined identically in both.
+   AcuAnime stream titles look like:
+     "Attack on Titan S1 • E5 - \"First Battle: Battle of Trost (1)\""
+     "One Piece S14 • E500 - \"...\""   */
+function matchEpisode(title, want) {
+  if (!Number.isFinite(want)) return false;
+  const t = String(title || '');
+  let np = t.match(/(\d{1,4})\s*(?:серия|серии|серий)/i);
+  let ep = t.match(/(?:episode|ep\.?|e)\s*(\d{1,4})/i);
+  let bare = t.match(/—\s*(\d{1,4})\s*серия/i) || t.match(/(?:^|[\s—–-])(\d{1,4})(?:\s*(?:серия|серии|episode|ep\.?))?\s*(?:\(|$)/i);
+  const n = Number((np && np[1]) || (ep && ep[1]) || (bare && bare[1]));
+  if (!Number.isFinite(n) || n <= 0 || n >= 10000) return false;
+  return n === want;
+}
+
+async function fetchFromAddon(base, ids, types, episode) {
   const out = [];
   const typeList = (types && types.length) ? types : ['anime', 'series', 'movie'];
-  /* Candidate ids are tried in priority order and we stop at the first id that
-     answers with streams, so a normal episode is a couple of requests, not one
-     per id × type. */
+  /* Candidate ids are tried in priority order. We want streams for the
+     *requested* episode. If a suffixed id answers with streams but none of them
+     are for the requested episode (AcuAnime can return an E1 sitting in slot N,
+     or a "No streams found" notice card), that id does not satisfy the add-on
+     for this episode.
+     If later a bare id for the same base also answers with only E1 streams, skip
+     it too so we never start on E1 for episode N we asked for. */
+  const want = Number(episode) || 1;
+  let lastBaseHadStreamsNoMatch = false;
+  let got = 0;
+  let hadStreamsNoMatch = false;
   for (const id of ids) {
-    let got = 0;
+    const pathId = encodeURIComponent(id).replace(/%3A/gi, ':');
     for (const type of typeList) {
-      /* Stremio ids carry literal colons (anilist:123, mal:456); encode the
-         rest of the segment but leave ':' as the protocol expects, or an add-on
-         with a strict path match never sees its id. */
-      const pathId = encodeURIComponent(id).replace(/%3A/gi, ':');
       const r = await addonFetch(base, `stream/${type}/${pathId}.json`);
       if (!r.ok) continue;
       const streams = Array.isArray(r.json?.streams) ? r.json.streams : [];
@@ -339,19 +359,38 @@ async function fetchFromAddon(base, ids, types) {
         if (blockedHost(clean)) continue;
         if (isPlaceholderStream(clean, s)) continue;
         if (!isMediaUrl(clean)) continue;
-        out.push({ url: clean, title: String(s?.title || s?.name || '').trim() });
-        got += 1;
+        const title = String(s?.title || s?.name || '').trim();
+        if (matchEpisode(title, want)) {
+          out.push({ url: clean, title });
+          got += 1;
+        } else if (streams.length > 0) {
+          hadStreamsNoMatch = true;
+        }
       }
+      if (got) break;
     }
+    if (hadStreamsNoMatch) lastBaseHadStreamsNoMatch = true;
     if (got) break;
+  }
+  /* If the suffixed ids never matched the requested episode but a bare id did
+     match only on the bare list, the bare match reflects the bare-id E1 (or a
+     call that the add-on keeps as a fallback). For a requested non-1 episode,
+     that is a same-shape mismatch as above — do not present it as the requested
+     episode. */
+  if (!got && out.length && want !== 1 && lastBaseHadStreamsNoMatch) {
+    /* keep only what actually names the requested episode (there is none), so
+       this add-on contributes nothing. */
+    out.length = 0;
   }
   const seen = new Set();
   return out.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
 }
 
+
 export async function fetchStremioStreams(anilistId, episode, addonFilter) {
-  const cached = readCache(anilistId, episode);
-  if (cached) return cached; // includes a cached empty result
+  const inCache = Number(episode);
+  const cached = readCache(anilistId, inCache);
+  if (cached) return cached; // includes a cached empty result for that episode
 
   let addons = storedStremioAddons();
   if (Array.isArray(addonFilter) && addonFilter.length) addons = addonFilter;
@@ -378,7 +417,7 @@ export async function fetchStremioStreams(anilistId, episode, addonFilter) {
     const types = Array.isArray(m?.types) ? m.types : null;
     const prefixes = Array.isArray(m?.idPrefixes) ? m.idPrefixes : null;
     const ids = candidateIds(mapping, episode, prefixes);
-    return fetchFromAddon(base, ids, types);
+    return fetchFromAddon(base, ids, types, episode);
   }));
 
   const streams = results.flat();
@@ -393,6 +432,10 @@ export async function fetchStremioStreams(anilistId, episode, addonFilter) {
    ani.zip can map a TMDB id straight to a Kitsu/IMDb id, so the same direct
    sources can serve those titles too. Used by the movies/series watch page when
    no operator `direct_url` is configured. */
+function tryGetStrArr(key) {
+  try { return JSON.parse(localStorage.getItem(key) || 'null') || null; } catch { return null; }
+}
+
 export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season = 1, episode = 1) {
   const id = Number(tmdbId);
   if (!Number.isFinite(id) || id <= 0) return [];
@@ -444,7 +487,7 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
     const filtered = (prefixes && prefixes.length)
       ? ids.filter((c) => prefixes.some((p) => c.startsWith(p) || c.split(':')[0] === String(p).replace(/:$/, '')))
       : ids;
-    return fetchFromAddon(base, filtered.length ? filtered : ids, types);
+    return fetchFromAddon(base, filtered.length ? filtered : ids, types, eps);
   }));
 
   const streams = results.flat();
@@ -455,37 +498,53 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
     try { settings.set(ttlKey, String(Date.now())); } catch {};
   } catch {}
   return unique;
-  return unique;
 }
 
-/* Pull an episode number out of a stream title such as
-   "Studio Band | Kodik — 1 серия (720p)" or "Episode 3". Returns null when
-   none is stated so the caller can fall back to list order. */
+/** Turn raw Stremio add-on streams into server objects the watch-page ladder can
+ *  consume. Raw streams are `{ url, title }[]` from `fetchStremioStreams`; the
+ *  ladder reads `.url`, `.name`, `.id`, `.tracks` (via `serverTracks`) and, for
+ *  episode reordering, `.episode`.
+ *
+ *  Episode is inferred from the stream title with the same parser `matchEpisode`
+ *  uses, so a multi-episode add-on list (Anixio-style) can still be reordered by
+ *  the requested episode even when the add-on did not suffix the id. */
+export function stremioServers(streams) {
+  if (!Array.isArray(streams)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const s of streams) {
+    const u = String(s?.url || s?.stream_url || s?.video_url || '').trim();
+    if (!u) continue;
+    if (!/^https:\/\//i.test(u)) continue;
+    if (blockedHost(u)) continue;
+    if (!isMediaUrl(u)) continue;
+    if (isPlaceholderStream(u, s)) continue;
+    if (seen.has(u)) continue;
+    seen.add(u);
+    const title = String(s?.title || s?.name || '').trim();
+    const ep = episodeFromTitle(title);
+    out.push({
+      id: `stremio:${u.slice(0, 64)}`,
+      name: title || 'Stremio stream',
+      url: u,
+      tracks: ['sub'],
+      episode: ep,
+    });
+  }
+  return out;
+}
+
+/** Pull the episode number a stream title claims, or 1 when the title is not
+ *  parseable. Mirrors the `matchEpisode` logic so the ladder reorders by the
+ *  same number the player would match. */
 function episodeFromTitle(title) {
   const t = String(title || '');
-  const patterns = [
-    /(\d{1,4})\s*(?:серия|серии|серий)/i,
-    /(?:episode|ep\.?|e)\s*(\d{1,4})/i,
-    /(?:^|[\s—–-])(\d{1,4})(?:\s*(?:серия|серии|episode|ep\.?))?\s*(?:\(|$)/i,
-  ];
-  for (const re of patterns) {
-    const m = t.match(re);
-    if (m && m[1]) {
-      const n = Number(m[1]);
-      if (Number.isFinite(n) && n > 0 && n < 10000) return n;
-    }
-  }
-  return null;
-}
-
-export function stremioServers(streams) {
-  return (streams || []).map((s, i) => ({
-    id: `stremio:${i}:${s.url.slice(-12)}`,
-    name: s.title || `Stream ${i + 1}`,
-    url: s.url,
-    tracks: ['sub'],
-    episode: episodeFromTitle(s.title),
-  }));
+  let np = t.match(/(\d{1,4})\s*(?:серия|серии|серий)/i);
+  let ep = t.match(/(?:episode|ep\.?|e)\s*(\d{1,4})/i);
+  let bare = t.match(/—\s*(\d{1,4})\s*серия/i)
+    || t.match(/(?:^|[\s—–-])(\d{1,4})(?:\s*(?:серия|серии|episode|ep\.?))?\s*(?:\(|$)/i);
+  const n = Number((np && np[1]) || (ep && ep[1]) || (bare && bare[1]));
+  return (Number.isFinite(n) && n > 0 && n < 10000) ? n : 1;
 }
 
 export function clearStremioCache() {
