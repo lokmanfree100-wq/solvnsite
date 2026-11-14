@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Solvn</title>
+    <!--
+      GitHub Pages has no single-page-app fallback: /mwatch/1396 finds no file
+      and lands here. This hands the address to the app as a hash route, which
+      is the only form every route already understands. It redirects rather than
+      repeating index.html, so it cannot fall out of step with the real
+      document and strand a browser on an old splash shell.
+    -->
+    <script>
+      location.replace('/#' + location.pathname + location.search + location.hash);
+    </script>
+  </head>
+  <body>
+    <noscript><a href="/">Solvn</a></noscript>
+  </body>
+</html>
