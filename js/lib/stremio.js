@@ -13,6 +13,7 @@ const MANIFEST_TTL = 60 * 60 * 1000;
 const EMPTY_TTL = 10 * 60 * 1000; // cache "no streams" briefly so misses are not refetched
 const manifestMem = new Map();
 const inflight = new Map(); // de-dupe concurrent identical fetches
+let cooldownUntil = 0; // circuit breaker: stop hitting the proxy after repeated 429s
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -115,6 +116,12 @@ async function configuredProxyFetch(url) {
         await sleep(Math.min(Math.max(ra * 1000, 700), 3500));
         continue;
       }
+      if (res.status === 429) {
+        /* Still throttled after one retry: back off for a minute so the page
+           stops spending the quota, and report it as a soft failure. */
+        cooldownUntil = Date.now() + 60_000;
+        return { ok: false, status: 429, json: null, text: '' };
+      }
       if (!res.ok) return { ok: false, status: res.status, json: null, text: '' };
       const text = await res.text();
       let json = null;
@@ -137,6 +144,7 @@ async function addonFetchInner(base, relPath) {
     if (site.ok) return site;
   }
   // 2. The dedicated CORS proxy (stremioProxy). No third-party proxies.
+  if (Date.now() < cooldownUntil) return { ok: false, status: 429, json: null, text: '', error: 'proxy cooling down' };
   const cfg = await configuredProxyFetch(url);
   if (cfg.ok) return cfg;
   return direct; // keep the original error for the report
