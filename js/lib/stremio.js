@@ -6,7 +6,7 @@ import { proxyUrl, API_HOST } from './proxy.js';
 
 const STORAGE_KEY = 'stremioAddons';
 const CACHE_KEY = 'stremioStreamCache';
-const MAP_CACHE_KEY = 'stremioIdMap';
+const MAP_CACHE_KEY = 'stremioIdMap2';
 const CACHE_TTL = 12 * 60 * 60 * 1000;
 const MAP_TTL = 7 * 24 * 60 * 60 * 1000;
 const MANIFEST_TTL = 60 * 60 * 1000;
@@ -209,6 +209,7 @@ async function fetchIdMapping(anilistId) {
   } catch {}
   let mal = null;
   let imdb = null;
+  let kitsu = null;
   try {
     const data = await gql('query ($id: Int) { Media(id: $id) { idMal externalLinks { site url } } }', { id });
     const m = data?.Media;
@@ -225,7 +226,17 @@ async function fetchIdMapping(anilistId) {
       }
     }
   } catch {}
-  const v = { anilist: String(anilistId), mal, imdb };
+  /* AcuAnime (and others) key off Kitsu ids; fetch from ani.zip. */
+  try {
+    const res = await fetch(`https://api.ani.zip/mappings?anilist_id=${id}`, { cache: 'default' });
+    if (res.ok) {
+      const data = await res.json();
+      const m = data?.mappings || {};
+      if (m.kitsu_id) kitsu = Number(m.kitsu_id) || null;
+      if (!imdb && m.imdb_id) imdb = String(m.imdb_id);
+    }
+  } catch {}
+  const v = { anilist: String(anilistId), mal, imdb, kitsu };
   try {
     const cache = settings.get(MAP_CACHE_KEY) || {};
     cache[id] = { t: Date.now(), v };
@@ -238,15 +249,22 @@ function candidateIds(mapping, episode, prefixes) {
   const ep = Number(episode) || 1;
   const all = [];
   const anilistId = mapping.anilist;
-  all.push(`anilist:${anilistId}`);
+  /* Episode-specific ids are tried first: an addon that keys off them (AcuAnime)
+     returns the right episode, while an addon that ignores the suffix returns
+     an empty list and we fall through to the base id (Anixio-style). */
   all.push(`anilist:${anilistId}:${ep}`);
+  all.push(`anilist:${anilistId}`);
   if (mapping.mal) {
-    all.push(`mal:${mapping.mal}`);
     all.push(`mal:${mapping.mal}:${ep}`);
+    all.push(`mal:${mapping.mal}`);
+  }
+  if (mapping.kitsu) {
+    all.push(`kitsu:${mapping.kitsu}:${ep}`);
+    all.push(`kitsu:${mapping.kitsu}`);
   }
   if (mapping.imdb) {
-    all.push(mapping.imdb);
     all.push(`${mapping.imdb}:${ep}`);
+    all.push(mapping.imdb);
   }
   const filtered = (prefixes && prefixes.length)
     ? all.filter((c) => prefixes.some((p) => c.startsWith(p) || c.split(':')[0] === String(p).replace(/:$/, '')))
@@ -286,7 +304,11 @@ function writeCache(anilistId, episode, streams, ttl) {
    /signin.mp4) and flag it with behaviorHints.notWebReady. Those are
    placeholders, not media, so they must never reach the player. */
 const PLACEHOLDER_STREAM = /\/assets\/stream-errors\/|\/(?:no-stream-found|media-unsupported|signin)\.mp4(?:$|\?)/i;
-const isPlaceholderStream = (url, stream) => stream?.behaviorHints?.notWebReady === true || PLACEHOLDER_STREAM.test(url);
+/* `notWebReady` alone is NOT a placeholder signal: legitimate proxy addons
+   (e.g. AcuAnime) mark real streams with it because they need headers, and
+   serve them through their own /proxy/ URL. Treat a stream as a placeholder
+   only when its URL is a known error/sign-in card. */
+const isPlaceholderStream = (url, stream) => PLACEHOLDER_STREAM.test(String(url || ''));
 
 async function fetchFromAddon(base, ids, types) {
   const out = [];

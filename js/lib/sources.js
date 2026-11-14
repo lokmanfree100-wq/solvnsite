@@ -178,10 +178,13 @@ export function blockedHost(url) {
    page that has to be framed. `{episode}` and friends sit before the extension
    in most templates, so the suffix tests still read correctly. */
 const HLS_URL = /\.m3u8(?:[?#]|$)/i;
+/* Some addons (AcuAnime) serve HLS through a proxy whose URL has no .m3u8
+   suffix (e.g. /proxy/hls?d=...). Treat those as HLS manifests too. */
+const PROXY_HLS_URL = /\/proxy\/hls(?:[?#]|$)/i;
 const FILE_URL = /\.(?:mp4|webm|ogv|mov|m4s)(?:[?#]|$)/i;
 
-export const isHlsUrl = (url) => HLS_URL.test(String(url || ''));
-export const isMediaUrl = (url) => HLS_URL.test(String(url || '')) || FILE_URL.test(String(url || ''));
+export const isHlsUrl = (url) => HLS_URL.test(String(url || '')) || PROXY_HLS_URL.test(String(url || ''));
+export const isMediaUrl = (url) => HLS_URL.test(String(url || '')) || PROXY_HLS_URL.test(String(url || '')) || FILE_URL.test(String(url || ''));
 
 /** `media` plays inside Solvn; `embed` is somebody else's page, framed. */
 export const serverKind = (server) => (isMediaUrl(server?.url) ? 'media' : 'embed');
