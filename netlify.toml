@@ -51,3 +51,8 @@
   from = "/stream"
   to = "/.netlify/functions/proxy?kind=stream"
   status = 200
+
+[[redirects]]
+  from = "/stremio"
+  to = "/.netlify/functions/proxy?kind=stremio"
+  status = 200

@@ -8,6 +8,7 @@ import { clearCache, apiStatus, checkNow } from '../lib/anilist.js';
 import { isSignedIn, tellDiscord, staticHost, logout } from '../lib/account.js';
 import { FAILOVER_CHOICES, TEMPLATE_HINT, TRACKS, addServer, asTrack, extraServers, isSiteServer, removeServer, serverKind, serverName, serverTracks, tracksOffered, trackChip, trackName } from '../lib/sources.js';
 import { addDirectMedia, removeDirectMedia, listDirectMedia, directMediaProblem, importDirectMediaBulk } from '../lib/directmedia.js';
+import { storedStremioAddons, addStremioAddon, removeStremioAddon, stremioAddonProblem, clearStremioCache, testAddon } from '../lib/stremio.js';
 import { toast, confirmSheet } from '../lib/ui.js';
 import { t, lang, setLang, LANGS } from '../lib/i18n.js';
 import { cloudConfig, cloudActive, clearCloudConfig, testCloudConnection, cloudSignOut } from '../lib/cloud.js';
@@ -658,6 +659,57 @@ export async function SettingsView() {
     );
   }
   paintDirectMedia();
+  const stremioBody = h('div');
+
+  function paintStremio() {
+    const urlIn = h('input.input', { type: 'url', autocomplete: 'off', spellcheck: 'false', placeholder: 'https://your-clean-addon.example.com', 'aria-label': t('Add-on address') });
+    const add = h('button.btn.btn--sm.btn--primary', {
+      onclick: () => {
+        const problem = addStremioAddon(urlIn.value);
+        if (problem) { toast(problem, { tone: 'err', iconName: 'alert' }); urlIn.focus(); return; }
+        toast(t('Add-on added'), { tone: 'ok', iconName: 'check' });
+        urlIn.value = '';
+        paintStremio();
+      },
+    }, icon('plus'), t('Add add-on'));
+    const rows = storedStremioAddons().map((u) =>
+      h('div.set-row', {},
+        h('div.ico', {}, icon('globe')),
+        h('div.txt', {}, h('b', {}, u)),
+        h('button.btn.btn--sm.btn--ghost', {
+          onclick: async () => {
+            toast(t('Testing...'), { tone: 'info', iconName: 'globe' });
+            const r = await testAddon(u);
+            if (r.ok) toast(t('Addon OK: ') + (r.manifest?.name || u) + ' — ' + (r.streams?.length || 0) + ' streams', { tone: 'ok', iconName: 'check' });
+            else toast(t('Addon failed: ') + (r.error || 'unknown'), { tone: 'err', iconName: 'alert' });
+          },
+        }, icon('globe'), t('Test')),
+        h('button.btn.btn--sm.btn--ghost', {
+          onclick: () => { removeStremioAddon(u); toast(t('Removed'), { tone: 'ok', iconName: 'check' }); paintStremio(); },
+        }, icon('trash'), t('Remove')),
+      ),
+    );
+    stremioBody.replaceChildren(
+      h('div.set-row', {},
+        h('div.ico', {}, icon('globe')),
+        h('div.txt', {},
+          h('b', {}, t('Stremio-style clean add-ons')),
+          h('span', {}, t('Base URL of a clean add-on that answers /stream/{type}/{id}.json with direct .m3u8/.mp4 links. Queried automatically per episode; no ads, no redirects.')),
+        ),
+      ),
+      h('div.rowline.wrap', { style: { gap: '8px', padding: '8px 0' } }, urlIn, add),
+      ...rows,
+      ...(rows.length ? [] : [h('div.set-row', {}, h('div.txt', {}, h('span', {}, t('No add-ons configured.'))))]),
+      h('div.set-row', {},
+        h('div.ico', {}, icon('refresh')),
+        h('div.txt', {}, h('b', {}, t('Stream cache')), h('span', {}, t('Cached direct streams per episode (12h TTL). Clear to force re-fetch.'))),
+        h('button.btn.btn--sm.btn--ghost', {
+          onclick: () => { clearStremioCache(); toast(t('Cache cleared'), { tone: 'ok', iconName: 'check' }); },
+        }, icon('trash'), t('Clear cache')),
+      ),
+    );
+  }
+  paintStremio();
   const hostOf = (url) => {
     try {
       return new URL(url).host;
@@ -1102,6 +1154,11 @@ export async function SettingsView() {
           h('h3', {}, t('Discord')),
           discordBody,
         )]),
+
+    h('section.set-group', {},
+      h('h3', {}, t('Stremio-style add-ons')),
+      stremioBody,
+    ),
 
     h('section.set-group', {},
       h('h3', {}, t('Footer links')),

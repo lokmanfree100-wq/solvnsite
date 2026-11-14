@@ -58,3 +58,9 @@ export const DEFAULT_SERVERS = [];
    Only https direct media files (.m3u8/.mp4/.webm/...) are accepted; blocked
    ad hosts are rejected. */
 export const DIRECT_MEDIA = {};
+
+/* Stremio-style clean add-on base URLs (https). Each must answer
+   /stream/{type}/{id}.json with { streams: [{ url, title }] } where url is a
+   direct .m3u8/.mp4/.webm file. Used for automated, ad-free stream discovery.
+   Leave empty to disable. */
+export const STREMIO_ADDONS = [];

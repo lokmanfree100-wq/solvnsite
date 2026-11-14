@@ -28,6 +28,7 @@ import { buildEpisodes, episodeCountIsGuess, resolveEpisodeCount } from '../lib/
 import { episodeStills } from '../lib/episode-stills.js';
 import { asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isMediaUrl, isTrack, markServer, serverKind, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
 import { directMediaServers } from '../lib/directmedia.js';
+import { storedStremioAddons, fetchStremioStreams, stremioServers } from '../lib/stremio.js';
 import { createStage } from '../lib/playback.js';
 import { accentValue } from '../lib/accent.js';
 import { mediaRow, emptyState, episodeArt } from '../components/media.js';
@@ -289,9 +290,23 @@ export function WatchView({ params, route, onCleanup }) {
   let watchdog = null;
   /* Direct, self-hosted media for this title/episode takes priority over any
      template server, so a clean operator-provided link always wins. */
+  /* Stremio-style add-ons are fetched asynchronously (they live on another
+     host). `stremioPool` starts empty and is filled when the fetch resolves;
+     baseServers() folds it in so a configured add-on feeds the ladder without
+     any manual links. */
+  let stremioPool = [];
+  const stremioPromise = (storedStremioAddons().length
+    ? fetchStremioStreams(id, ep).then((streams) => {
+        stremioPool = stremioServers(streams);
+        if (!pool.length && stremioPool.length) { pool = baseServers(); }
+        return stremioPool;
+      }).catch(() => [])
+    : Promise.resolve([]));
   const baseServers = () => {
     const direct = directMediaServers(id, ep);
-    return direct.length ? direct : servers();
+    if (direct.length) return direct;
+    if (stremioPool.length) return stremioPool;
+    return servers();
   };
   let pool = baseServers();
   let run = [];
@@ -509,9 +524,15 @@ export function WatchView({ params, route, onCleanup }) {
   }
 
   /** Point the player at the current rung of the ladder and restart the clock. */
-  function play(msg) {
+  async function play(msg) {
     const next = nextUnaired();
     if (next && ep >= next) return showLocked();
+    /* If Stremio add-ons are configured, wait briefly for them to answer before
+       giving up — they are the automated source and may still be in flight. */
+    if (!pool.length && storedStremioAddons().length) {
+      try { await stremioPromise; } catch {}
+      pool = baseServers();
+    }
     if (!pool.length) return showUnconfigured();
     started = true;
     ready.hidden = true;

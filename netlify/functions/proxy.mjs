@@ -34,6 +34,21 @@ const IA_META = 'https://archive.org/metadata/';
    name an arbitrary URL. */
 const EMBED_HOSTS = new Set(['vidlink.pro', 'vidsrc.su', 'vidsrc.cc', 'multiembed.mov', 'moviesapi.club']);
 
+/* Private/loopback hostnames that a proxied request must never reach. */
+const PRIVATE_HOST = (host) => {
+  const h = String(host || '').toLowerCase();
+  if (h === 'localhost' || h === '0.0.0.0' || h.endsWith('.localhost')) return true;
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(h)) {
+    const [a, b] = h.split('.').map(Number);
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+  return false;
+};
+
 /* The direct-stream ladder: the same three providers, in the same order, as the
    dev server. Each entry declares its own family, because several answer the
    front door by redirecting to the host that actually serves the player. */
@@ -318,6 +333,37 @@ async function routeStream(params, origin) {
   return json(200, { ok: false, sources: [], tried }, origin);
 }
 
+/* ---- /stremio --------------------------------------------------------------
+   Proxies a Stremio add-on request (manifest or stream) so the browser can read
+   it cross-origin. Target is user-configured, so it is validated strictly:
+   https only, public host, size/time capped. */
+async function routeStremio(params, origin) {
+  const target = params.get('target') || '';
+  const relPath = params.get('path') || '';
+  let base;
+  try { base = new URL(target); } catch { return json(400, { error: 'bad target' }, origin); }
+  if (base.protocol !== 'https:') return json(403, { error: 'https required' }, origin);
+  if (PRIVATE_HOST(base.hostname)) return json(403, { error: 'host not allowed' }, origin);
+  if (!/^[A-Za-z0-9._~!$&'()*+,;=:@%/-]{0,300}$/.test(relPath) || relPath.includes('..')) {
+    return json(400, { error: 'bad path' }, origin);
+  }
+  const url = `${base.origin}${base.pathname.replace(/\/+$/, '')}/${relPath.replace(/^\/+/, '')}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 9000);
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json,*/*' }, redirect: 'follow', signal: ctrl.signal });
+    const text = await res.text();
+    if (text.length > MAX_DOC_BYTES) return json(413, { error: 'response too large' }, origin);
+    let body = text;
+    try { body = JSON.parse(text); } catch { /* keep raw */ }
+    return json(res.ok ? 200 : res.status, body, origin, 'no-store');
+  } catch (e) {
+    return json(502, { error: String((e && e.message) || e) }, origin);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /* ---- entry -----------------------------------------------------------------*/
 
 export async function handler(event) {
@@ -343,6 +389,7 @@ export async function handler(event) {
     if (kind === 'ia') return withCors(await routeIa(path, params));
     if (kind === 'health') return await routeHealth(params, origin);
     if (kind === 'stream') return await routeStream(params, origin);
+    if (kind === 'stremio') return await routeStremio(params, origin);
   } catch (e) {
     return json(502, { error: String((e && e.message) || e) }, origin);
   }
