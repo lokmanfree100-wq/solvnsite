@@ -240,6 +240,10 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
       }
       node.src = url;
       node.load();
+      /* A direct file (.mp4/.webm) loads paused; start it like a manifest does
+         once parsed, or "Play now" would leave the viewer on a still frame.
+         Autoplay may be refused by the browser, so a failure is harmless. */
+      node.play().catch(() => {});
       return;
     }
     if (nativeHls()) {

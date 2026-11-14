@@ -234,5 +234,15 @@ direct or clean internal streaming URLs via Settings or lib/defaults.js. Entries
 here pass the same gate as a typed one — https only, placeholders checked,
 blocked hosts refused — and appear in Settings as a locked "Site default" row.
 
+LOCAL PREVIEW — one command, no dependencies.
+
+  perl serve.pl 4174 .
+
+This is the repo's own static server for checking a change before you push. It
+serves every file with the right content type, sends `Cache-Control: no-cache`,
+closes each connection after one request and forks per request, so a browser's
+parallel module load cannot block it or take it down mid-page. Open
+http://127.0.0.1:4174/ and the same files the GitHub Pages build will serve.
+
 After uploading, open the site once and press Ctrl+F5 so the old copies held in
 your browser are replaced by these files.
