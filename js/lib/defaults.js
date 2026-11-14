@@ -79,7 +79,8 @@ export const STREMIO_ADDONS = [
   // A base URL added here is asked for /manifest.json and then
   // /stream/{type}/{id}.json automatically for every episode.
   //
-  // With no stream-capable add-on, the watch page still plays: it asks
-  // Archive.org for a public-domain copy of the title and, when there is none,
-  // falls back to an open-reel HLS. Nothing is pasted and nothing is required.
+  // No automatic fallback is played: when nothing names a direct .m3u8/.mp4,
+  // the watch page shows "No direct streams available" instead. Nothing is
+  // pasted and nothing is required; operators add a stream-capable add-on or
+  // server above when they have one.
 ];
