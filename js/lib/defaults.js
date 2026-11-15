@@ -77,7 +77,7 @@ export const DIRECT_MEDIA = {};
    base is skipped rather than fetched. Deploy it with its
    `workers/addon/deploy.manifest.json`, then paste the resulting base URL here
    once (no trailing slash) and every visitor gets it by default. */
-export const SOLVN_ADDON = '';
+export const SOLVN_ADDON = 'https://site-03268baeedd94c9aa86aa577c5ac4a39.freebuff.page';
 
 export const STREMIO_ADDONS = [
   // Our own add-on, when this deployment runs one (see SOLVN_ADDON above).
