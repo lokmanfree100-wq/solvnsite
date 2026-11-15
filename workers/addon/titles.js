@@ -77,4 +77,32 @@ export const TITLES = [
     url: 'https://archive.org/download/inspector_general_ipod_version/inspector_general_512kb.mp4',
     credit: 'public domain · Internet Archive',
   },
+  {
+    ids: ['anilist:105333'],
+    type: 'series',
+    name: 'Dr. STONE — Episode 1 (English Sub)',
+    /* Crunchyroll's official channel upload. Verified through YouTube's oEmbed
+       API (author "Crunchyroll", title matches) and the watch page reports
+       status OK with playableInEmbed=true, so it embeds on third-party sites. */
+    ytId: 'SKfor6O-8hs',
+    credit: 'Crunchyroll · official channel upload',
+  },
+  {
+    ids: ['anilist:105333'],
+    type: 'series',
+    name: 'Dr. STONE — Episode 1 (English Dub)',
+    /* Crunchyroll's official channel upload (dubbed). Same verification as above. */
+    ytId: '5ILlar1UJ88',
+    credit: 'Crunchyroll · official channel upload (English dub)',
+  },
+  {
+    ids: ['anilist:21507'],
+    type: 'series',
+    name: 'Mob Psycho 100 — Episode 1 (English Dub)',
+    /* Crunchyroll's official channel upload (dubbed). Verified through oEmbed
+       (author "Crunchyroll") and the watch page reports status OK with
+       playableInEmbed=true. */
+    ytId: 'kG-BIWRAC6k',
+    credit: 'Crunchyroll · official channel upload (English dub)',
+  },
 ];
