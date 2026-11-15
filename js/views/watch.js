@@ -223,6 +223,10 @@ export function WatchView({ params, route, onCleanup }) {
      advert cannot open a tab or take the viewer anywhere. */
   const stageTitle = () => `${title(media)} — ${t('Episode {n}', { n: ep })} (${trackName(audio)})`;
   let stage = null;
+  /* Blob URLs minted for cross-origin caption tracks. Tracked so they can be
+     revoked when the stage is dropped or replaced, instead of leaking across
+     episode and server switches. */
+  let subtitleBlobUrls = [];
   let started = false;
   /* Solvn's mark is drawn here, on the player box, rather than asked of whatever
      is inside it: it cannot be covered, removed or hidden by a source, it scales
@@ -287,6 +291,9 @@ export function WatchView({ params, route, onCleanup }) {
     stage.destroy();
     frameBox.removeChild(stage.node);
     stage = null;
+    /* Revoke any caption blob URLs the dropped stage was holding. */
+    subtitleBlobUrls.forEach((u) => { try { URL.revokeObjectURL(u); } catch {} });
+    subtitleBlobUrls = [];
     /* The menus described the stage that just went away. Until the next one says
        what it carries, they have nothing to say. */
     paintQuality();
@@ -579,7 +586,13 @@ export function WatchView({ params, route, onCleanup }) {
           return null;
         }
       }));
+      /* Revoke the previous stage's caption blob URLs before replacing them,
+         so a server or episode switch does not leak them. */
+      const previousBlobUrls = subtitleBlobUrls;
+      const nextBlobUrls = converted.filter(Boolean).map((s) => s.url);
       stage.setSubtitles(converted.filter(Boolean));
+      subtitleBlobUrls = nextBlobUrls;
+      previousBlobUrls.forEach((u) => { try { URL.revokeObjectURL(u); } catch {} });
     }
     stage.src(url);
     stage.node.title = stageTitle();
@@ -1269,6 +1282,8 @@ export function WatchView({ params, route, onCleanup }) {
   onCleanup(() => {
     if (stage) stage.destroy();
     stage = null;
+    subtitleBlobUrls.forEach((u) => { try { URL.revokeObjectURL(u); } catch {} });
+    subtitleBlobUrls = [];
   });
 
   /* ---------------- metadata ---------------- */

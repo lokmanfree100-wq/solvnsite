@@ -238,6 +238,9 @@ export async function MovieWatchView(ctx) {
       frame.remove();
       frame = null;
     }
+    /* Revoke any caption blob URLs the dropped frame was holding. */
+    trackBlobUrls.forEach((u) => { try { URL.revokeObjectURL(u); } catch {} });
+    trackBlobUrls = [];
   }
 
   function showFail(msg) {
@@ -264,6 +267,9 @@ export async function MovieWatchView(ctx) {
   let frame = null;
   let hideTimer = 0;
   let loaded = false;
+  /* Blob URLs minted for cross-origin caption tracks. Tracked so they can be
+     revoked when the frame is dropped or replaced. */
+  let trackBlobUrls = [];
 
   let detachMedia = null;
   let detachYoutube = null;
@@ -323,6 +329,8 @@ export async function MovieWatchView(ctx) {
         return null;
       }
     }));
+    /* Track the freshly minted blob URLs so they can be revoked later. */
+    trackBlobUrls = converted.filter(Boolean).map((s) => s.url);
     converted.filter(Boolean).forEach((sub, i) => {
       const tr = h('track', {
         kind: 'subtitles',
