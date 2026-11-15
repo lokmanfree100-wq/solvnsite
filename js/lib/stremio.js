@@ -6,8 +6,17 @@ import { proxyUrl, API_HOST } from './proxy.js';
 import { isYtId, ytEmbedUrl } from './youtube.js';
 
 const STORAGE_KEY = 'stremioAddons';
-const CACHE_KEY = 'stremioStreamCache';
+/* Bumped to v2: stream entries now carry `subtitles`, so cached pre-v2
+   entries (which lack them) must not be served. The old key is dropped on
+   first load below to free the space. */
+const CACHE_KEY = 'stremioStreamCache2';
 const MAP_CACHE_KEY = 'stremioIdMap2';
+try {
+  localStorage.removeItem('stremioStreamCache');
+  // Drop stale TMDB stream caches (pre-subtitles) to free space.
+  const keys = Object.keys(localStorage);
+  for (const k of keys) if (k.startsWith('stremio.tmdb:')) try { localStorage.removeItem(k); } catch {}
+} catch {}
 const CACHE_TTL = 12 * 60 * 60 * 1000;
 const MAP_TTL = 7 * 24 * 60 * 60 * 1000;
 const MANIFEST_TTL = 60 * 60 * 1000;
@@ -615,7 +624,7 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
   const id = Number(tmdbId);
   if (!Number.isFinite(id) || id <= 0) return [];
 
-  const cacheKey = `stremio.tmdb:${id}:${type}:${season}:${episode}`;
+  const cacheKey = `stremio.tmdb2:${id}:${type}:${season}:${episode}`;
   const cached = tryGetStrArr(cacheKey);
   if (cached) return cached;
 
