@@ -3,6 +3,7 @@ import { isMediaUrl, blockedHost } from './sources.js';
 import { STREMIO_ADDONS as DEFAULT_STREMIO_ADDONS } from './defaults.js';
 import { gql } from './anilist.js';
 import { proxyUrl, API_HOST } from './proxy.js';
+import { isYtId, ytEmbedUrl } from './youtube.js';
 
 const STORAGE_KEY = 'stremioAddons';
 const CACHE_KEY = 'stremioStreamCache';
@@ -349,6 +350,9 @@ async function fetchFromAddon(base, ids, types, episode) {
      If later a bare id for the same base also answers with only E1 streams, skip
      it too so we never start on E1 for episode N we asked for. */
   const want = Number(episode) || 1;
+  /* Does this title name an episode at all? Used only for official videos,
+     whose titles are often just the video's own name. */
+  const namesEpisode = (text) => /(\d{1,4})\s*(?:серия|серии|серий)|(?:episode|ep\.?|e)\s*(\d{1,4})/i.test(String(text || ''));
   let lastBaseHadStreamsNoMatch = false;
   let got = 0;
   let hadStreamsNoMatch = false;
@@ -360,6 +364,24 @@ async function fetchFromAddon(base, ids, types, episode) {
       answered = true;
       const streams = Array.isArray(r.json?.streams) ? r.json.streams : [];
       for (const s of streams) {
+        const title = String(s?.title || s?.name || '').trim();
+        /* An official YouTube stream carries `ytId` instead of a file address.
+           It plays in YouTube's own player inside our box, so it answers "play
+           this episode" just as a direct file does — and `externalUrl` still
+           does not, because that hands the tab to somebody else's page. */
+        if (isYtId(s?.ytId)) {
+          /* An official video is chosen by the add-on for the id we asked for,
+             and its title often names no episode at all ("Big Buck Bunny —
+             Blender") — so a title with no episode number is taken as an
+             answer, while one that names a different episode is not. */
+          if (matchEpisode(title, want) || !namesEpisode(title)) {
+            out.push({ ytId: String(s.ytId), title });
+            got += 1;
+          } else if (streams.length > 0) {
+            hadStreamsNoMatch = true;
+          }
+          continue;
+        }
         const u = s?.url || s?.externalUrl;
         if (typeof u !== 'string' || !u.trim()) continue;
         const clean = u.trim();
@@ -367,7 +389,6 @@ async function fetchFromAddon(base, ids, types, episode) {
         if (blockedHost(clean)) continue;
         if (isPlaceholderStream(clean, s)) continue;
         if (!isMediaUrl(clean)) continue;
-        const title = String(s?.title || s?.name || '').trim();
         if (matchEpisode(title, want)) {
           out.push({ url: clean, title });
           got += 1;
@@ -397,8 +418,12 @@ async function fetchFromAddon(base, ids, types, episode) {
      *    hint that a second cleanup step exists. */
   if (false) { /* no-op: the !got && out.length condition is contradictory */ }
   const seen = new Set();
-  return { streams: out.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true))), answered };
+  return { streams: out.filter((s) => (seen.has(keyOf(s)) ? false : (seen.add(keyOf(s)), true))), answered };
 }
+
+/** What makes two stream entries the same stream: its file address, or its
+ *  video id when the address is YouTube's player rather than a file. */
+const keyOf = (s) => s?.url || s?.ytId || '';
 
 
 export async function fetchStremioStreams(anilistId, episode, addonFilter) {
@@ -428,7 +453,7 @@ export async function fetchStremioStreams(anilistId, episode, addonFilter) {
 
   const streams = results.flatMap((r) => r.streams);
   const seen = new Set();
-  const unique = streams.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
+  const unique = streams.filter((s) => (seen.has(keyOf(s)) ? false : (seen.add(keyOf(s)), true)));
 
   writeCache(anilistId, episode, unique, unique.length ? CACHE_TTL : EMPTY_TTL);
   return unique;
@@ -627,7 +652,7 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
 
   const streams = results.flatMap((r) => r.streams);
   const seen = new Set();
-  const unique = streams.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
+  const unique = streams.filter((s) => (seen.has(keyOf(s)) ? false : (seen.add(keyOf(s)), true)));
 
   if (unique.length) {
     logTmdb(id, 'streams found', `count=${unique.length}`);
@@ -655,6 +680,25 @@ export function stremioServers(streams) {
   const out = [];
   const seen = new Set();
   for (const s of streams) {
+    const title = String(s?.title || s?.name || '').trim();
+    /* An official YouTube stream: the player is framed from its own embed
+       address, which is the same player the IFrame API would create. It is an
+       embed on purpose — YouTube's branding, captions and adverts stay, as its
+       terms require, and Solvn only decides where the box sits. */
+    if (isYtId(s?.ytId)) {
+      const embed = ytEmbedUrl(s.ytId);
+      if (!embed || seen.has(embed)) continue;
+      seen.add(embed);
+      out.push({
+        id: `youtube:${s.ytId}`,
+        name: title || 'YouTube',
+        url: embed,
+        ytId: String(s.ytId),
+        tracks: ['sub'],
+        episode: episodeFromTitle(title),
+      });
+      continue;
+    }
     const u = String(s?.url || s?.stream_url || s?.video_url || '').trim();
     if (!u) continue;
     if (!/^https:\/\//i.test(u)) continue;
@@ -663,7 +707,6 @@ export function stremioServers(streams) {
     if (isPlaceholderStream(u, s)) continue;
     if (seen.has(u)) continue;
     seen.add(u);
-    const title = String(s?.title || s?.name || '').trim();
     const ep = episodeFromTitle(title);
     out.push({
       id: `stremio:${u.slice(0, 64)}`,

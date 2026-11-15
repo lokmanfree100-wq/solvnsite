@@ -466,6 +466,17 @@
   height: 100%;
   border: 0;
 }
+/* The IFrame API builds its player inside a div of its own; the div has to fill
+   the box before the iframe inside it can. */
+.m-player .m-youtube {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.m-player .yt-mount {
+  position: absolute;
+  inset: 0;
+}
 .m-player-loading {
   position: absolute;
   inset: 0;

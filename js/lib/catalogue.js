@@ -18,6 +18,12 @@
 
 const SEED_URL = new URL('data/catalogue.json', document.baseURI).href;
 
+/* Public-domain films live in their own file. They are not TMDB rows: each one
+   carries the exact file the Internet Archive serves, the item page it came
+   from and the licence that makes playing it lawful, and burying that
+   provenance inside the snapshot would lose it. */
+const ARCHIVE_URL = new URL('data/archive.json', document.baseURI).href;
+
 /* The shelf names in the file, keyed by the request that would have gone to
    TMDB. A page beyond the first answers empty, the same way TMDB's own
    pagination ends — the grids stop rather than spin. */
@@ -43,10 +49,15 @@ const watchers = [];
     would be a second download for the same bytes. */
 export function loadCatalogue() {
   if (!loading) {
-    loading = fetch(SEED_URL, { cache: 'default' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        cat = j && Array.isArray(j.titles) ? { ...j, titles: dedupeRows(j.titles) } : null;
+    /* Both files, one promise: a page that asks for a title should not be told
+       "not in the catalogue" while the other half is still arriving. Either
+       file may fail on its own without taking the other down with it. */
+    const get = (url) => fetch(url, { cache: 'default' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    loading = Promise.all([get(SEED_URL), get(ARCHIVE_URL)])
+      .then(([j, a]) => {
+        const archived = a && Array.isArray(a.titles) ? a.titles : [];
+        const rows = j && Array.isArray(j.titles) ? j.titles.concat(archived) : archived;
+        cat = rows.length ? { ...(j || {}), titles: dedupeRows(rows) } : null;
         return cat;
       })
       .catch(() => {

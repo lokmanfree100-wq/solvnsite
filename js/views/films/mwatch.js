@@ -13,6 +13,7 @@ import { errorState } from '../../components/media.js';
 import { brandBubble, logoMark } from '../../lib/brand.js';
 import { api, backdrop, poster, nameOf, setMovieProgress } from '../../lib/tmdb.js';
 import { fetchStremioStreamsForTmdb, lastAddonState } from '../../lib/stremio.js';
+import { isYtId, mountYouTubePlayer } from '../../lib/youtube.js';
 import { attachMedia } from '../../lib/playback.js';
 import { isMediaUrl } from '../../lib/sources.js';
 import { mRail } from './movies.js';
@@ -232,6 +233,7 @@ export async function MovieWatchView(ctx) {
     hideTimer = 0;
     loaded = false;
     if (detachMedia) { detachMedia(); detachMedia = null; }
+    if (detachYoutube) { detachYoutube(); detachYoutube = null; }
     if (frame) {
       frame.remove();
       frame = null;
@@ -264,6 +266,36 @@ export async function MovieWatchView(ctx) {
   let loaded = false;
 
   let detachMedia = null;
+  let detachYoutube = null;
+
+  /* Official YouTube playback: YouTube's own player, in our box. We never skin
+     it or cover its controls — that is their terms, not a preference — so the
+     chrome around it is ours and everything inside it stays theirs. */
+  function mountYouTube(ytId) {
+    dropFrame();
+    const host = h('div.m-youtube', {});
+    player.append(host);
+    mountYouTubePlayer({
+      host,
+      ytId,
+      title,
+      onReady: markLoaded,
+      /* Embedding refused, video removed or region-locked: the rights holder's
+         decision, said plainly instead of a spinner that never ends. */
+      onError: () => showFail(t('The rights holder does not allow this video to be embedded.')),
+    }).then((mount) => { detachYoutube = () => mount.destroy(); })
+      .catch(() => showFail(t('The direct video source did not load.')));
+  }
+
+  function markLoaded() {
+    if (loaded) return;
+    loaded = true;
+    setMovieProgress({ type, id, title, posterPath: d.poster_path, season, episode });
+    hideTimer = setTimeout(() => {
+      loading.classList.add('hide');
+      clearFail();
+    }, 250);
+  }
   function mountVideo(url) {
     dropFrame();
     frame = h('video', {
@@ -274,15 +306,7 @@ export async function MovieWatchView(ctx) {
     });
     if (detachMedia) { detachMedia(); detachMedia = null; }
     attachMedia(frame, url).then((teardown) => { detachMedia = teardown; }).catch(() => {});
-    frame.addEventListener('loadeddata', () => {
-      if (loaded) return;
-      loaded = true;
-      setMovieProgress({ type, id, title, posterPath: d.poster_path, season, episode });
-      hideTimer = setTimeout(() => {
-        loading.classList.add('hide');
-        clearFail();
-      }, 250);
-    });
+    frame.addEventListener('loadeddata', markLoaded);
     frame.addEventListener('error', () => {
       loaded = false;
       showFail(t('The direct video source did not load.'));
@@ -296,16 +320,20 @@ export async function MovieWatchView(ctx) {
     loading.classList.remove('hide');
     loadingText.textContent = t('Preparing your stream…');
     let url = DIRECT_URL(d);
+    let yt = '';
     /* No operator link: resolve the TMDB id through the configured anime
        add-ons so catalogue anime films and series play too. */
     if (!url) {
       try {
         const streams = await fetchStremioStreamsForTmdb(id, type, season, episode);
+        /* A file Solvn plays itself always wins. An official YouTube entry is
+           the next honest answer: it plays in the site, in YouTube's player. */
         const first = streams.find((s) => isMediaUrl(s.url));
         url = first?.url || '';
+        if (!url) yt = streams.find((s) => isYtId(s.ytId))?.ytId || '';
       } catch { /* fall through to the honest no-source state */ }
     }
-    if (!url) {
+    if (!url && !yt) {
       /* Two different dead ends, said differently. An add-on that never
          answered is a broken source the viewer can act on; a title nothing
          carries is not, and telling them to check settings they already have
@@ -316,7 +344,8 @@ export async function MovieWatchView(ctx) {
         : t('No direct video source is configured for this title yet.'));
       return;
     }
-    mountVideo(url);
+    if (url) mountVideo(url);
+    else mountYouTube(yt);
   }
 
   function paintMeta() {
