@@ -153,13 +153,25 @@ export const TITLES = [
     credit: 'Crunchyroll · official channel upload',
   },
   {
-    ids: ['anilist:152137'],
+    ids: ['anilist:113415'],
     type: 'series',
-    name: 'No Longer Allowed in Another World — Episode 1 (English Dub)',
+    name: 'JUJUTSU KAISEN — Episode 1 (English Sub)',
+    /* Crunchyroll's official channel upload. Verified through YouTube's oEmbed
+       API (author "Crunchyroll", title "JUJUTSU KAISEN Episode 1 Full English
+       Sub | Ryomen Sukuna") and the watch page reports status OK with
+       playableInEmbed=true and no region restriction. */
+    ytId: 'iGWyN2Lq36M',
+    credit: 'Crunchyroll · official channel upload',
+  },
+  {
+    ids: ['anilist:113415'],
+    type: 'series',
+    name: 'JUJUTSU KAISEN — Episode 1 (English Dub)',
     /* Crunchyroll's official channel upload (dubbed). Verified through YouTube's
-       oEmbed API (author "Crunchyroll") and the watch page reports
-       playableInEmbed=true with no region restriction. */
-    ytId: 'dFd2Bf4svNo',
+       oEmbed API (author "Crunchyroll", title "JUJUTSU KAISEN Episode 1 Full
+       English Dub | Ryomen Sukuna") and the watch page reports status OK with
+       playableInEmbed=true and no region restriction. */
+    ytId: 'LTjH5JdxtOA',
     credit: 'Crunchyroll · official channel upload (English dub)',
   },
 ];
