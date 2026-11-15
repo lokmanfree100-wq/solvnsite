@@ -6,12 +6,22 @@ import { proxyUrl, API_HOST } from './proxy.js';
 import { isYtId, ytEmbedUrl } from './youtube.js';
 
 const STORAGE_KEY = 'stremioAddons';
-/* Bumped to v2: stream entries now carry `subtitles`, so cached pre-v2
-   entries (which lack them) must not be served. The old key is dropped on
-   first load below to free the space. */
-const CACHE_KEY = 'stremioStreamCache2';
-const MAP_CACHE_KEY = 'stremioIdMap2';
+/* Bumped to v3: CORS fix (blob-URL captions) + Solvn add-on redeploy changed
+   what streams/captions are served, so pre-v3 entries (cached before the fix)
+   must not be served. Old keys are dropped on first load to free the space. */
+const CACHE_KEY = 'stremioStreamCache3';
+const MAP_CACHE_KEY = 'stremioIdMap3';
 try { localStorage.removeItem('stremioStreamCache'); } catch {}
+try { localStorage.removeItem('stremioStreamCache2'); } catch {}
+try { localStorage.removeItem('stremioIdMap'); } catch {}
+try { localStorage.removeItem('stremioIdMap2'); } catch {}
+/* Drop stale TMDB stream cache entries written under the old key prefix. */
+try {
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const k = localStorage.key(i);
+    if (k && (k.startsWith('stremio.tmdb:') || k.startsWith('stremio.tmdb2:'))) localStorage.removeItem(k);
+  }
+} catch {}
 const CACHE_TTL = 12 * 60 * 60 * 1000;
 const MAP_TTL = 7 * 24 * 60 * 60 * 1000;
 const MANIFEST_TTL = 60 * 60 * 1000;
@@ -585,7 +595,7 @@ export async function fetchStremioStreamsForTmdb(tmdbId, type = 'movie', season 
   const id = Number(tmdbId);
   if (!Number.isFinite(id) || id <= 0) return [];
 
-  const cacheKey = `stremio.tmdb2:${id}:${type}:${season}:${episode}`;
+  const cacheKey = `stremio.tmdb3:${id}:${type}:${season}:${episode}`;
   const cached = tryGetStrArr(cacheKey);
   if (cached) return cached;
 
