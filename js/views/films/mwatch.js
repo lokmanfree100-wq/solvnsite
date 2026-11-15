@@ -296,21 +296,34 @@ export async function MovieWatchView(ctx) {
       clearFail();
     }, 250);
   }
-  function mountVideo(url, subs) {
+  async function mountVideo(url, subs) {
     dropFrame();
     frame = h('video', {
       controls: true,
       autoplay: true,
       playsinline: true,
-      crossorigin: 'anonymous',
       title: `${title} player`,
     });
     /* External caption tracks (a proxied VTT) are declared as <track>
        elements before the file is loaded, so the browser parses them — and
-       shows a `default` one — when attachMedia() sets the src. */
+       shows a `default` one — when attachMedia() sets the src. Cross-origin
+       tracks would need CORS on the media element, which breaks hosts that do
+       not send it (e.g. Archive.org), so each VTT is fetched into a
+       same-origin blob URL first; tracks whose host blocks the fetch are
+       dropped. */
     const list = Array.isArray(subs) ? subs : [];
-    list.forEach((sub, i) => {
-      if (!sub || !sub.url) return;
+    const converted = await Promise.all(list.map(async (sub) => {
+      if (!sub || !sub.url) return null;
+      try {
+        const res = await fetch(sub.url, { mode: 'cors' });
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        return { ...sub, url: URL.createObjectURL(blob) };
+      } catch {
+        return null;
+      }
+    }));
+    converted.filter(Boolean).forEach((sub, i) => {
       const tr = h('track', {
         kind: 'subtitles',
         src: sub.url,
@@ -363,7 +376,7 @@ export async function MovieWatchView(ctx) {
         : t('No direct video source is configured for this title yet.'));
       return;
     }
-    if (url) mountVideo(url, subs);
+    if (url) await mountVideo(url, subs);
     else mountYouTube(yt);
   }
 

@@ -507,7 +507,7 @@ export function WatchView({ params, route, onCleanup }) {
    * Both cases rebuild the node, which costs nothing: no state of ours lives
    * inside a frame, and a video's only state is the address we just gave it.
    */
-  function loadStage(url) {
+  async function loadStage(url) {
     /* An address that did not resolve to anything is the empty pool wearing a
        different name. It must never reach `src`: an iframe pointed at '' loads the
        page it is standing in, and the site would be framing itself. */
@@ -543,7 +543,22 @@ export function WatchView({ params, route, onCleanup }) {
     if (kind === 'media') {
       const srv = pool[serverIdx] || pool[0] || null;
       const subs = (srv && Array.isArray(srv.subtitles)) ? srv.subtitles : [];
-      stage.setSubtitles(subs);
+      /* Cross-origin <track> elements need CORS on the media element, which
+         breaks hosts that do not send it (e.g. Archive.org). Fetch each VTT
+         into a same-origin blob URL instead, so captions load without forcing
+         CORS on the video. Tracks whose host blocks the fetch are dropped. */
+      const converted = await Promise.all(subs.map(async (sub) => {
+        if (!sub || !sub.url) return null;
+        try {
+          const res = await fetch(sub.url, { mode: 'cors' });
+          if (!res.ok) return null;
+          const blob = await res.blob();
+          return { ...sub, url: URL.createObjectURL(blob) };
+        } catch {
+          return null;
+        }
+      }));
+      stage.setSubtitles(converted.filter(Boolean));
     }
     stage.src(url);
     stage.node.title = stageTitle();

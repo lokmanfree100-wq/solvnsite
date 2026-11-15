@@ -100,7 +100,7 @@ function subtitlesFor(entries, origin) {
 
 async function captionProxy(src) {
   if (!src) return json({ error: 'missing u' }, { status: 400 });
-  const upstream = await fetch(src, { headers: { accept: 'text/vtt,text/plain,*/*' } });
+  const upstream = await fetch(src, { headers: { accept: 'text/vtt,text/plain,*/*', 'user-agent': 'Solvn/1.0 (https://solvn.site)' } });
   if (!upstream.ok) {
     return json({ error: 'caption unavailable', status: upstream.status }, { status: 502 });
   }

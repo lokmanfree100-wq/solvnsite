@@ -120,7 +120,6 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
         controls: true,
         playsinline: true,
         preload: 'auto',
-        crossorigin: 'anonymous',
         title,
       })
     : h('iframe', {
@@ -316,7 +315,6 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
       const tr = document.createElement('track');
       tr.kind = 'subtitles';
       tr.src = String(sub.url);
-      tr.crossOrigin = 'anonymous';
       tr.srclang = String(sub.lang || 'en');
       tr.label = String(sub.label || sub.lang || `Subtitle ${i + 1}`);
       if (i === 0) tr.default = true;
