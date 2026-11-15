@@ -348,11 +348,7 @@ export async function MovieWatchView(ctx) {
         const first = streams.find((s) => isMediaUrl(s.url));
         url = first?.url || '';
         if (url) subs = Array.isArray(first?.subtitles) ? first.subtitles : [];
-        if (!url) {
-          const ytStream = streams.find((s) => isYtId(s.ytId));
-          yt = ytStream?.ytId || '';
-          subs = Array.isArray(ytStream?.subtitles) ? ytStream.subtitles : [];
-        }
+        if (!url) yt = streams.find((s) => isYtId(s.ytId))?.ytId || '';
       } catch { /* fall through to the honest no-source state */ }
     }
     if (!url && !yt) {

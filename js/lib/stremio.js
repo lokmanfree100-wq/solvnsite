@@ -11,12 +11,7 @@ const STORAGE_KEY = 'stremioAddons';
    first load below to free the space. */
 const CACHE_KEY = 'stremioStreamCache2';
 const MAP_CACHE_KEY = 'stremioIdMap2';
-try {
-  localStorage.removeItem('stremioStreamCache');
-  // Drop stale TMDB stream caches (pre-subtitles) to free space.
-  const keys = Object.keys(localStorage);
-  for (const k of keys) if (k.startsWith('stremio.tmdb:')) try { localStorage.removeItem(k); } catch {}
-} catch {}
+try { localStorage.removeItem('stremioStreamCache'); } catch {}
 const CACHE_TTL = 12 * 60 * 60 * 1000;
 const MAP_TTL = 7 * 24 * 60 * 60 * 1000;
 const MANIFEST_TTL = 60 * 60 * 1000;
@@ -346,52 +341,25 @@ function matchEpisode(title, want) {
 
 async function fetchFromAddon(base, ids, types, episode) {
   const out = [];
-  /* Did this add-on answer at all? A working add-on answers 200 with an empty
-     list for a title it does not carry; one that is gone answers nothing for
-     any candidate id. The difference is what the watch page reports. */
   let answered = false;
   const typeList = (types && types.length) ? types : ['anime', 'series', 'movie'];
-  /* Candidate ids are tried in priority order. We want streams for the
-     *requested* episode. If a suffixed id answers with streams but none of them
-     are for the requested episode (AcuAnime can return an E1 sitting in slot N,
-     or a "No streams found" notice card), that id does not satisfy the add-on
-     for this episode.
-     If later a bare id for the same base also answers with only E1 streams, skip
-     it too so we never start on E1 for episode N we asked for. */
   const want = Number(episode) || 1;
-  /* Does this title name an episode at all? Used only for official videos,
-     whose titles are often just the video's own name. */
   const namesEpisode = (text) => /(\d{1,4})\s*(?:серия|серии|серий)|(?:episode|ep\.?|e)\s*(\d{1,4})/i.test(String(text || ''));
-  let lastBaseHadStreamsNoMatch = false;
   let got = 0;
-  let hadStreamsNoMatch = false;
   for (const id of ids) {
     const pathId = encodeURIComponent(id).replace(/%3A/gi, ':');
     for (const type of typeList) {
-      const [r, subR] = await Promise.all([
-        addonFetch(base, `stream/${type}/${pathId}.json`),
-        addonFetch(base, `subtitles/${type}/${pathId}.json`),
-      ]);
+      const r = await addonFetch(base, `stream/${type}/${pathId}.json`);
       if (!r.ok) continue;
       answered = true;
       const streams = Array.isArray(r.json?.streams) ? r.json.streams : [];
-      const subtitles = Array.isArray(subR?.json?.subtitles) ? subR.json.subtitles : [];
+      // First pass: which streams answer this request?
+      const matched = [];
       for (const s of streams) {
         const title = String(s?.title || s?.name || '').trim();
-        /* An official YouTube stream carries `ytId` instead of a file address.
-           It plays in YouTube's own player inside our box, so it answers "play
-           this episode" just as a direct file does — and `externalUrl` still
-           does not, because that hands the tab to somebody else's page. */
         if (isYtId(s?.ytId)) {
-          /* An official video is chosen by the add-on for the id we asked for,
-             and its title often names no episode at all ("Big Buck Bunny —
-             Blender") — so a title with no episode number is taken as an
-             answer, while one that names a different episode is not. */
           if (matchEpisode(title, want) || !namesEpisode(title)) {
-            out.push({ ytId: String(s.ytId), title, subtitles });
-            got += 1;
-          } else if (streams.length > 0) {
-            hadStreamsNoMatch = true;
+            matched.push({ kind: 'yt', ytId: String(s.ytId), title });
           }
           continue;
         }
@@ -403,36 +371,29 @@ async function fetchFromAddon(base, ids, types, episode) {
         if (isPlaceholderStream(clean, s)) continue;
         if (!isMediaUrl(clean)) continue;
         if (matchEpisode(title, want)) {
-          out.push({ url: clean, title, subtitles });
-          got += 1;
-        } else if (streams.length > 0) {
-          hadStreamsNoMatch = true;
+          matched.push({ kind: 'url', url: clean, title });
         }
+      }
+      if (!matched.length) continue;
+      // Fetch captions only now that this candidate carries the episode.
+      const subR = await addonFetch(base, `subtitles/${type}/${pathId}.json`);
+      const subtitles = Array.isArray(subR?.json?.subtitles) ? subR.json.subtitles : [];
+      for (const m of matched) {
+        if (m.kind === 'yt') {
+          out.push({ ytId: m.ytId, title: m.title });
+        } else {
+          out.push({ url: m.url, title: m.title, subtitles });
+        }
+        got += 1;
       }
       if (got) break;
     }
-    if (hadStreamsNoMatch) lastBaseHadStreamsNoMatch = true;
     if (got) break;
   }
-  /* Rule for the suffixed-empty / bare-E1 case (AcuAnime-style add-ons):
-     *  - We ask for episode `want`. Each tried id either names `want` (kept),
-     *    names some other episode (counted as hadStreamsNoMatch, ignored for
-     *    this request), or returns a "no streams" card (ignored).
-     *  - If NO tried id produced a stream whose title matches `want`, the
-     *    add-on does not carry this episode for this request — return [].
-     *  - A bare id that returns only E1 is kept ONLY when want == 1 (plausible
-     *    E1-only add-on). For want != 1 that E1 is not `want`, so it is ignored
-     *    like any other non-matching list. This is why we never start on E1 for
-     *    a requested E5: the bare-E1 path is filtered by the same matching
-     *    gate, and with no match the function returns [].
-     *  - The dead code below (out.length=0 under !got) can never fire: !got
-     *    implies out is already empty, because out.push only happens on a match
-     *    which also increments got. Removed rather than left as a misleading
-     *    hint that a second cleanup step exists. */
-  if (false) { /* no-op: the !got && out.length condition is contradictory */ }
   const seen = new Set();
   return { streams: out.filter((s) => (seen.has(keyOf(s)) ? false : (seen.add(keyOf(s)), true))), answered };
 }
+
 
 /** What makes two stream entries the same stream: its file address, or its
  *  video id when the address is YouTube's player rather than a file. */
