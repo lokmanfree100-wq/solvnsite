@@ -302,6 +302,7 @@ export async function MovieWatchView(ctx) {
       controls: true,
       autoplay: true,
       playsinline: true,
+      crossorigin: 'anonymous',
       title: `${title} player`,
     });
     /* External caption tracks (a proxied VTT) are declared as <track>
