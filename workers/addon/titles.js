@@ -25,12 +25,14 @@ export const ADDON = {
   version: '1.0.0',
   name: 'Solvn Official',
   description:
-    'Official-channel videos and public-domain films, curated for solvn.site. '
-    + 'YouTube titles play in YouTube\'s own player; everything else is a file '
-    + 'whose licence allows public playback.',
+    "Official-channel videos and public-domain films, curated for solvn.site. " +
+    "YouTube's own player serves YouTube titles; everything else is a file " +
+    "whose licence allows public playback.",
   tag: 'Solvn Official',
   /* `solvn:` ids belong to Solvn's own catalogue (the Internet Archive films),
-     which has no IMDb entry to be asked about by. */
+     which has no IMDb entry to be asked about by. They are NOT queried by the
+     client today (it only asks add-ons after ani.zip maps a title), so archive
+     films are served through their direct_url in data/archive.json instead. */
   idPrefixes: ['tt', 'tmdb:', 'kitsu:', 'anilist:', 'mal:', 'solvn:'],
   types: ['movie', 'series'],
 };
@@ -61,21 +63,6 @@ export const TITLES = [
         url: 'https://commons.wikimedia.org/w/index.php?title=TimedText:Big_Buck_Bunny_with_VTT_acid_test.webm.en.vtt&action=raw',
       },
     ],
-  },
-  {
-    ids: ['solvn:the-general'],
-    type: 'movie',
-    name: 'The General (1926)',
-    /* File address read from archive.org/metadata/TheGeneral1926. */
-    url: 'https://archive.org/download/TheGeneral1926/The_General_1926_720p_512kb.mp4',
-    credit: 'Buster Keaton · public domain · Internet Archive',
-  },
-  {
-    ids: ['solvn:the-inspector-general'],
-    type: 'movie',
-    name: 'The Inspector General (1949)',
-    url: 'https://archive.org/download/inspector_general_ipod_version/inspector_general_512kb.mp4',
-    credit: 'public domain · Internet Archive',
   },
   {
     ids: ['anilist:105333'],
