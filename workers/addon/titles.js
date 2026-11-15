@@ -92,4 +92,24 @@ export const TITLES = [
     ytId: 'kG-BIWRAC6k',
     credit: 'Crunchyroll · official channel upload (English dub)',
   },
+  {
+    ids: ['anilist:98659'],
+    type: 'series',
+    name: 'Classroom of the Elite — Episode 1 (English Sub)',
+    /* Crunchyroll's official channel upload. Verified through YouTube's oEmbed
+       API (author "Crunchyroll") and the watch page reports status OK with
+       playableInEmbed=true. */
+    ytId: '269N6LtAyk4',
+    credit: 'Crunchyroll · official channel upload',
+  },
+  {
+    ids: ['anilist:98659'],
+    type: 'series',
+    name: 'Classroom of the Elite — Episode 1 (English Dub)',
+    /* Crunchyroll's official channel upload (dubbed). Verified through oEmbed
+       (author "Crunchyroll") and the watch page reports status OK with
+       playableInEmbed=true. */
+    ytId: 'cqkn9-DjrY0',
+    credit: 'Crunchyroll · official channel upload (English dub)',
+  },
 ];
