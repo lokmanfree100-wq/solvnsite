@@ -359,10 +359,14 @@ async function fetchFromAddon(base, ids, types, episode) {
   for (const id of ids) {
     const pathId = encodeURIComponent(id).replace(/%3A/gi, ':');
     for (const type of typeList) {
-      const r = await addonFetch(base, `stream/${type}/${pathId}.json`);
+      const [r, subR] = await Promise.all([
+        addonFetch(base, `stream/${type}/${pathId}.json`),
+        addonFetch(base, `subtitles/${type}/${pathId}.json`),
+      ]);
       if (!r.ok) continue;
       answered = true;
       const streams = Array.isArray(r.json?.streams) ? r.json.streams : [];
+      const subtitles = Array.isArray(subR?.json?.subtitles) ? subR.json.subtitles : [];
       for (const s of streams) {
         const title = String(s?.title || s?.name || '').trim();
         /* An official YouTube stream carries `ytId` instead of a file address.
@@ -375,7 +379,7 @@ async function fetchFromAddon(base, ids, types, episode) {
              Blender") — so a title with no episode number is taken as an
              answer, while one that names a different episode is not. */
           if (matchEpisode(title, want) || !namesEpisode(title)) {
-            out.push({ ytId: String(s.ytId), title });
+            out.push({ ytId: String(s.ytId), title, subtitles });
             got += 1;
           } else if (streams.length > 0) {
             hadStreamsNoMatch = true;
@@ -390,7 +394,7 @@ async function fetchFromAddon(base, ids, types, episode) {
         if (isPlaceholderStream(clean, s)) continue;
         if (!isMediaUrl(clean)) continue;
         if (matchEpisode(title, want)) {
-          out.push({ url: clean, title });
+          out.push({ url: clean, title, subtitles });
           got += 1;
         } else if (streams.length > 0) {
           hadStreamsNoMatch = true;
@@ -695,6 +699,7 @@ export function stremioServers(streams) {
         url: embed,
         ytId: String(s.ytId),
         tracks: ['sub'],
+        subtitles: Array.isArray(s?.subtitles) ? s.subtitles : [],
         episode: episodeFromTitle(title),
       });
       continue;
@@ -713,6 +718,7 @@ export function stremioServers(streams) {
       name: title || 'Stremio stream',
       url: u,
       tracks: ['sub'],
+      subtitles: Array.isArray(s?.subtitles) ? s.subtitles : [],
       episode: ep,
     });
   }

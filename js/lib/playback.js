@@ -303,6 +303,25 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
     hls.loadSource(url);
   }
 
+  /** Attach external caption tracks (e.g. a proxied VTT) to a media stage.
+   *  Called before `src()` so the browser parses the `<track>` elements,
+   *  including a `default` one, when it loads the file. No-op for embeds. */
+  function setSubtitles(list) {
+    if (!media) return;
+    Array.from(node.querySelectorAll('track')).forEach((t) => t.remove());
+    const tracks = Array.isArray(list) ? list : [];
+    tracks.forEach((sub, i) => {
+      if (!sub || !sub.url) return;
+      const tr = document.createElement('track');
+      tr.kind = 'subtitles';
+      tr.src = String(sub.url);
+      tr.srclang = String(sub.lang || 'en');
+      tr.label = String(sub.label || sub.lang || `Subtitle ${i + 1}`);
+      if (i === 0) tr.default = true;
+      node.appendChild(tr);
+    });
+  }
+
   const heldSrc = () => current;
 
   function destroy() {
@@ -330,6 +349,7 @@ export function createStage({ kind = 'embed', title = '', onReady = () => {}, on
     subTracks,
     setSubtitle,
     subtitle,
+    setSubtitles,
     onChange,
     destroy,
   };

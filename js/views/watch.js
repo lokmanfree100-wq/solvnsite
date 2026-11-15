@@ -540,6 +540,11 @@ export function WatchView({ params, route, onCleanup }) {
          element and earns no warning. */
       if (kind === 'embed' && advisoryMount) showPlayAdvisory(advisoryMount, playerShell);
     }
+    if (kind === 'media') {
+      const srv = pool[serverIdx] || pool[0] || null;
+      const subs = (srv && Array.isArray(srv.subtitles)) ? srv.subtitles : [];
+      stage.setSubtitles(subs);
+    }
     stage.src(url);
     stage.node.title = stageTitle();
   }

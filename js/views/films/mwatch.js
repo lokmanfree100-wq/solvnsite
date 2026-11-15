@@ -296,13 +296,28 @@ export async function MovieWatchView(ctx) {
       clearFail();
     }, 250);
   }
-  function mountVideo(url) {
+  function mountVideo(url, subs) {
     dropFrame();
     frame = h('video', {
       controls: true,
       autoplay: true,
       playsinline: true,
       title: `${title} player`,
+    });
+    /* External caption tracks (a proxied VTT) are declared as <track>
+       elements before the file is loaded, so the browser parses them — and
+       shows a `default` one — when attachMedia() sets the src. */
+    const list = Array.isArray(subs) ? subs : [];
+    list.forEach((sub, i) => {
+      if (!sub || !sub.url) return;
+      const tr = h('track', {
+        kind: 'subtitles',
+        src: sub.url,
+        srclang: sub.lang || 'en',
+        label: sub.label || sub.lang || `Subtitle ${i + 1}`,
+      });
+      if (i === 0) tr.setAttribute('default', '');
+      frame.append(tr);
     });
     if (detachMedia) { detachMedia(); detachMedia = null; }
     attachMedia(frame, url).then((teardown) => { detachMedia = teardown; }).catch(() => {});
@@ -321,6 +336,8 @@ export async function MovieWatchView(ctx) {
     loadingText.textContent = t('Preparing your stream…');
     let url = DIRECT_URL(d);
     let yt = '';
+    let subs = [];
+    if (url && Array.isArray(d?.subtitles)) subs = d.subtitles;
     /* No operator link: resolve the TMDB id through the configured anime
        add-ons so catalogue anime films and series play too. */
     if (!url) {
@@ -330,7 +347,12 @@ export async function MovieWatchView(ctx) {
            the next honest answer: it plays in the site, in YouTube's player. */
         const first = streams.find((s) => isMediaUrl(s.url));
         url = first?.url || '';
-        if (!url) yt = streams.find((s) => isYtId(s.ytId))?.ytId || '';
+        if (url) subs = Array.isArray(first?.subtitles) ? first.subtitles : [];
+        if (!url) {
+          const ytStream = streams.find((s) => isYtId(s.ytId));
+          yt = ytStream?.ytId || '';
+          subs = Array.isArray(ytStream?.subtitles) ? ytStream.subtitles : [];
+        }
       } catch { /* fall through to the honest no-source state */ }
     }
     if (!url && !yt) {
@@ -344,7 +366,7 @@ export async function MovieWatchView(ctx) {
         : t('No direct video source is configured for this title yet.'));
       return;
     }
-    if (url) mountVideo(url);
+    if (url) mountVideo(url, subs);
     else mountYouTube(yt);
   }
 
