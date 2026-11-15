@@ -469,7 +469,7 @@ function pushLog(entry) {
 }
 
 /* The address a person would recognize: no scheme, no trailing slash. */
-const addonLabel = (base) => String(base || '').replace(/^https?:\/\//i, '').replace(/\/+$/, '').replace(/^www\./i, '');
+export const addonLabel = (base) => String(base || '').replace(/^https?:\/\//i, '').replace(/\/+$/, '').replace(/^www\./i, '');
 
 /* A configured add-on whose manifest did not answer at all. Naming it is the
    whole point: "no stream" reads as a missing feature, while "this add-on is

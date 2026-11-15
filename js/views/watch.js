@@ -28,7 +28,7 @@ import { buildEpisodes, episodeCountIsGuess, resolveEpisodeCount } from '../lib/
 import { episodeStills } from '../lib/episode-stills.js';
 import { asTrack, audioChoices, clearCooldowns, cooling, failoverMs, isMediaUrl, isTrack, markServer, serverKind, serverName, serverTracks, serverUrl, servers, trackCarried, trackChip, trackName, tracksOffered } from '../lib/sources.js';
 import { directMediaServers } from '../lib/directmedia.js';
-import { storedStremioAddons, fetchStremioStreams, stremioServers, lastAddonState } from '../lib/stremio.js';
+import { storedStremioAddons, fetchStremioStreams, stremioServers, lastAddonState, addonLabel } from '../lib/stremio.js';
 import { createStage } from '../lib/playback.js';
 import { accentValue } from '../lib/accent.js';
 import { mediaRow, emptyState, episodeArt } from '../components/media.js';
@@ -183,6 +183,15 @@ export function WatchView({ params, route, onCleanup }) {
      a promise — adding a source is the viewer's call, and only they know which
      ones their network can reach. */
   const bootServers = h('a.btn.btn.btn--sm.btn--glass.hide', { href: '#/settings' }, icon('sliders'), t('Add a server'));
+  /* When nothing carried the title, the honest next step is to look for the
+     rights holder's own upload: most shows have an official channel on YouTube
+     even when no add-on names a direct file. */
+  const bootYoutube = h('a.btn.btn--sm.btn--glass.hide', { href: '', target: '_blank', rel: 'noopener' }, icon('play'), t('Search YouTube'));
+  /* Keep the href in sync with the title, which only the catalogue can name. */
+  const syncYoutubeHref = () => {
+    const q = title(media) || '';
+    bootYoutube.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(q + ' official channel')}`;
+  };
   /* The other half of a silent ladder: the viewer says the episode did not
      play, and Solvn writes down what it already knows — the title, the number,
      the track and every address it walked. A report of "some shows don't work"
@@ -196,7 +205,7 @@ export function WatchView({ params, route, onCleanup }) {
         }),
       }),
   }, icon('alert'), t('Report this episode'));
-  const bootLast = [bootNext, bootList, bootServers, bootReport, bootJump, bootNotify];
+  const bootLast = [bootNext, bootList, bootServers, bootYoutube, bootReport, bootJump, bootNotify];
   const boot = h('div.player-boot', {},
     h('div.player-boot-stack', {},
       bootSpin,
@@ -437,13 +446,25 @@ export function WatchView({ params, route, onCleanup }) {
     const { down, live } = lastAddonState();
     /* An add-on that never answered is a different answer from a title no
        add-on carries: the first one is a broken source worth naming. */
-    bootMsg.textContent = (!live && down.length)
+    const unreachable = !live && down.length;
+    bootMsg.textContent = unreachable
       ? t('Your configured stream add-on could not be reached: {list}. It may be down or have moved.', { list: down.join(', ') })
       : t('No direct streams available.');
 
+    /* Name every add-on that was asked, so the viewer can see which sources
+       were actually tried rather than guessing. */
+    const tried = storedStremioAddons().map(addonLabel);
     bootWhen.classList.remove('hide');
-    bootWhen.textContent = t('No add-on named a direct .m3u8/.mp4 for this title. Add a stream-capable add-on or server in Settings.');
+    if (unreachable) {
+      bootWhen.textContent = t('No add-on named a direct .m3u8/.mp4 for this title. Add a stream-capable add-on or server in Settings.');
+    } else {
+      bootWhen.textContent = tried.length
+        ? t('Tried: {list}. None carried this title. Add a stream-capable add-on or server in Settings, or search the title\u2019s official channel on YouTube.', { list: tried.join(', ') })
+        : t('No stream add-ons are configured. Add one in Settings, or search the title\u2019s official channel on YouTube.');
+    }
+    syncYoutubeHref();
     bootServers.classList.remove('hide');
+    bootYoutube.classList.remove('hide');
     bootList.classList.remove('hide');
   }
 
