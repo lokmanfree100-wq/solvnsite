@@ -10,16 +10,18 @@
 import { settings } from './store.js';
 import fr, { genres as FR_GENRES } from '../locales/fr.js';
 import ar, { genres as AR_GENRES } from '../locales/ar.js';
+import es, { genres as ES_GENRES } from '../locales/es.js';
 
 export const LANGS = {
   en: { name: 'English', code: 'EN', dir: 'ltr' },
   fr: { name: 'Français', code: 'FR', dir: 'ltr' },
   ar: { name: 'العربية', code: 'AR', dir: 'rtl' },
+  es: { name: 'Español', code: 'ES', dir: 'ltr' },
 };
 
 const DEFAULT_LANG = 'en';
-const TABLES = { fr, ar };
-const GENRE_TABLES = { fr: FR_GENRES, ar: AR_GENRES };
+const TABLES = { fr, ar, es };
+const GENRE_TABLES = { fr: FR_GENRES, ar: AR_GENRES, es: ES_GENRES };
 
 export function lang() {
   const id = settings.get('lang');
