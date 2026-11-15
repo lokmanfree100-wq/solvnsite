@@ -112,4 +112,54 @@ export const TITLES = [
     ytId: 'cqkn9-DjrY0',
     credit: 'Crunchyroll · official channel upload (English dub)',
   },
+  {
+    ids: ['anilist:120120'],
+    type: 'series',
+    name: 'Tokyo Revengers — Episode 1 (English Dub)',
+    /* Crunchyroll's official channel upload (dubbed). Verified through YouTube's
+       oEmbed API (author "Crunchyroll") and the watch page reports
+       playableInEmbed=true with no region restriction. */
+    ytId: '8FiC6DLIzqQ',
+    credit: 'Crunchyroll · official channel upload (English dub)',
+  },
+  {
+    ids: ['anilist:164299'],
+    type: 'series',
+    name: 'The Do-Over Damsel Conquers the Dragon Emperor — Episode 1 (English Sub)',
+    /* Crunchyroll's official channel upload. Verified through YouTube's oEmbed
+       API (author "Crunchyroll") and the watch page reports
+       playableInEmbed=true with no region restriction. */
+    ytId: 'UsfU29Ih7JA',
+    credit: 'Crunchyroll · official channel upload',
+  },
+  {
+    ids: ['anilist:98514'],
+    type: 'series',
+    name: 'Umamusume: Pretty Derby — Episode 1 (English Sub)',
+    /* Crunchyroll's official channel upload. Verified through YouTube's oEmbed
+       API (author "Crunchyroll") and the watch page reports
+       playableInEmbed=true with no region restriction. */
+    ytId: 'PZIy0Ct6KLo',
+    credit: 'Crunchyroll · official channel upload',
+  },
+  {
+    ids: ['anilist:165254'],
+    type: 'series',
+    name: 'BUCCHIGIRI?! — Episode 1 (English Sub)',
+    /* Crunchyroll's official channel upload. Verified through YouTube's oEmbed
+       API (author "Crunchyroll") and the watch page reports
+       playableInEmbed=true with no region restriction. */
+    ytId: 'ynA7tMN1qug',
+    credit: 'Crunchyroll · official channel upload',
+  },
+  {
+    ids: ['anilist:152137'],
+    type: 'series',
+    name: 'No Longer Allowed in Another World — Episode 1 (English Dub)',
+    /* Crunchyroll's official channel upload (dubbed). Verified through YouTube's
+       oEmbed API (author "Crunchyroll") and the watch page reports
+       playableInEmbed=true with no region restriction. */
+    ytId: 'dFd2Bf4svNo',
+    credit: 'Crunchyroll · official channel upload (English dub)',
+  },
 ];
