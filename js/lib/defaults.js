@@ -67,7 +67,21 @@ export const DIRECT_MEDIA = {};
    is: direct media (DIRECT_MEDIA/Settings) → any stream-capable add-on below →
    the template servers in Settings. Add your own clean stream add-on base URLs
    here (they must return direct file links; embeds and torrents are filtered). */
+/* Solvn's own add-on — `workers/addon` in this repo, the source that replaces
+   the third-party ones that keep dying. It answers /manifest.json,
+   /stream/{type}/{id}.json and /subtitles/{type}/{id}.json for the licensed
+   titles listed in `workers/addon/titles.js`, and for nothing else.
+
+   Empty until this deployment has an address, for the same reason API_HOST is
+   empty: a guessed hostname is a request the browser cannot make, and an empty
+   base is skipped rather than fetched. Deploy it with its
+   `workers/addon/deploy.manifest.json`, then paste the resulting base URL here
+   once (no trailing slash) and every visitor gets it by default. */
+export const SOLVN_ADDON = '';
+
 export const STREMIO_ADDONS = [
+  // Our own add-on, when this deployment runs one (see SOLVN_ADDON above).
+  ...(SOLVN_ADDON ? [SOLVN_ADDON] : []),
   // Live anime catalogue/metadata (real Kitsu data). Skipped for stream lookup.
   'https://anime-kitsu.strem.fun',
   // Public, no-auth anime streams in Japanese (SUB) + English (DUB), via
